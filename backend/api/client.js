@@ -6,7 +6,6 @@ const fs = require("fs");
 const axios = require("axios");
 
 // === Load environment variables ===
-
 // Compute the path to the root-level .env file (one directory above this file)
 const envPath = path.join(__dirname, "..", ".env");
 
