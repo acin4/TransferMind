@@ -1,6 +1,6 @@
 // Import the built-in Node.js modules for file system and path handling
-const fs = require("fs");
-const path = require("path");
+import path from "path";
+import fs from "fs";
 
 /**
  * Saves a JavaScript object or array as a formatted JSON file.
@@ -9,7 +9,7 @@ const path = require("path");
  * @param {string} filepath - The full path where the JSON file should be saved.
  * @param {Object|Array} data - The data to be written to the file.
  */
-function saveJSON(filepath, data) {
+export function saveJSON(filepath, data) {
   // Get the directory path from the given file path
   const dir = path.dirname(filepath);
 
@@ -22,6 +22,3 @@ function saveJSON(filepath, data) {
     `Saved: ${filepath} (${Array.isArray(data) ? data.length : "object"})`
   );
 }
-
-// Export the function so it can be imported in other files
-module.exports = { saveJSON };

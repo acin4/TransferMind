@@ -1,9 +1,15 @@
 // api/client.js
 
 // === Imports ===
-const path = require("path");
-const fs = require("fs");
-const axios = require("axios");
+import path from "path";
+import fs from "fs";
+import axios from "axios";
+import { fileURLToPath } from "url";
+import dotenv from "dotenv";
+
+// === Fix __dirname in ES modules ===
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // === Load environment variables ===
 // Compute the path to the root-level .env file (one directory above this file)
@@ -12,11 +18,11 @@ const envPath = path.join(__dirname, "..", ".env");
 // Log debug info: show the resolved .env path and whether it exists
 console.log("ENV PATH:", envPath, "exists:", fs.existsSync(envPath));
 
-// Load .env file into process.env (with debug mode enabled)
-require("dotenv").config({ path: envPath, debug: true });
+// Load .env file into process.env (with debug mode)
+dotenv.config({ path: envPath, debug: true });
 
-// Load again (redundant but ensures coverage in some setups — can be removed if unnecessary)
-require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+// Load again (optional / redundant)
+dotenv.config({ path: path.join(__dirname, "..", ".env") });
 
 // === Read environment variables ===
 const { API_BASE, RAPIDAPI_KEY, RAPIDAPI_HOST } = process.env;
@@ -34,7 +40,7 @@ if (!API_BASE || !RAPIDAPI_KEY || !RAPIDAPI_HOST) {
 }
 
 // === Create a preconfigured Axios instance ===
-const client = axios.create({
+export const client = axios.create({
   baseURL: API_BASE, // base URL for all API calls
   timeout: 20000, // 20s timeout for each request
   headers: {
@@ -80,6 +86,3 @@ client.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
-// === Export the configured Axios client ===
-module.exports = { client };
