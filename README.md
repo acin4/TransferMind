@@ -4,290 +4,331 @@ This roadmap takes the project from “local pipeline working” to a hosted, au
 
 ---
 
-### Phase 0 — Project Structure & Conventions
+## Phase 0 — Restructure Backend for Scalability
 
-1. Create a clean repo structure:
-   - `backend/` (ETL + API)
-   - `backend/jobs/` (orchestrators like monthly refresh)
-   - `backend/lib/` (retry, rate limit, helpers)
-   - `backend/ml/` (feature build, training, inference)
-   - `frontend/` (Next.js UI)
-   - `docs/` (schema, diagrams, screenshots)
-2. Add `.env.example` files for backend + frontend (no secrets committed).
-3. Document naming conventions (tables/views/columns) and define “1 row = what?” per key table.
+Current ingestion scripts live inside `backend/api/`.  
+Before scaling, we separate responsibilities clearly.
 
-**Output:** repo is organized and scalable.
+1. Refactor folder structure:
 
----
+   backend/
+   ├── ingestion/ # All Sofascore fetching logic (moved here)
+   ├── jobs/ # Orchestrators & workers
+   ├── lib/ # Shared utilities (supabase, retry, logger)
+   ├── api/ # API endpoints (refresh, simulate, health)
+   ├── ml/ # Prediction system
+   └── config/ # Constants & configuration
 
-### Phase 1 — Make Ingestion Production-Grade (Local)
+2. Move existing ingestion files:
+   - `fetchPlayers.js`
+   - `fetchTeams.js`
+   - `fetchStandings.js`
+   - `fetchAllPlayerStats.js`
+   - `fetchAllTeamStats.js`
+   - `fetchSeasons.js`
+   - `fetchTournaments.js`
 
-4. Create a single orchestrator script:
-   - `backend/jobs/monthlyRefresh.js`
-   - runs all ingestion steps in the correct order
-   - exits with code `0` on success, `1` on failure
-5. Add retry/backoff + rate limiting for Sofascore requests.
-6. Add structured logging (per step: duration, rows, errors).
-7. Implement data quality checks after ingestion:
-   - duplicate detection
-   - missing key fields
-   - abnormal drop/spike in inserted rows
-   - % coverage checks (e.g., players with stats)
+   ➜ into `backend/ingestion/`
 
-**Output:** pipeline is reliable, repeatable, and debuggable.
+3. Move shared utilities (`supabaseClient.js`, `utils.js`)  
+   ➜ into `backend/lib/`
 
----
-
-### Phase 2 — Observability (Job Runs)
-
-8. Create a `job_runs` table in Supabase to track pipeline execution:
-   - `job_name`, `started_at`, `ended_at`, `status`
-   - `rows_upserted`, `errors_count`, `duration_ms`
-   - optional `meta jsonb` for per-step counters and samples
-9. Update the orchestrator to:
-   - write a row at start
-   - update at end (success/failure)
-   - store an error sample if it fails
-
-**Output:** you can prove the job ran and diagnose issues fast.
+**Output:** clear separation between ingestion logic, API logic, and ML logic.
 
 ---
 
-### Phase 3.1 — Deploy Monthly Automation (Cloud Cron)
+## Phase 1 — Production-Grade Ingestion (Local)
 
-10. Add a GitHub Actions workflow:
+4. Create orchestrator:
 
-- `.github/workflows/monthly-refresh.yml`
-- scheduled monthly + manual trigger (`workflow_dispatch`)
+   backend/jobs/monthlyRefresh.js
+   - Runs all ingestion scripts in correct order
+   - Handles errors centrally
+   - Exits with code `0` (success) or `1` (failure)
 
-11. Add GitHub Secrets:
+5. Add:
+   - Retry + exponential backoff
+   - Rate limiting for Sofascore API
+   - Structured logging per step
 
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `SOFASCORE_API_KEY` (if needed)
+6. Add post-ingestion data validation:
+   - Duplicate detection
+   - Missing foreign keys
+   - Abnormal drop/spike checks
+   - Coverage % validation
 
-12. Run the workflow manually once to confirm:
-
-- logs look correct
-- `job_runs` updated
-- database updated successfully
-
-13. Add failure notifications (optional but recommended):
-
-- email/Discord webhook on job failure
-
-**Output:** monthly refresh runs without your laptop being on.
+**Output:** pipeline is stable and deterministic.
 
 ---
 
----
+## Phase 2 — Observability
 
-### Phase 3.2 — On-demand Refresh (Player/Team/Standings)
+7. Create `job_runs` table:
+   - job_name
+   - started_at
+   - ended_at
+   - status
+   - rows_upserted
+   - errors_count
+   - duration_ms
+   - meta (jsonb)
 
-TransferMind supports **two update modes**:
+8. Update `monthlyRefresh.js`:
+   - Insert row at start
+   - Update on success/failure
+   - Store error samples
 
-1. Scheduled monthly ingestion (batch)
-2. On-demand refresh when a user requests specific data via the UI
-
-#### Step A: Add Data Freshness Tracking
-
-1. Add freshness metadata (either columns or a separate table):
-   - `last_fetched_at`
-   - `fetch_status`
-   - `fetch_error` (optional)
-2. Define freshness rules (example):
-   - player stats: fresh for 7 days
-   - team stats: fresh for 3 days
-   - standings: fresh for 24 hours
-3. Ensure the UI can display:
-   - “Last updated: …”
-   - “Updating…” state
-
-**Output:** the system knows what is stale and when to refresh.
-
-#### Step B: Create an On-demand Refresh Queue (Recommended)
-
-4. Create `refresh_queue` table:
-   - `entity_type` (player/team/standings)
-   - `entity_id` (and any extra identifiers needed)
-   - `priority` (on-demand = high)
-   - `status` (queued/running/done/failed)
-   - timestamps + error fields
-5. Add deduplication/cooldown logic:
-   - if an entity is already `queued/running`, do not enqueue again
-   - if last refresh is recent, skip refresh
-
-**Output:** on-demand requests are controlled and cost-efficient.
-
-#### Step C: Expose Refresh Endpoints
-
-6. Add API endpoints:
-   - `POST /api/refresh/player/:id`
-   - `POST /api/refresh/team/:id`
-   - `POST /api/refresh/standings?...`
-7. Endpoint behavior:
-   - check freshness
-   - enqueue refresh task (or run immediately if allowed)
-   - return `refresh_job_id`
-
-**Output:** UI can trigger refresh without directly calling Sofascore.
-
-#### Step D: Process the Queue (Worker)
-
-8. Create a worker:
-   - `backend/jobs/workerRefreshQueue.js`
-9. Worker loop:
-   - fetch next queued job (highest priority first)
-   - mark `running`
-   - run the correct refresh script (player/team/standings)
-   - update status + write logs + update last_fetched_at
-10. Run the worker:
-
-- hosted server (ideal), OR
-- GitHub Actions scheduled every 5–10 minutes, OR
-- any scheduler that fits your deployment
-
-**Output:** on-demand refresh completes asynchronously and safely.
-
-#### Step E: UI Pattern (Stale-While-Revalidate)
-
-11. When opening a page:
-
-- fetch existing data immediately from Supabase views
-- if stale: call refresh endpoint in background
-- poll job status or refetch data after completion
-
-12. Display:
-
-- stale badge / updating spinner
-- refreshed timestamp after completion
-
-**Output:** fast UI + always improving freshness without wasting API calls.
+**Output:** full visibility into ingestion health.
 
 ---
 
-### Phase 4 — Database Contract (Silver Layer)
+## Phase 3.1 — Monthly Automation (Cloud Cron)
 
-14. For each canonical table, define and enforce the “grain”:
+9. Add GitHub Actions workflow:
 
-- example: `player_stats` grain = `(player_id, team_id, tournament_id, season_id)`
+   .github/workflows/monthly-refresh.yml
+   - Scheduled monthly
+   - Manual trigger enabled
 
-15. Add composite unique constraints to match real-world identity.
-16. Ensure upserts use those composite keys correctly.
-17. Fix missing/invalid values consistently (e.g., `0 → null` where 0 means “unknown”).
+10. Add GitHub Secrets:
 
-**Output:** database is stable and analytics won’t lie.
+- SUPABASE_URL
+- SUPABASE_SERVICE_ROLE_KEY
+- SOFASCORE_API_KEY (if applicable)
 
----
+11. Manually test workflow once.
 
-### Phase 5 — Analytics Layer (Gold Views)
-
-18. Create analytics views used by the UI and prediction:
-
-- `v_player_season_summary`
-- `v_player_form_last_n`
-- `v_team_strength`
-- `v_league_strength`
-
-19. Create the view that powers simulations/predictions:
-
-- `v_transfer_features_base` (one row per player per season/competition context)
-
-20. Confirm UI/API will query views, not raw tables.
-
-**Output:** clean “contracts” for UI + ML.
+**Output:** automated monthly ingestion.
 
 ---
 
-### Phase 6 — Prediction System (Core Feature)
+## Phase 3.2 — On-demand Refresh System
 
-21. Define the prediction target (label):
+TransferMind supports:
 
-- **Option A:** predict performance change after transfer (Δrating / Δper90 metrics)
-- **Option B:** predict expected performance in target league (projected rating/per90)
+1. Scheduled monthly refresh
+2. On-demand refresh triggered by UI
 
-22. Build the ML dataset:
+### A. Freshness Tracking
 
-- create `ml_transfer_samples` (one row = one transfer event)
-- includes pre-transfer features, context features, and post-transfer outcome (label)
+12. Add metadata to canonical entities:
 
-23. Implement a baseline predictor (must-have):
+- last_fetched_at
+- fetch_status
+- fetch_error (optional)
+
+13. Define freshness rules:
+
+- player stats → 7 days
+- team stats → 3 days
+- standings → 24 hours
+
+**Output:** system knows what is stale.
+
+---
+
+### B. Refresh Queue
+
+14. Create `refresh_queue` table:
+
+- entity_type (player/team/standings)
+- entity_id
+- tournament_id
+- season_id
+- priority
+- status (queued/running/done/failed)
+- requested_at
+- started_at
+- finished_at
+- error
+
+15. Add deduplication:
+
+- If entity already queued or running → skip
+- If recently refreshed → skip
+
+**Output:** controlled, cost-efficient refresh system.
+
+---
+
+### C. Refresh API Endpoints
+
+16. Create endpoints:
+
+- POST /api/refresh/player/:id
+- POST /api/refresh/team/:id
+- POST /api/refresh/standings
+
+17. Endpoint logic:
+
+- Validate input
+- Check freshness
+- Enqueue refresh job
+- Return refresh_job_id
+
+**Output:** UI triggers refresh safely.
+
+---
+
+### D. Worker
+
+18. Create:
+
+backend/jobs/workerRefreshQueue.js
+
+19. Worker:
+
+- Fetch highest priority queued job
+- Mark as running
+- Execute correct ingestion script
+- Update status + last_fetched_at
+
+20. Run worker:
+
+- Hosted server (ideal), OR
+- GitHub Actions every 5–10 minutes
+
+**Output:** asynchronous refresh processing.
+
+---
+
+### E. UI Pattern — Stale-While-Revalidate
+
+21. On page load:
+
+- Fetch current data from Supabase views
+- If stale → trigger refresh in background
+
+22. UI shows:
+
+- Last updated timestamp
+- “Updating…” indicator
+- Auto-refresh when done
+
+**Output:** fast UX + fresh data without excessive API calls.
+
+---
+
+## Phase 4 — Database Contract (Silver Layer)
+
+23. Define grain for each canonical table.
+
+Example:
+player_stats grain =
+(player_id, team_id, tournament_id, season_id)
+
+24. Add composite unique constraints.
+25. Ensure correct upsert logic.
+26. Standardize null handling.
+
+**Output:** data integrity guaranteed.
+
+---
+
+## Phase 5 — Analytics Layer (Gold Views)
+
+27. Create analytics views:
+
+- v_player_season_summary
+- v_player_form_last_n
+- v_team_strength
+- v_league_strength
+
+28. Create:
+
+- v_transfer_features_base
+
+29. UI + ML read from views only.
+
+**Output:** clean contract layer.
+
+---
+
+## Phase 6 — Prediction System
+
+30. Define label:
+
+- Performance delta OR projected performance.
+
+31. Create:
+    ml_transfer_samples
+    (1 row = 1 historical transfer event)
+
+32. Implement baseline predictor:
 
 - per90 normalization
 - league difficulty adjustment
-- confidence penalty for low minutes
-- similarity-based projection (nearest comparable transfers)
+- minutes reliability penalty
+- similarity search
 
-24. Train ML model v1 (optional but recommended):
+33. Train ML model (v1):
 
-- split by season to avoid leakage
-- evaluate (F1/Accuracy or MAE/RMSE)
-- save model artifact + metadata
+- Season-based split
+- Evaluate metrics
+- Save artifact
 
-25. Add inference logic:
+34. Add inference endpoint:
 
-- **On-demand:** API route computes features → runs model → returns prediction
-- **Fallback:** if low confidence → use baseline
+- Compute features
+- Run model
+- Fallback to baseline if needed
 
-26. Add explainability:
+35. Add explainability:
 
-- confidence score
-- top drivers (league strength change, minutes, form)
-- comparable transfers (if similarity baseline used)
+- Confidence score
+- Top drivers
+- Comparable transfers
 
-**Output:** predictions are reliable, explainable, and thesis-ready.
-
----
-
-### Phase 7 — Frontend MVP (Product Demo)
-
-27. Build the 3 core screens:
-1. Player Search
-1. Player Profile (reads from analytics views)
-1. Transfer Simulation (current vs predicted + explanation)
-1. Visualize “Current vs Predicted”:
-
-- yellow = real values
-- blue = predicted values
-
-29. Show confidence + sample size (minutes, matches) and last refresh date.
-
-**Output:** end-to-end demo flow in the browser.
+**Output:** reliable and interpretable predictions.
 
 ---
 
-### Phase 8 — Hosting (Portfolio-Ready)
+## Phase 7 — Frontend MVP
 
-30. Deploy the frontend on Vercel (Free tier).
-31. Decide how the frontend gets data:
+36. Build 3 screens:
 
-- **Direct:** UI reads Supabase views (simple MVP)
-- **Via API:** UI calls your API endpoints (more control, caching, versioning)
+- Player Search
+- Player Profile
+- Transfer Simulation
 
-32. Keep ingestion in GitHub Actions regardless (best separation of concerns).
+37. Show:
 
-**Output:** shareable link + automated refresh.
+- Current (yellow)
+- Predicted (blue)
+- Confidence
+- Last refresh time
+
+**Output:** complete demo-ready application.
 
 ---
 
-### Phase 9 — Final Polish & Deliverables
+## Phase 8 — Hosting
 
-33. Add documentation:
+38. Deploy frontend on Vercel.
+39. Keep ingestion in GitHub Actions.
+40. Choose:
 
-- architecture diagram (Bronze/Silver/Gold + ML)
-- schema + grain definitions
-- pipeline flow explanation
-- “how to run locally” instructions
+- Direct Supabase access OR
+- API layer mediation
 
-34. Add demo assets:
+**Output:** publicly accessible product.
 
-- screenshots
-- short demo video/GIF (optional)
+---
 
-35. Add guardrails:
+## Phase 9 — Final Polish
 
-- health checks
-- predictable error messages
-- “insufficient data” messaging in prediction
+41. Add:
 
-**Output:** final thesis + portfolio version.
+- Architecture diagram
+- Schema documentation
+- Pipeline explanation
+- Screenshots
+- Demo video (optional)
+
+42. Add guardrails:
+
+- Health endpoints
+- Clear error handling
+- “Insufficient data” messaging
+
+**Output:** final thesis-grade, portfolio-ready system.
