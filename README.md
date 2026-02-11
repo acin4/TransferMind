@@ -11,13 +11,7 @@ Before scaling, we separate responsibilities clearly.
 
 1. Refactor folder structure:
 
-   backend/
-   ├── ingestion/ # All Sofascore fetching logic (moved here)
-   ├── jobs/ # Orchestrators & workers
-   ├── lib/ # Shared utilities (supabase, retry, logger)
-   ├── api/ # API endpoints (refresh, simulate, health)
-   ├── ml/ # Prediction system
-   └── config/ # Constants & configuration
+   ![alt text](image.png)
 
 2. Move existing ingestion files:
    - `fetchPlayers.js`
