@@ -8,7 +8,10 @@ const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 // Βοηθητική για υπολογισμό ποσοστών (π.χ. 30/100 -> 30.00)
 // Επιστρέφει null αν ο παρονομαστής είναι 0 ή null
 const calcPerc = (num, total) => {
-  if (!num || !total || total === 0) return null;
+  if (num == null || total == null) return null;
+  if (total === 0) return null;
+  if (num === 0) return 0;
+
   return parseFloat(((num / total) * 100).toFixed(2));
 };
 
@@ -22,7 +25,7 @@ async function fetchAllRows({ table, select, filters = [], pageSize = 1000 }) {
 
   while (true) {
     console.log(
-      `➡️ Fetching ${table} page ${page} (rows ${from}–${from + pageSize - 1})`
+      `➡️ Fetching ${table} page ${page} (rows ${from}–${from + pageSize - 1})`,
     );
 
     let q = supabase
@@ -117,7 +120,7 @@ async function fetchAndSaveTeamStats(row) {
     // Ελέγχουμε και τα δύο
     let s = res.data?.statistics;
     if (!s && res.data && res.data.goalsScored !== undefined) {
-        s = res.data;
+      s = res.data;
     }
 
     const hasStats = !!(s && Object.keys(s).length > 0);
@@ -137,11 +140,9 @@ async function fetchAndSaveTeamStats(row) {
         has_stats: false, // <--- ΠΡΟΣΘΗΚΗ: Δηλώνουμε ότι ΔΕΝ έχει στατιστικά
       };
 
-      const { error } = await supabase
-        .from("team_stats")
-        .upsert(skeletonRow, {
-          onConflict: "team_id, season_id, tournament_id",
-        });
+      const { error } = await supabase.from("team_stats").upsert(skeletonRow, {
+        onConflict: "team_id, season_id, tournament_id",
+      });
 
       if (error) {
         console.error(`❌ DB Error (Team ${team_id}):`, error.message);
@@ -156,11 +157,10 @@ async function fetchAndSaveTeamStats(row) {
       //Δηλώνουμε ότι ΕΧΕΙ στατιστικά
       has_stats: true,
       // IDs
-      api_id: team_id, 
+      api_id: team_id,
       team_id: team_id,
       tournament_id: tournament_id,
       season_id: season_id,
-      
 
       // Γενικά
       matches: s.matches ?? null,
@@ -171,12 +171,12 @@ async function fetchAndSaveTeamStats(row) {
       own_goals: s.ownGoals ?? null,
       assists: s.assists ?? null,
       shots: s.shots ?? null,
-      
+
       // Πέναλτι & Φάουλ
       penalty_scored: s.penaltyGoals ?? null,
       penalty_taken: s.penaltiesTaken ?? null,
       penalty_ratio: calcPerc(s.penaltyGoals, s.penaltiesTaken),
-      
+
       freekick_goals: s.freeKickGoals ?? null,
       freekick_taken: s.freeKickShots ?? null,
       freekick_ratio: calcPerc(s.freeKickGoals, s.freeKickShots),
@@ -186,7 +186,7 @@ async function fetchAndSaveTeamStats(row) {
       goals_outside_box: s.goalsFromOutsideTheBox ?? null,
       shots_inside_box: s.shotsFromInsideTheBox ?? null,
       shots_outside_box: s.shotsFromOutsideTheBox ?? null,
-      
+
       // Ratios Περιοχών (Χρήση calcPerc)
       goals_inside_ratio: calcPerc(s.goalsFromInsideTheBox, s.goalsScored),
       goals_outside_ratio: calcPerc(s.goalsFromOutsideTheBox, s.goalsScored),
@@ -196,23 +196,27 @@ async function fetchAndSaveTeamStats(row) {
       // Κεφαλιές
       goals_header: s.headedGoals ?? null,
       goals_header_ratio: calcPerc(s.headedGoals, s.goalsScored),
-      
+
       // Σουτ Στόχος
       shots_ontarget: s.shotsOnTarget ?? null,
       shots_offtarget: s.shotsOffTarget ?? null,
       shots_blocked: s.blockedScoringAttempt ?? null,
       woodwork: s.hitWoodwork ?? null,
       shots_ontarget_ratio: calcPerc(s.shotsOnTarget, s.shots),
-      goalspershot_ratio: (s.shots && s.shots > 0) 
-        ? parseFloat((s.goalsScored / s.shots).toFixed(2)) 
-        : null,
+      goalspershot_ratio:
+        s.shots && s.shots > 0
+          ? parseFloat((s.goalsScored / s.shots).toFixed(2))
+          : null,
 
       // Ευκαιρίες
       big_chances: s.bigChances ?? null,
       big_chances_created: s.bigChancesCreated ?? null,
       big_chances_missed: s.bigChancesMissed ?? null,
       // Conversion ratio: (Big Chances - Missed) / Big Chances
-      big_chances_goal_ratio: calcPerc((s.bigChances - s.bigChancesMissed), s.bigChances),
+      big_chances_goal_ratio: calcPerc(
+        s.bigChances - s.bigChancesMissed,
+        s.bigChances,
+      ),
 
       // Ντρίμπλες
       dribbles_success: s.successfulDribbles ?? null,
@@ -227,31 +231,43 @@ async function fetchAndSaveTeamStats(row) {
       fastbreak_ratio: calcPerc(s.fastBreakGoals, s.fastBreaks),
 
       // Κατοχή
-      avg_ball_possession: s.averageBallPossession ? parseFloat(s.averageBallPossession) : null,
+      avg_ball_possession: s.averageBallPossession
+        ? parseFloat(s.averageBallPossession)
+        : null,
       possession_lost: s.possessionLost ?? null,
 
       // Πάσες (Γενικά)
       pass_total: s.totalPasses ?? null,
       pass_acc: s.accuratePasses ?? null,
-      pass_acc_percentage: s.accuratePassesPercentage ? parseFloat(s.accuratePassesPercentage) : null,
+      pass_acc_percentage: s.accuratePassesPercentage
+        ? parseFloat(s.accuratePassesPercentage)
+        : null,
 
       // Πάσες (Περιοχές)
       pass_ownhalf_total: s.totalOwnHalfPasses ?? null,
       pass_ownhalf_acc: s.accurateOwnHalfPasses ?? null,
-      pass_ownhalf_perc: s.accurateOwnHalfPassesPercentage ? parseFloat(s.accurateOwnHalfPassesPercentage) : null,
+      pass_ownhalf_perc: s.accurateOwnHalfPassesPercentage
+        ? parseFloat(s.accurateOwnHalfPassesPercentage)
+        : null,
 
       pass_opphalf_total: s.totalOppositionHalfPasses ?? null,
       pass_opphalf_acc: s.accurateOppositionHalfPasses ?? null,
-      pass_opphalf_perc: s.accurateOppositionHalfPassesPercentage ? parseFloat(s.accurateOppositionHalfPassesPercentage) : null,
+      pass_opphalf_perc: s.accurateOppositionHalfPassesPercentage
+        ? parseFloat(s.accurateOppositionHalfPassesPercentage)
+        : null,
 
       // Μακρινές & Σέντρες
       longballs_total: s.totalLongBalls ?? null,
       longballs_acc: s.accurateLongBalls ?? null,
-      longballs_perc: s.accurateLongBallsPercentage ? parseFloat(s.accurateLongBallsPercentage) : null,
+      longballs_perc: s.accurateLongBallsPercentage
+        ? parseFloat(s.accurateLongBallsPercentage)
+        : null,
 
       cross_total: s.totalCrosses ?? null,
       cross_acc: s.accurateCrosses ?? null,
-      cross_perc: s.accurateCrossesPercentage ? parseFloat(s.accurateCrossesPercentage) : null,
+      cross_perc: s.accurateCrossesPercentage
+        ? parseFloat(s.accurateCrossesPercentage)
+        : null,
 
       // Άμυνα
       cleansheats: s.cleanSheets ?? null, // Προσοχή: όπως είναι γραμμένο στη βάση (cleansheats)
@@ -263,22 +279,28 @@ async function fetchAndSaveTeamStats(row) {
       lastman_tackles: s.lastManTackles ?? null,
       errors_to_goals: s.errorsLeadingToGoal ?? null,
       errors_to_shot: s.errorsLeadingToShot ?? null,
-      
+
       penalty_commited: s.penaltiesCommited ?? null,
       penalty_conceded: s.penaltyGoalsConceded ?? null,
 
       // Μονομαχίες
       duels_total: s.totalDuels ?? null,
       duels_won: s.duelsWon ?? null,
-      duels_perc: s.duelsWonPercentage ? parseFloat(s.duelsWonPercentage) : null,
+      duels_perc: s.duelsWonPercentage
+        ? parseFloat(s.duelsWonPercentage)
+        : null,
 
       ground_duels_total: s.totalGroundDuels ?? null,
       ground_duels_won: s.groundGroundDuels ?? s.groundDuelsWon ?? null,
-      ground_duels_perc: s.groundDuelsWonPercentage ? parseFloat(s.groundDuelsWonPercentage) : null,
+      ground_duels_perc: s.groundDuelsWonPercentage
+        ? parseFloat(s.groundDuelsWonPercentage)
+        : null,
 
       aerial_duels_total: s.totalAerialDuels ?? null,
       aerial_duels_won: s.aerialDuelsWon ?? null,
-      aerial_duels_perc: s.aerialDuelsWonPercentage ? parseFloat(s.aerialDuelsWonPercentage) : null,
+      aerial_duels_perc: s.aerialDuelsWonPercentage
+        ? parseFloat(s.aerialDuelsWonPercentage)
+        : null,
 
       // Πειθαρχικά
       fouls: s.fouls ?? null,
@@ -288,9 +310,10 @@ async function fetchAndSaveTeamStats(row) {
       redcards: s.redCards ?? null,
 
       // --- AGAINST STATS (Υπολογισμός Ratios από τα απόλυτα νούμερα) ---
-      
+
       shots_against: s.shotsAgainst ?? null,
-      shots_blocked_against: s.shotsBlockedAgainst ?? s.blockedScoringAttemptAgainst ?? null,
+      shots_blocked_against:
+        s.shotsBlockedAgainst ?? s.blockedScoringAttemptAgainst ?? null,
       shots_inside_against: s.shotsFromInsideTheBoxAgainst ?? null,
       shots_outside_against: s.shotsFromOutsideTheBoxAgainst ?? null,
       shots_ontarget_against: s.shotsOnTargetAgainst ?? null,
@@ -298,16 +321,23 @@ async function fetchAndSaveTeamStats(row) {
       woodwork_against: s.hitWoodworkAgainst ?? null,
 
       // Ratios Against (Υπολογισμοί)
-      goalspershot_against_ratio: (s.shotsAgainst && s.shotsAgainst > 0) 
-        ? parseFloat((s.goalsConceded / s.shotsAgainst).toFixed(2)) 
-        : null,
-      shots_ontarget_against_ratio: calcPerc(s.shotsOnTargetAgainst, s.shotsAgainst),
+      goalspershot_against_ratio:
+        s.shotsAgainst && s.shotsAgainst > 0
+          ? parseFloat((s.goalsConceded / s.shotsAgainst).toFixed(2))
+          : null,
+      shots_ontarget_against_ratio: calcPerc(
+        s.shotsOnTargetAgainst,
+        s.shotsAgainst,
+      ),
 
       // Ευκαιρίες Against
       big_chances_against: s.bigChancesAgainst ?? null,
       big_chances_against_created: s.bigChancesCreatedAgainst ?? null,
       big_chances_against_missed: s.bigChancesMissedAgainst ?? null,
-      big_chances_goal_against_ratio: null, // Δύσκολο να υπολογιστεί χωρίς conversion stat
+      big_chances_goal_against_ratio:
+        s.bigChancesAgainst && s.bigChancesAgainst > 0
+          ? parseFloat((s.goalsConceded / s.bigChancesAgainst).toFixed(2))
+          : null,
 
       errors_to_goals_against: s.errorsLeadingToGoalAgainst ?? null,
       errors_to_shot_against: s.errorsLeadingToShotAgainst ?? null,
@@ -315,33 +345,54 @@ async function fetchAndSaveTeamStats(row) {
       // Πάσες Against (Ratios)
       pass_against_total: s.totalPassesAgainst ?? null,
       pass_against_acc: s.accuratePassesAgainst ?? null,
-      pass_against_ratio: calcPerc(s.accuratePassesAgainst, s.totalPassesAgainst),
+      pass_against_ratio: calcPerc(
+        s.accuratePassesAgainst,
+        s.totalPassesAgainst,
+      ),
 
       finalthirdpass_against_total: s.totalFinalThirdPassesAgainst ?? null,
       finalthirdpass_against_acc: s.accurateFinalThirdPassesAgainst ?? null,
-      finalthirdpass_against_ratio: calcPerc(s.accurateFinalThirdPassesAgainst, s.totalFinalThirdPassesAgainst),
+      finalthirdpass_against_ratio: calcPerc(
+        s.accurateFinalThirdPassesAgainst,
+        s.totalFinalThirdPassesAgainst,
+      ),
 
       opphalfpass_against_total: s.oppositionHalfPassesTotalAgainst ?? null,
       opphalfpass_against_acc: s.accurateOppositionHalfPassesAgainst ?? null,
-      opphalfpass_against_ratio: calcPerc(s.accurateOppositionHalfPassesAgainst, s.oppositionHalfPassesTotalAgainst),
+      opphalfpass_against_ratio: calcPerc(
+        s.accurateOppositionHalfPassesAgainst,
+        s.oppositionHalfPassesTotalAgainst,
+      ),
 
       ownhalfpass_against_total: s.ownHalfPassesTotalAgainst ?? null,
       ownhalfpass_against_acc: s.accurateOwnHalfPassesAgainst ?? null,
-      ownhalfpass_against_ratio: calcPerc(s.accurateOwnHalfPassesAgainst, s.ownHalfPassesTotalAgainst),
+      ownhalfpass_against_ratio: calcPerc(
+        s.accurateOwnHalfPassesAgainst,
+        s.ownHalfPassesTotalAgainst,
+      ),
 
       keypass_against: s.keyPassesAgainst ?? null,
 
       longballs_against_total: s.longBallsTotalAgainst ?? null,
       longballs_against_acc: s.longBallsSuccessfulAgainst ?? null,
-      longballs_against_ratio: calcPerc(s.longBallsSuccessfulAgainst, s.longBallsTotalAgainst),
+      longballs_against_ratio: calcPerc(
+        s.longBallsSuccessfulAgainst,
+        s.longBallsTotalAgainst,
+      ),
 
       cross_against_total: s.crossesTotalAgainst ?? null,
       cross_against_acc: s.crossesSuccessfulAgainst ?? null,
-      cross_against_ratio: calcPerc(s.crossesSuccessfulAgainst, s.crossesTotalAgainst),
+      cross_against_ratio: calcPerc(
+        s.crossesSuccessfulAgainst,
+        s.crossesTotalAgainst,
+      ),
 
       dribbles_against_total: s.dribbleAttemptsTotalAgainst ?? null,
       dribbles_against_acc: s.dribbleAttemptsWonAgainst ?? null,
-      dribbles_against_ratio: calcPerc(s.dribbleAttemptsWonAgainst, s.dribbleAttemptsTotalAgainst),
+      dribbles_against_ratio: calcPerc(
+        s.dribbleAttemptsWonAgainst,
+        s.dribbleAttemptsTotalAgainst,
+      ),
 
       tackles_against: s.tacklesAgainst ?? null,
       clearences_against: s.clearancesAgainst ?? null,
