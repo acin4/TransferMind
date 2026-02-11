@@ -134,6 +134,7 @@ async function fetchAndSaveTeamStats(row) {
         tournament_id,
         season_id,
         matches: 0, // Βάζουμε 0 matches ένδειξη ότι είναι κενό
+        has_stats: false, // <--- ΠΡΟΣΘΗΚΗ: Δηλώνουμε ότι ΔΕΝ έχει στατιστικά
       };
 
       const { error } = await supabase
@@ -152,12 +153,14 @@ async function fetchAndSaveTeamStats(row) {
 
     // --- CASE 2: FULL STATS MAPPING ---
     const statsRow = {
+      //Δηλώνουμε ότι ΕΧΕΙ στατιστικά
+      has_stats: true,
       // IDs
       api_id: team_id, 
       team_id: team_id,
       tournament_id: tournament_id,
       season_id: season_id,
-      //updated_at: new Date(),
+      
 
       // Γενικά
       matches: s.matches ?? null,
