@@ -1,6 +1,6 @@
-import { client } from "./client.js";
-import { saveJSON } from "./utils.js";
-import { supabase } from "./supabaseClient.js";
+import { client } from "../lib/client.js";
+import { saveJSON } from "../lib/utils.js";
+import { supabase } from "../lib/supabaseClient.js";
 
 // Ρύθμιση καθυστέρησης για να μην μπλοκαριστείς
 const THROTTLE_MS = 300;
@@ -51,7 +51,8 @@ async function fetchAndStoreStandings(tournamentId, seasonId) {
 
     // 2.2 Βρες το "total" table
     const standingsList = data.standings || [];
-    const totalStanding = standingsList.find((s) => s.type === "total") || standingsList[0];
+    const totalStanding =
+      standingsList.find((s) => s.type === "total") || standingsList[0];
 
     if (!totalStanding || !totalStanding.rows) {
       console.log("   ⚠️ No standings rows found (maybe cup or knockout?).");
@@ -61,9 +62,14 @@ async function fetchAndStoreStandings(tournamentId, seasonId) {
     const rows = totalStanding.rows;
     console.log(`   ➡️ Found ${rows.length} entries.`);
 
-    // 2.3 Mapping δεδομένων στον πίνακα "standings"
+    // 2.3 Save raw JSON (προαιρετικό)
+    saveJSON(
+      `../data/raw/standings/tournament_${tournamentId}_season_${seasonId}_standings.json`,
+      data,
+    );
+
+    // 2.4 Mapping δεδομένων στον πίνακα "standings"
     const rowsToUpsert = rows.map((r) => {
-      
       // --- ΒΗΜΑ 1: Εξαγωγή Γκολ (Υπέρ / Κατά) ---
       // Ελέγχουμε όλα τα πιθανά πεδία (scoresFor, scores.for, goalsFor)
       // για να αποφύγουμε τα μηδενικά.
@@ -75,24 +81,24 @@ async function fetchAndStoreStandings(tournamentId, seasonId) {
       const calculatedGoalDiff = gf - ga;
 
       return {
-        api_id: r.id,               // Το ID της εγγραφής κατάταξης
-        team_id: r.team?.id,        // Σύνδεση με τον πίνακα teams
+        api_id: r.id, // Το ID της εγγραφής κατάταξης
+        team_id: r.team?.id, // Σύνδεση με τον πίνακα teams
         tournament_id: tournamentId,
         season_id: seasonId,
-        
+
         position: r.position,
         matches: r.matches,
         wins: r.wins,
         draws: r.draws,
         losses: r.losses,
-        
+
         goals_for: gf,
         goals_against: ga,
-        
+
         // Αποθηκεύουμε το αποτέλεσμα της δικής μας πράξης
-        goal_diff: calculatedGoalDiff, 
-        
-        points: r.points
+        goal_diff: calculatedGoalDiff,
+
+        points: r.points,
       };
     });
 
@@ -106,9 +112,11 @@ async function fetchAndStoreStandings(tournamentId, seasonId) {
     } else {
       console.log(`   ✅ Successfully updated standings.`);
     }
-
   } catch (err) {
-    console.error(`❌ Error processing standings:`, err.response?.data || err.message);
+    console.error(
+      `❌ Error processing standings:`,
+      err.response?.data || err.message,
+    );
   }
 }
 
@@ -123,7 +131,7 @@ async function fetchAndStoreStandings(tournamentId, seasonId) {
 
     for (const { tournamentId, seasonId } of pairs) {
       await fetchAndStoreStandings(tournamentId, seasonId);
-      
+
       // Καθυστέρηση
       if (THROTTLE_MS > 0) await delay(THROTTLE_MS);
     }

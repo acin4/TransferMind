@@ -1,6 +1,6 @@
-import { client } from "./client.js";
-import { saveJSON } from "./utils.js";
-import { supabase } from "./supabaseClient.js";
+import { client } from "../lib/client.js";
+import { saveJSON } from "../lib/utils.js";
+import { supabase } from "../lib/supabaseClient.js";
 
 /**
  * 1. Φέρνουμε από Supabase όλα τα ζευγάρια (tournamentId, seasonId)
@@ -53,8 +53,8 @@ async function fetchAndStoreTeams(tournamentId, seasonId) {
 
   // 2.2 Αποθήκευση raw JSON (προαιρετικό)
   saveJSON(
-    `data/raw/sofascore_t${tournamentId}_s${seasonId}_standings.json`,
-    data
+    `data/raw/teams/standings/sofascore_t${tournamentId}_s${seasonId}_standings.json`,
+    data,
   );
 
   // 2.3 Πάρε τα rows -> κάθε row έχει .team
@@ -70,7 +70,10 @@ async function fetchAndStoreTeams(tournamentId, seasonId) {
   console.log(`Found ${teams.length} rows, ${teamIds.length} unique teams.`);
 
   // 2.4 Αποθήκευση ΜΟΝΟ των teamIds σε JSON (αν το θες σαν ενδιάμεσο βήμα)
-  saveJSON(`data/derived/team_ids_t${tournamentId}_s${seasonId}.json`, teamIds);
+  saveJSON(
+    `data/derived/teams/team_ids_t${tournamentId}_s${seasonId}.json`,
+    teamIds,
+  );
 
   // 2.5 (ΠΡΟΑΙΡΕΤΙΚΟ) – για κάθε teamId, φέρε και extra λεπτομέρειες
   //     από /teams/detail και ενημέρωσε ξανά τον πίνακα teams
@@ -92,7 +95,7 @@ async function fetchAndStoreTeamDetails(teamId) {
   });
 
   const data = res.data;
-  saveJSON(`data/raw/team_${teamId}_detail.json`, data);
+  saveJSON(`data/raw/teams/team_${teamId}_detail.json`, data);
 
   // εδώ προσαρμόζεις το mapping ανάλογα με το response
   const t = data.team ?? data; // ανάλογα με το schema του endpoint

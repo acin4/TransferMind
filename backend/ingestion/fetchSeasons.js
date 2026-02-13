@@ -1,6 +1,6 @@
-import { client } from "./client.js";
-import { saveJSON } from "./utils.js";
-import { supabase } from "./supabaseClient.js";
+import { client } from "../lib/client.js";
+import { saveJSON } from "../lib/utils.js";
+import { supabase } from "../lib/supabaseClient.js";
 
 // 👇 εδώ βάζεις ΟΛΑ τα tournaments που θες να τραβήξεις
 const TOURNAMENT_IDS = [185, 17];
@@ -19,11 +19,11 @@ async function fetchAndStoreSeasonsForTournament(tournamentId) {
   console.log("✅ OK.");
   console.log("Type:", isArray ? "array" : typeof data);
   console.log(
-    isArray ? `Length: ${data.length}` : `Keys: ${Object.keys(data)}`
+    isArray ? `Length: ${data.length}` : `Keys: ${Object.keys(data)}`,
   );
 
   // 2. Save raw JSON (προαιρετικό)
-  saveJSON(`data/raw/sofascore_tournament_${tournamentId}_seasons.json`, data);
+  saveJSON(`../data/raw/seasons/tournament_${tournamentId}_seasons.json`, data);
 
   // 3. Πάρε το array με τα seasons
   const seasons = Array.isArray(data.seasons) ? data.seasons : [];

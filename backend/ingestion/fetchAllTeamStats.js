@@ -1,19 +1,10 @@
-import { client } from "./client.js";
-import { saveJSON } from "./utils.js";
-import { supabase } from "./supabaseClient.js";
+import { client } from "../lib/client.js";
+import { saveJSON } from "../lib/utils.js";
+import { supabase } from "../lib/supabaseClient.js";
+import { calcPerc } from "../lib/utils.js";
 
 const THROTTLE_MS = 600;
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
-
-// Βοηθητική για υπολογισμό ποσοστών (π.χ. 30/100 -> 30.00)
-// Επιστρέφει null αν ο παρονομαστής είναι 0 ή null
-const calcPerc = (num, total) => {
-  if (num == null || total == null) return null;
-  if (total === 0) return null;
-  if (num === 0) return 0;
-
-  return parseFloat(((num / total) * 100).toFixed(2));
-};
 
 // ==============================================================================
 // 1. GENERIC PAGINATION FETCH
@@ -126,7 +117,10 @@ async function fetchAndSaveTeamStats(row) {
     const hasStats = !!(s && Object.keys(s).length > 0);
 
     // Save RAW JSON for debugging
-    saveJSON(`data/raw/teams/debug_t${team_id}_s${season_id}.json`, res.data);
+    saveJSON(
+      `../data/raw/teamStats/debug_t${team_id}_s${season_id}.json`,
+      res.data,
+    );
 
     // --- CASE 1: NO STATS (Save Identifiers Only) ---
     if (!hasStats) {

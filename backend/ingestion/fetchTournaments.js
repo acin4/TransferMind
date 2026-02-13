@@ -1,6 +1,6 @@
-import { client } from "./client.js";
-import { saveJSON } from "./utils.js";
-import { supabase } from "./supabaseClient.js";
+import { client } from "../lib/client.js";
+import { saveJSON } from "../lib/utils.js";
+import { supabase } from "../lib/supabaseClient.js";
 
 // === helper: φέρε τα ids από Supabase ===
 async function getTournamentIdsFromDb() {
@@ -33,7 +33,10 @@ async function fetchAndStoreTournament(tournamentId) {
   console.log("✅ OK.");
 
   // 2. Save raw JSON (προαιρετικό)
-  saveJSON(`data/raw/sofascore_tournament_${tournamentId}.json`, data);
+  saveJSON(
+    `data/raw/tournament/sofascore_tournament_${tournamentId}.json`,
+    data,
+  );
 
   // 3. Πάρε το array με τα tournaments
   const t = data.uniqueTournament;

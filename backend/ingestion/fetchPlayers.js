@@ -1,6 +1,6 @@
-import { client } from "./client.js";
-import { saveJSON } from "./utils.js";
-import { supabase } from "./supabaseClient.js";
+import { client } from "../lib/client.js";
+import { saveJSON } from "../lib/utils.js";
+import { supabase } from "../lib/supabaseClient.js";
 
 // Προαιρετικό throttling για να μην φας rate limit
 const THROTTLE_MS = 250;
@@ -59,7 +59,7 @@ async function fetchSquadPlayerIds(teamId) {
   const data = res.data;
 
   // Αποθηκεύουμε raw JSON (προαιρετικό αλλά χρήσιμο για debug)
-  saveJSON(`data/raw/team_${teamId}_squad.json`, data);
+  saveJSON(`../data/raw/players/teams/team_${teamId}_squad.json`, data);
 
   // Εξαγωγή unique player IDs
   const playerIdSet = new Set();
@@ -81,7 +81,7 @@ async function fetchSquadPlayerIds(teamId) {
 
   const playerIds = [...playerIdSet];
   console.log(
-    `➡️  Found ${playerIds.length} unique players for team ${teamId}`
+    `➡️  Found ${playerIds.length} unique players for team ${teamId}`,
   );
   return playerIds;
 }
@@ -95,12 +95,15 @@ async function fetchPlayerDetailAndMap(playerId) {
   });
 
   const data = res.data;
-  saveJSON(`data/raw/player_${playerId}_detail.json`, data);
+  saveJSON(
+    `../data/raw/players/playersDetails/player_${playerId}_detail.json`,
+    data,
+  );
 
   const p = data.player;
   if (!p) {
     console.warn(
-      `   ⚠️ No "player" object found in response for id ${playerId}`
+      `   ⚠️ No "player" object found in response for id ${playerId}`,
     );
     return null;
   }
@@ -157,7 +160,7 @@ async function upsertPlayer(row) {
       } catch (err) {
         console.error(
           `❌ Error fetching squad for team ${teamId}:`,
-          err.response?.data || err.message
+          err.response?.data || err.message,
         );
         continue; // συνέχισε στο επόμενο team
       }
@@ -187,7 +190,7 @@ async function upsertPlayer(row) {
           } catch (err) {
             console.error(
               `❌ Error processing new player ${playerId}:`,
-              err.response?.data || err.message
+              err.response?.data || err.message,
             );
           }
           continue;
@@ -221,7 +224,7 @@ async function upsertPlayer(row) {
         } catch (err) {
           console.error(
             `❌ Error processing player ${playerId} for second team:`,
-            err.response?.data || err.message
+            err.response?.data || err.message,
           );
         }
       }

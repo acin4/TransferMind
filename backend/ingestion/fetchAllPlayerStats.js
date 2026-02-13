@@ -1,6 +1,6 @@
-import { client } from "./client.js";
-import { saveJSON } from "./utils.js";
-import { supabase } from "./supabaseClient.js";
+import { client } from "../lib/client.js";
+import { saveJSON } from "../lib/utils.js";
+import { supabase } from "../lib/supabaseClient.js";
 
 const THROTTLE_MS = 600;
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
@@ -124,7 +124,7 @@ async function fetchAndSaveStats(row) {
     const hasStats = !!(s && Object.keys(s).length > 0);
 
     // Always save raw payload for debugging
-    saveJSON(`data/raw/debug_${player.api_id}.json`, res.data);
+    saveJSON(`../data/raw/playerStats/debug_${player.api_id}.json`, res.data);
 
     // If NO stats → upsert identifiers only
     if (!hasStats) {

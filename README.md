@@ -4,7 +4,7 @@ This roadmap takes the project from “local pipeline working” to a hosted, au
 
 ---
 
-## Phase 0 — Restructure Backend for Scalability
+## Phase 0 — Restructure Backend for Scalability -- DONE✅
 
 Current ingestion scripts live inside `backend/api/`.  
 Before scaling, we separate responsibilities clearly.
