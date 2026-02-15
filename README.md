@@ -4,30 +4,341 @@ This roadmap takes the project from “local pipeline working” to a hosted, au
 
 ---
 
-## Phase 0 — Restructure Backend for Scalability -- DONE✅
+## Phase 0 — 📦 Data Ingestion & Refresh Architecture
 
-Current ingestion scripts live inside `backend/api/`.  
-Before scaling, we separate responsibilities clearly.
+This document describes the ingestion strategy, refresh logic, freshness tracking, execution modes, and cronjob planning for the TransferMind backend.
 
-1. Refactor folder structure:
+---
 
-   ![alt text](image.png)
+# 1️⃣ Seasons `is_current` Logic
 
-2. Move existing ingestion files:
-   - `fetchPlayers.js`
-   - `fetchTeams.js`
-   - `fetchStandings.js`
-   - `fetchAllPlayerStats.js`
-   - `fetchAllTeamStats.js`
-   - `fetchSeasons.js`
-   - `fetchTournaments.js`
+## 🎯 Goal
 
-   ➜ into `backend/ingestion/`
+Add an `is_current` flag in the `seasons` table and use it across all ingestion scripts to:
 
-3. Move shared utilities (`supabaseClient.js`, `utils.js`)  
-   ➜ into `backend/lib/`
+- Avoid unnecessary API calls
+- Fetch stats only for active seasons
+- Improve efficiency during cronjobs
+- Prevent redundant bootstrap requests
 
-**Output:** clear separation between ingestion logic, API logic, and ML logic.
+## ✅ Requirements
+
+- Only one season per `tournament_id` must have `is_current = true`
+- Must work even if the table is empty (first bootstrap run)
+- On July 1st refresh, re-evaluate and update `is_current`
+
+## 🧠 Usage
+
+All stats-related ingestion scripts must use:
+
+```js
+const currentSeasons = await getCurrentSeasonsFromDb();
+```
+
+Stats are fetched **only for current seasons**.
+
+---
+
+# 2️⃣ Transfer History Script
+
+## 🎯 Goal
+
+Create a `transfer-history` ingestion script to:
+
+- Retrieve historical `team_id` for players
+- Store past team associations
+- Allow fetching stats correctly for previous seasons
+
+## 🔍 Why?
+
+We store:
+
+- Players
+- Stats per season
+
+But we may not know the correct team for past seasons.
+
+Using transfer history:
+
+- We map player → team → season properly
+- We fetch historical stats only if needed
+
+## 🚀 Strategy
+
+Transfer history is NOT fetched for all players at bootstrap.
+
+Instead:
+
+- Fetch on-demand
+- Cache in DB
+- Call API only if missing
+
+This protects the monthly Sofascore request quota.
+
+---
+
+# 3️⃣ Execution Modes
+
+We introduce operational modes to control ingestion behavior.
+
+---
+
+## 🅰️ Mode: `init` (Bootstrap)
+
+Used when:
+
+- Filling the database for the first time
+
+Behavior:
+
+- Fetch all tournaments
+- Fetch all teams
+- Fetch all seasons
+- Fetch all players
+- Fetch stats ONLY for current seasons
+- Ignore freshness rules
+
+⚠️ Historical stats are NOT fetched during bootstrap.
+
+Example:
+
+```bash
+node backend/scripts/bootstrap.js
+```
+
+---
+
+## 🅱️ Mode: `cron`
+
+Used for scheduled updates.
+
+Behavior:
+
+- Update only current seasons
+- Respect freshness rules
+- Skip unchanged entities
+- Refresh stats only for `is_current = true`
+
+Example:
+
+```bash
+node backend/scripts/cronUpdate.js
+```
+
+---
+
+## 🅾️ Mode: `on-demand`
+
+Used when:
+
+- A user requests specific data from the UI
+
+Examples:
+
+- Viewing standings for past season
+- Viewing player stats for season 22/23
+- Viewing team stats for historical season
+
+Behavior:
+
+- Fetch only requested entity
+- Fetch only requested season
+- Check freshness first
+- Update selectively
+- Store result in DB for future reuse
+
+Example API:
+
+```
+GET /api/refresh/player/:id?season=2022
+GET /api/refresh/standings?tournament=17&season=2022
+```
+
+This ensures:
+
+- No unnecessary bulk fetching
+- API calls scale with actual user usage
+
+---
+
+# 4️⃣ Database Logging
+
+## 🎯 Goal
+
+Track ingestion activity and API usage.
+
+## 📦 Table: `ingestion_logs`
+
+```sql
+ingestion_logs (
+  id BIGSERIAL PRIMARY KEY,
+  entity_type TEXT,
+  entity_id BIGINT,
+  season_id BIGINT,
+  mode TEXT,
+  api_requests_used INTEGER,
+  started_at TIMESTAMP,
+  finished_at TIMESTAMP,
+  status TEXT,
+  error_message TEXT
+);
+```
+
+## 💡 Benefits
+
+- Track Sofascore request usage
+- Monitor bootstrap load
+- Debug failures
+- Prevent quota overuse
+
+---
+
+# 5️⃣ Freshness Tracking
+
+## 🎯 Goal
+
+Track `last_fetched_at` per entity + season to avoid unnecessary refreshes.
+
+## 📦 Table: `entity_freshness`
+
+```sql
+entity_freshness (
+  id BIGSERIAL PRIMARY KEY,
+  entity_type TEXT NOT NULL,
+  entity_id BIGINT NOT NULL,
+  season_id BIGINT,
+  last_fetched_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+## 🧠 Freshness Policy (`backend/config/freshness.js`)
+
+```js
+export const FRESHNESS_RULES = {
+  player: { maxAgeHours: 24 * 7 },
+  team: { maxAgeHours: 24 * 3 },
+  standings: { maxAgeHours: 24 },
+  player_stats: { maxAgeHours: 24 },
+  team_stats: { maxAgeHours: 24 },
+};
+```
+
+## 🔄 Logic
+
+Before fetching:
+
+```js
+if (!isStale(entityType, entityId, seasonId)) {
+  return; // Skip API call
+}
+```
+
+---
+
+# 6️⃣ Cronjob Strategy (GitHub Actions)
+
+## Weekly (Every Monday)
+
+Update:
+
+- player_stats (current season only)
+- team_stats (current season only)
+- standings (current season only)
+
+```yaml
+schedule:
+  - cron: "0 3 * * 1"
+```
+
+---
+
+## Transfer Window Updates
+
+Update:
+
+- players
+
+Periods:
+
+- Early October
+- Late February
+
+Manual trigger or specific cron expression.
+
+---
+
+## July 1st (Season Reset)
+
+Update:
+
+- tournaments
+- teams
+- seasons
+
+Recalculate:
+
+- `is_current`
+
+```yaml
+schedule:
+  - cron: "0 2 1 7 *"
+```
+
+---
+
+# 🧱 Suggested Folder Architecture
+
+```
+backend/
+│
+├── ingestion/
+│   ├── players.js
+│   ├── teams.js
+│   ├── seasons.js
+│   ├── playerStats.js
+│   ├── teamStats.js
+│   ├── standings.js
+│   ├── transferHistory.js
+│
+├── jobs/
+│   ├── bootstrap.js
+│   ├── cronUpdate.js
+│
+├── api/
+│   ├── refreshPlayer.js
+│   ├── refreshTeam.js
+│   ├── refreshStandings.js
+│
+├── lib/
+│   ├── freshness.js
+│   ├── logger.js
+│   ├── apiClient.js
+│
+├── config/
+│   ├── freshness.js
+```
+
+---
+
+# 🧠 Architecture Philosophy
+
+- Bootstrap = structure only + current stats
+- Cron = maintain current season
+- On-demand = unlock historical data dynamically
+- Freshness = API quota protection
+- Logging = observability
+- `is_current` = performance optimization
+
+---
+
+# 📊 Architecture Goals
+
+- Minimize Sofascore API usage
+- Avoid redundant calls
+- Scale to 4,000+ players
+- Fetch historical data only when needed
+- Prepare clean foundation for ML layer
 
 ---
 

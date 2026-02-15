@@ -1,6 +1,7 @@
 import { client } from "../lib/client.js";
 import { saveJSON } from "../lib/utils.js";
 import { supabase } from "../lib/supabaseClient.js";
+import { getCurrentSeasonFromList } from "../lib/utils.js";
 
 // 👇 εδώ βάζεις ΟΛΑ τα tournaments που θες να τραβήξεις
 const TOURNAMENT_IDS = [185, 17];
@@ -33,13 +34,23 @@ async function fetchAndStoreSeasonsForTournament(tournamentId) {
     console.log("⚠️ No seasons found in response");
     return;
   }
-
+  const seasonForCurrent = seasons.slice(0, 3);
   // 4. Map -> rows για Supabase table "seasons"
+  const currentSeason = getCurrentSeasonFromList(seasonForCurrent);
+  console.log(
+    "Current season (best guess):",
+    currentSeason?.year || "N/A",
+    tournamentId,
+  );
+  const currentApiId = currentSeason?.id ?? null;
+  console.log("Current season API ID:", currentApiId);
+
   const rows = seasons.map((s) => ({
     api_id: s.id,
     name: s.name,
     year: s.year,
     tournament_id: tournamentId,
+    is_current: currentApiId !== null && s.id === currentApiId, // boolean ✅
   }));
   console.log("Sample row:", rows[0]);
 

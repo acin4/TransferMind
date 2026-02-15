@@ -1,42 +1,88 @@
+// ==============================================================================
+// IMPORTS
+// ==============================================================================
+
+// Axios client wrapper for external API calls (Sofascore proxy or similar)
 import { client } from "../lib/client.js";
+// Utility helper to save raw JSON responses locally (for debugging / auditing)
 import { saveJSON } from "../lib/utils.js";
+// Supabase client (PostgreSQL connection via Supabase SDK)
 import { supabase } from "../lib/supabaseClient.js";
 
+// ==============================================================================
+// GLOBAL CONFIGURATION
+// ==============================================================================
+
+// Throttle delay between API calls (milliseconds)
+// This protects you from rate limits and avoids overwhelming the API.
 const THROTTLE_MS = 600;
+
+// Small async helper that pauses execution for a given time
+// Used to throttle API requests
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
+// ==============================================================================
+// 1️⃣ GENERIC PAGINATED FETCH FROM SUPABASE
+// ==============================================================================
+
+/**
+ * Fetch ALL rows from a Supabase table using pagination.
+ *
+ * Why this exists:
+ * Supabase has a 1000-row default limit.
+ * If your table contains more rows, you MUST paginate.
+ *
+ * Parameters:
+ * - table: name of the table
+ * - select: columns to retrieve
+ * - filters: optional filtering rules
+ * - pageSize: number of rows per request
+ *
+ * Returns:
+ * - Full array of rows from the table
+ */
 async function fetchAllRows({ table, select, filters = [], pageSize = 1000 }) {
-  const all = [];
-  let from = 0;
-  let page = 1;
+  const all = []; // Accumulates ALL rows
+  let from = 0; // Pagination start index
+  let page = 1; // Page counter (for logging)
 
   while (true) {
     console.log(
       `➡️ Fetching ${table} page ${page} (rows ${from}–${from + pageSize - 1})`,
     );
 
+    // Build base query
     let q = supabase
       .from(table)
       .select(select)
       .range(from, from + pageSize - 1);
 
+    // Apply dynamic filters
     for (const f of filters) {
       const [col, op, val, negate] = f;
+
+      // If negate = true → use NOT filter
       if (negate) q = q.not(col, op, val);
       else q = q.filter(col, op, val);
     }
 
     const { data, error } = await q;
+
+    // Stop immediately if DB error occurs
     if (error) throw error;
 
     console.log(`⬅️ ${table} page ${page} returned ${data?.length ?? 0} rows`);
 
+    // If nothing returned → stop loop
     if (!data || data.length === 0) break;
 
+    // Add page results to accumulator
     all.push(...data);
 
+    // If last page (less than pageSize returned) → stop
     if (data.length < pageSize) break;
 
+    // Move to next page
     from += pageSize;
     page++;
   }
@@ -45,9 +91,28 @@ async function fetchAllRows({ table, select, filters = [], pageSize = 1000 }) {
   return all;
 }
 
+// ==============================================================================
+// 2️⃣ PREPARE VALID API REQUESTS
+// ==============================================================================
+
+/**
+ * Builds all valid combinations of:
+ *  player + tournament + season
+ *
+ * Logic:
+ * 1. Load players
+ * 2. Load standings
+ * 3. Match player.team_id with standings.team_id
+ * 4. Prepare API request rows
+ *
+ * Performance Optimization:
+ * Uses Map() instead of .find()
+ * → O(1) lookup instead of O(n)
+ */
 async function getTargetData() {
   console.log("📥 Loading players + standings from DB (paginated)...");
 
+  // Load valid players (must have api_id + team_id)
   const players = await fetchAllRows({
     table: "players",
     select: "api_id, team_id, name",
@@ -58,6 +123,7 @@ async function getTargetData() {
     pageSize: 1000,
   });
 
+  // Load standings
   const standings = await fetchAllRows({
     table: "standings",
     select: "team_id, tournament_id, season_id",
@@ -77,8 +143,11 @@ async function getTargetData() {
   for (const s of standings) standingByTeam.set(s.team_id, s);
 
   const rows = [];
+
   for (const player of players) {
     const standing = standingByTeam.get(player.team_id);
+
+    // If team has no season/tournament context → skip
     if (!standing) continue;
 
     rows.push({
@@ -94,21 +163,39 @@ async function getTargetData() {
 }
 
 // ==============================================================================
-// 2. API CALL + SAVE TO player_stats
+// 3️⃣ FETCH PLAYER STATS FROM API + SAVE TO DATABASE
 // ==============================================================================
+
+/**
+ * For a given (player, team, tournament, season):
+ *
+ * 1. Calls external API
+ * 2. Saves raw JSON for debugging
+ * 3. Normalizes statistics
+ * 4. Upserts into player_stats table
+ *
+ * Upsert ensures:
+ * - If row exists → UPDATE
+ * - If not → INSERT
+ *
+ * Conflict Key:
+ * player_id, team_id, season_id, tournament_id
+ */
 async function fetchAndSaveStats(row) {
   const { player, team_id, tournament_id, season_id } = row;
 
   try {
+    // Call external API
     const res = await client.get("/players/get-statistics", {
       params: {
         playerId: player.api_id,
         tournamentId: tournament_id,
         seasonId: season_id,
       },
-      timeout: 10000,
+      timeout: 10000, // 10 seconds timeout to avoid hanging
     });
 
+    // Debug log so you can validate behavior while running
     console.log("DBG", player.name, {
       playerId: player.api_id,
       seasonId: season_id,
@@ -119,14 +206,18 @@ async function fetchAndSaveStats(row) {
       statsKeys: res.data?.statistics ? Object.keys(res.data.statistics) : null,
     });
 
-    // If API returns no stats, still save the identifiers (and defaults for everything else)
+    // Extract statistics object safely
     const s = res.data?.statistics;
+
+    // If API returns no stats, still save the identifiers (and defaults for everything else)
     const hasStats = !!(s && Object.keys(s).length > 0);
 
     // Always save raw payload for debugging
     saveJSON(`../data/raw/playerStats/debug_${player.api_id}.json`, res.data);
 
-    // If NO stats → upsert identifiers only
+    // ==========================================================
+    // CASE 1: NO STATS AVAILABLE
+    // ==========================================================
     if (!hasStats) {
       console.log(`🔸 No stats for ${player.name} → saving identifiers only`);
 
@@ -147,19 +238,26 @@ async function fetchAndSaveStats(row) {
       if (error) {
         console.error(`❌ DB Error (${player.name}):`, error.message);
       } else {
-        console.log(`✅ Saved (no stats): ${player.name}`);
+        console.log(`✅ Saved identifiers only(no stats): ${player.name}`);
       }
-
       return;
     }
 
+    // ==========================================================
+    // CASE 2: STATS AVAILABLE
+    // ==========================================================
+
+    // Build normalized DB row
+    // - Convert numeric strings → floats
+    // - Replace undefined with null
+    // - Avoid NaN
     const statsRow = {
       player_id: player.api_id,
       team_id: team_id,
       tournament_id: tournament_id,
       season_id: season_id,
 
-      // --- ΓΕΝΙΚΑ / ΣΥΜΜΕΤΟΧΕΣ ---
+      // --- General Stats ---
       rating:
         s.rating && !isNaN(parseFloat(s.rating)) ? parseFloat(s.rating) : null, // 1. rating ok
       total_rating: s.totalRating ? parseFloat(s.totalRating) : null, // 2. totalRating ok
@@ -169,7 +267,7 @@ async function fetchAndSaveStats(row) {
       minutes_played: s.minutesPlayed ?? null, // 35. minutesPlayed  ok
       totw_appearances: s.totwAppearances ?? null, // 103. totwAppearances ok
 
-      // --- ΕΠΙΘΕΣΗ ---
+      // --- Attack ---
       goals: s.goals ?? null, // 4. goals ok
       assists: s.assists ?? null, // 7. assists ok
       goals_assists_sum: s.goalsAssistsSum ?? null, // 8. goalsAssistsSum ok
@@ -179,7 +277,7 @@ async function fetchAndSaveStats(row) {
       big_chances_created: s.bigChancesCreated ?? null, // 5. bigChancesCreated ok
       big_chances_missed: s.bigChancesMissed ?? null, // 6. bigChancesMissed ok
 
-      // --- ΠΑΣΕΣ ---
+      // --- Passes ---
       total_passes: s.totalPasses ?? null, // 11. totalPasses ok
       accurate_passes: s.accuratePasses ?? null, // 9. accuratePasses ok
       inaccurate_passes: s.inaccuratePasses ?? null, // 10. inaccuratePasses ok
@@ -215,7 +313,7 @@ async function fetchAndSaveStats(row) {
       pass_to_assist: s.passToAssist ?? null, // 68. passToAssist ok
       total_attempt_assist: s.totalAttemptAssist ?? null, // 85. totalAttemptAssist ok
 
-      // --- ΝΤΡΙΜΠΛΕΣ & ΚΑΤΟΧΗ ---
+      // --- Dribbling & Possesion ---
       successful_dribbles: s.successfulDribbles ?? null, // 17. successfulDribbles ok
       successful_dribbles_percentage: s.successfulDribblesPercentage
         ? parseFloat(s.successfulDribblesPercentage)
@@ -229,7 +327,7 @@ async function fetchAndSaveStats(row) {
       fouls: s.fouls ?? null, // 62. fouls ok
       offsides: s.offsides ?? null, // 66. offsides ok
 
-      // --- ΣΟΥΤ ---
+      // --- Shots ---
       total_shots: s.totalShots ?? null, // 26. totalShots ok
       shots_on_target: s.shotsOnTarget ?? null, // 27. shotsOnTarget ok
       shots_off_target: s.shotsOffTarget ?? null, // 28. shotsOffTarget ok
@@ -250,8 +348,11 @@ async function fetchAndSaveStats(row) {
       goal_conversion_percentage: s.goalConversionPercentage
         ? parseFloat(s.goalConversionPercentage)
         : null, // 36. goalConversionPercentage ok
+      set_piece_conversion: s.setPieceConversion
+        ? parseFloat(s.setPieceConversion)
+        : null, //setPieceConversion ok
 
-      // --- ΑΜΥΝΑ ---
+      // --- Defence ---
       tackles: s.tackles ?? null, // 19. tackles ok
       tackles_won: s.tacklesWon ?? null, // 95. tacklesWon ok
       tackles_won_percentage: s.tacklesWonPercentage
@@ -264,7 +365,7 @@ async function fetchAndSaveStats(row) {
       error_lead_to_shot: s.errorLeadToShot ?? null, // 54. errorLeadToShot ok
       own_goals: s.ownGoals ?? null, // 64. ownGoals ok
 
-      // --- ΜΟΝΟΜΑΧΙΕΣ (DUELS) ---
+      // --- Duels ---
       total_contest: s.totalContest ?? null, // 86. totalContest ok
       total_duels_won: s.totalDuelsWon ?? null, // 33. totalDuelsWon ok
       total_duels_won_percentage: s.totalDuelsWonPercentage
@@ -282,17 +383,14 @@ async function fetchAndSaveStats(row) {
         ? parseFloat(s.aerialDuelsWonPercentage)
         : null, // 32. aerialDuelsWonPercentage ok
       aerial_lost: s.aerialLost ?? null, // 89. aerialLost ok
-      set_piece_conversion: s.setPieceConversion
-        ? parseFloat(s.setPieceConversion)
-        : null, //setPieceConversion ok
 
-      // --- ΠΕΙΘΑΡΧΙΚΑ ---
+      // --- Discipline ---
       yellow_cards: s.yellowCards ?? null, // 21. yellowCards ok
       yellow_red_cards: s.yellowRedCards ?? null, // 98. yellowRedCards ok
       red_cards: s.redCards ?? null, // 23. redCards ok
       direct_red_cards: s.directRedCards ?? null, // 22. directRedCards ok
 
-      // --- ΠΕΝΑΛΤΙ ---
+      // --- Penalties ---
       penalties_taken: s.penaltiesTaken ?? null, // 37. penaltiesTaken ok
       penalty_goals: s.penaltyGoals ?? null, // 38. penaltyGoals ok
       penalty_won: s.penaltyWon ?? null, // 39. penaltyWon ok
@@ -304,7 +402,7 @@ async function fetchAndSaveStats(row) {
       attempt_penalty_post: s.attemptPenaltyPost ?? null, // 91. attemptPenaltyPost ok
       attempt_penalty_target: s.attemptPenaltyTarget ?? null, // 92. attemptPenaltyTarget ok
 
-      // --- ΤΕΡΜΑΤΟΦΥΛΑΚΑΣ ---
+      // --- Goalkeeping ---
       saves: s.saves ?? null, // 69. saves ok
       clean_sheet: s.cleanSheet ?? null, // 70. cleanSheet ok
       saves_caught: s.savesCaught ?? null, // 99. savesCaught ok
@@ -325,6 +423,7 @@ async function fetchAndSaveStats(row) {
       penalty_save: s.penaltySave ?? null, // 72. penaltySave ok
     };
 
+    // Upsert into database
     const { error } = await supabase.from("player_stats").upsert(statsRow, {
       onConflict: "player_id, team_id, season_id, tournament_id",
     });
@@ -335,6 +434,7 @@ async function fetchAndSaveStats(row) {
       console.log(`✅ Saved: ${player.name}`);
     }
   } catch (err) {
+    // Handle timeouts separately
     if (err.code === "ECONNABORTED" || err.message.includes("timeout")) {
       console.warn(`⏳ Timeout: ${player.name}`);
     } else {
@@ -344,17 +444,29 @@ async function fetchAndSaveStats(row) {
 }
 
 // ==============================================================================
-// 3. MAIN
+// 4️⃣ MAIN EXECUTION BLOCK
 // ==============================================================================
+
+/**
+ * Self-invoking async function.
+ *
+ * Why?
+ * - Keeps file executable directly via:
+ *     node fetchAllPlayerStats.js
+ * - Prevents global variable pollution
+ */
 (async () => {
   try {
     console.log("🚀 Starting API Stats Fetch...");
 
+    // Build all valid API requests
     const rows = await getTargetData();
 
+    // Sequential processing (safe for rate limits)
+    // You could later upgrade this to a concurrency pool if needed.
     for (const row of rows) {
       await fetchAndSaveStats(row);
-      await delay(THROTTLE_MS);
+      await delay(THROTTLE_MS); // Throttle to avoid rate limits
     }
 
     console.log("\n🎉 ALL DONE!");

@@ -32,3 +32,32 @@ export const calcPerc = (num, total) => {
 
   return parseFloat(((num / total) * 100).toFixed(2));
 };
+
+function parseSeasonEndYear(seasonYear) {
+  if (!seasonYear) return -1;
+  const parts = String(seasonYear).split("/");
+  if (parts.length !== 2) return -1;
+
+  const endYY = Number(parts[1]);
+  if (Number.isNaN(endYY)) return -1;
+
+  // Handles "25/26" -> 2026
+  return 2000 + endYY;
+}
+
+export function getCurrentSeasonFromList(seasons) {
+  if (!Array.isArray(seasons) || seasons.length === 0) return null;
+
+  let best = seasons[0];
+  let bestEnd = parseSeasonEndYear(best.year);
+
+  for (const s of seasons.slice(1)) {
+    const end = parseSeasonEndYear(s.year);
+    if (end > bestEnd) {
+      best = s;
+      bestEnd = end;
+    }
+  }
+
+  return best;
+}
