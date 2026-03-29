@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabaseClient.js";
 import { getCurrentSeasonFromList } from "../lib/utils.js";
 
 // 👇 εδώ βάζεις ΟΛΑ τα tournaments που θες να τραβήξεις
-const TOURNAMENT_IDS = [185, 17];
+const TOURNAMENT_IDS = [185, 17, 8];
 
 async function fetchAndStoreSeasonsForTournament(tournamentId) {
   console.log(`\n=== Tournament ${tournamentId} ===`);
