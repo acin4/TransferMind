@@ -39,7 +39,6 @@ async function fetchAndStoreStandings(tournamentId, seasonId) {
   console.log(`\n📊 Standings for T: ${tournamentId}, S: ${seasonId}...`);
 
   try {
-    // 2.1 Κλήση API
     const res = await client.get("/tournaments/get-standings", {
       params: {
         tournamentId: String(tournamentId),
@@ -49,60 +48,61 @@ async function fetchAndStoreStandings(tournamentId, seasonId) {
 
     const data = res.data;
 
-    // 2.2 Βρες το "total" table
-    const standingsList = data.standings || [];
-    const totalStanding =
-      standingsList.find((s) => s.type === "total") || standingsList[0];
+    const standingsList = Array.isArray(data.standings) ? data.standings : [];
 
-    if (!totalStanding || !totalStanding.rows) {
-      console.log("   ⚠️ No standings rows found (maybe cup or knockout?).");
+    // Keep only "total" tables that actually have rows
+    const totalStandings = standingsList.filter(
+      (table) =>
+        table?.type === "total" &&
+        Array.isArray(table?.rows) &&
+        table.rows.length > 0,
+    );
+
+    if (totalStandings.length === 0) {
+      console.log("   ⚠️ No standings rows found.");
       return;
     }
 
-    const rows = totalStanding.rows;
-    console.log(`   ➡️ Found ${rows.length} entries.`);
+    console.log(`   ➡️ Found ${totalStandings.length} standings tables.`);
 
-    // 2.3 Save raw JSON (προαιρετικό)
     saveJSON(
       `../data/raw/standings/tournament_${tournamentId}_season_${seasonId}_standings.json`,
       data,
     );
 
-    // 2.4 Mapping δεδομένων στον πίνακα "standings"
-    const rowsToUpsert = rows.map((r) => {
-      // --- ΒΗΜΑ 1: Εξαγωγή Γκολ (Υπέρ / Κατά) ---
-      // Ελέγχουμε όλα τα πιθανά πεδία (scoresFor, scores.for, goalsFor)
-      // για να αποφύγουμε τα μηδενικά.
-      let gf = r.scoresFor ?? r.scores?.for ?? r.goalsFor ?? 0;
-      let ga = r.scoresAgainst ?? r.scores?.against ?? r.goalsAgainst ?? 0;
+    const rowsToUpsert = totalStandings.flatMap((table) => {
+      return table.rows.map((r) => {
+        const gf = r.scoresFor ?? r.scores?.for ?? r.goalsFor ?? 0;
+        const ga = r.scoresAgainst ?? r.scores?.against ?? r.goalsAgainst ?? 0;
 
-      // --- ΒΗΜΑ 2: ΧΕΙΡΟΚΙΝΗΤΟΣ ΥΠΟΛΟΓΙΣΜΟΣ ΔΙΑΦΟΡΑΣ ---
-      // Εδώ κάνουμε την πράξη μέσα στον κώδικα:
-      const calculatedGoalDiff = gf - ga;
+        return {
+          api_id: r.id,
+          team_id: r.team?.id,
 
-      return {
-        api_id: r.id, // Το ID της εγγραφής κατάταξης
-        team_id: r.team?.id, // Σύνδεση με τον πίνακα teams
-        tournament_id: tournamentId,
-        season_id: seasonId,
+          // parent tournament + season requested from API
+          tournament_id: tournamentId,
+          season_id: seasonId,
 
-        position: r.position,
-        matches: r.matches,
-        wins: r.wins,
-        draws: r.draws,
-        losses: r.losses,
+          // identify which standings block this row belongs to
+          standing_group_id: table.id ?? null,
+          standing_group_name: table.name ?? null,
+          stage_tournament_id: table.tournament?.id ?? null,
+          stage_tournament_name: table.tournament?.name ?? null,
+          stage_tournament_slug: table.tournament?.slug ?? null,
 
-        goals_for: gf,
-        goals_against: ga,
-
-        // Αποθηκεύουμε το αποτέλεσμα της δικής μας πράξης
-        goal_diff: calculatedGoalDiff,
-
-        points: r.points,
-      };
+          position: r.position ?? null,
+          matches: r.matches ?? 0,
+          wins: r.wins ?? 0,
+          draws: r.draws ?? 0,
+          losses: r.losses ?? 0,
+          goals_for: gf,
+          goals_against: ga,
+          goal_diff: gf - ga,
+          points: r.points ?? 0,
+        };
+      });
     });
 
-    // 2.4 Upsert στη Supabase
     const { error } = await supabase
       .from("standings")
       .upsert(rowsToUpsert, { onConflict: "api_id" });
@@ -110,11 +110,13 @@ async function fetchAndStoreStandings(tournamentId, seasonId) {
     if (error) {
       console.error("❌ Supabase upsert error:", error.message);
     } else {
-      console.log(`   ✅ Successfully updated standings.`);
+      console.log(
+        `   ✅ Successfully updated ${rowsToUpsert.length} standings rows.`,
+      );
     }
   } catch (err) {
     console.error(
-      `❌ Error processing standings:`,
+      "❌ Error processing standings:",
       err.response?.data || err.message,
     );
   }
