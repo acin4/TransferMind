@@ -43,23 +43,43 @@ const positionService = createPositionService(supabase);
  * Returns:
  * - Array<number|string> of unique team api ids
  */
-async function getTeamIdsFromDb() {
+async function getCurrentTeamsFromDb() {
   const { data, error } = await supabase
-    .from("teams")
-    .select("api_id")
-    .not("api_id", "is", null);
+    .from("current_season_teams")
+    .select("team_id, team_api_id, team_name")
+    .not("team_id", "is", null)
+    .not("team_api_id", "is", null);
 
   // If the DB query fails, we log and throw, because the script cannot continue.
   if (error) {
-    console.error("❌ Supabase error (getTeamIdsFromDb):", error);
+    console.error("❌ Supabase error (getCurrentTeamsFromDb):", error);
     throw error;
   }
 
   // Deduplicate: Set() removes duplicates, then spread (...) converts back to an array
-  const ids = [...new Set(data.map((row) => row.api_id))];
+  const uniqueTeams = new Map();
+  for (const row of data ?? []) {
+    if (!uniqueTeams.has(row.team_api_id)) {
+      uniqueTeams.set(row.team_api_id, {
+        team_id: row.team_id, // internal DB id
+        team_api_id: row.team_api_id, // external API id
+        team_name: row.team_name ?? null,
+      });
+    }
+  }
 
-  console.log("Team IDs from DB:", ids);
-  return ids;
+  const teams = [...uniqueTeams.values()];
+
+  console.log(
+    "Current teams from DB:",
+    teams.map((t) => ({
+      team_id: t.team_id,
+      team_api_id: t.team_api_id,
+      team_name: t.team_name,
+    })),
+  );
+
+  return teams;
 }
 
 // ==============================================================================
@@ -126,18 +146,18 @@ async function getExistingPlayersMapFromDb() {
  * Returns:
  * - Array of unique player ids
  */
-async function fetchSquadPlayerIds(teamId) {
-  console.log(`\n=== Squad for team ${teamId} ===`);
+async function fetchSquadPlayerIds(teamApiId) {
+  console.log(`\n=== Squad for team API ${teamApiId} ===`);
 
   // API call to retrieve squad players for the given teamId
   const res = await client.get("/teams/get-squad", {
-    params: { teamId: String(teamId) },
+    params: { teamId: String(teamApiId) },
   });
 
   const data = res.data;
 
   // Save raw response so you can debug and validate the API shape anytime
-  saveJSON(`../data/raw/players/teams/team_${teamId}_squad.json`, data);
+  saveJSON(`../data/raw/players/teams/team_${teamApiId}_squad.json`, data);
 
   // Set used to deduplicate player IDs
   const playerIdSet = new Set();
@@ -165,7 +185,7 @@ async function fetchSquadPlayerIds(teamId) {
 
   const playerIds = [...playerIdSet];
   console.log(
-    `➡️  Found ${playerIds.length} unique players for team ${teamId}`,
+    `➡️  Found ${playerIds.length} unique players for team API ${teamApiId}`,
   );
   return playerIds;
 }
@@ -342,7 +362,9 @@ async function upsertPlayerPositions(playerDbId, positionCodes) {
     // --------------------------------------------------------------------------
     // TEAM_IDS is the list of team IDs (from DB) for which we want to fetch squads.
     // We loop over these teams and attempt to ingest any missing players.
-    const TEAM_IDS = await getTeamIdsFromDb();
+    const teams = await getCurrentTeamsFromDb();
+
+    console.log(`Syncing players for ${teams.length} current teams`);
 
     // --------------------------------------------------------------------------
     // Step 2: Load an in-memory lookup of existing players
@@ -359,7 +381,7 @@ async function upsertPlayerPositions(playerDbId, positionCodes) {
     // --------------------------------------------------------------------------
     // Step 3: Process each team one by one
     // --------------------------------------------------------------------------
-    for (const teamId of TEAM_IDS) {
+    for (const team of teams) {
       // We'll store the squad's player IDs here.
       // Default is empty; if the API call fails, we skip this team.
       let squadPlayerIds = [];
@@ -371,12 +393,16 @@ async function upsertPlayerPositions(playerDbId, positionCodes) {
         // This typically calls an endpoint like:
         //   /team/{teamId}/squad
         // and returns a list of player IDs.
-        squadPlayerIds = await fetchSquadPlayerIds(teamId);
+        console.log(
+          `\n🏟️ Processing ${team.team_name ?? "unknown team"} | db:${team.team_id} | api:${team.team_api_id}`,
+        );
+
+        squadPlayerIds = await fetchSquadPlayerIds(team.team_api_id);
       } catch (err) {
         // If squad fetch fails, log and continue to next team.
         // We don't want one broken team to kill the whole run.
         console.error(
-          `❌ Error fetching squad for team ${teamId}:`,
+          `❌ Error fetching squad for team ${team.team_name ?? team.team_api_id}:`,
           // If Axios error, err.response.data is often most informative.
           err.response?.data || err.message,
         );
@@ -419,7 +445,7 @@ async function upsertPlayerPositions(playerDbId, positionCodes) {
             // This is useful because squad endpoints implicitly define membership.
             // Even if the player details endpoint has team info, your ingestion rule
             // here is: "current squad team is the authoritative team_id".
-            row.team_id = teamId;
+            row.team_id = team.team_id;
 
             // ------------------------------------------------------------------
             // Step 4c: Upsert the player row into DB
