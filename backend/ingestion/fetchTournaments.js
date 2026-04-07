@@ -34,7 +34,7 @@ async function fetchAndStoreTournament(tournamentId) {
 
   // 2. Save raw JSON (προαιρετικό)
   saveJSON(
-    `data/raw/tournament/sofascore_tournament_${tournamentId}.json`,
+    `../data/raw/tournament/sofascore_tournament_${tournamentId}.json`,
     data,
   );
 

@@ -2,134 +2,178 @@ import { client } from "../lib/client.js";
 import { saveJSON } from "../lib/utils.js";
 import { supabase } from "../lib/supabaseClient.js";
 
-/**
- * 1. Φέρνουμε από Supabase όλα τα ζευγάρια (tournamentId, seasonId)
- *    από τον πίνακα seasons.
- *    - api_id  -> seasonId στο SofaScore
- *    - tournament_id -> tournamentId στο SofaScore
- */
-async function getTournamentSeasonPairsFromDb() {
-  const { data, error } = await supabase
-    .from("seasons")
-    .select("api_id, tournament_id")
-    .not("api_id", "is", null)
-    .not("tournament_id", "is", null);
+const THROTTLE_MS = 300;
+const PAGE_SIZE = 1000;
 
-  if (error) {
-    console.error("❌ Supabase error (getTournamentSeasonPairsFromDb):", error);
-    throw error;
+const delay = (ms) => new Promise((res) => setTimeout(res, ms));
+
+/**
+ * Read all distinct team_ids from standings table.
+ * This assumes fetchStandings.js has already run.
+ */
+async function getStandingTeamIdsFromDb() {
+  const allRows = [];
+  let from = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("standings")
+      .select("team_id")
+      .not("team_id", "is", null)
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) {
+      console.error("❌ Supabase error (getStandingTeamIdsFromDb):", error);
+      throw error;
+    }
+
+    if (!data || data.length === 0) break;
+
+    allRows.push(...data);
+
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
   }
 
-  const pairs = data.map((row) => ({
-    tournamentId: row.tournament_id,
-    seasonId: row.api_id,
-  }));
+  const teamIds = [
+    ...new Set(allRows.map((row) => row.team_id).filter(Boolean)),
+  ];
 
-  console.log("Tournament/Season pairs from DB:", pairs);
-  return pairs;
+  console.log(`Found ${teamIds.length} unique team IDs in standings.`);
+  return teamIds;
 }
 
 /**
- * 2. Φέρνουμε standings για ένα τουρνουά + season,
- *    εξάγουμε τις ομάδες, αποθηκεύουμε JSON με teamIds
- *    και κάνουμε upsert στον πίνακα `teams`.
+ * Read all existing teams from teams table,
+ * so we only fetch missing team details.
  */
-async function fetchAndStoreTeams(tournamentId, seasonId) {
-  console.log(`\n=== Tournament ${tournamentId}, Season ${seasonId} ===`);
+async function getExistingTeamIdsFromDb() {
+  const allRows = [];
+  let from = 0;
 
-  // 2.1 Κλήση API
-  const res = await client.get("/tournaments/get-standings", {
-    params: {
-      tournamentId: String(tournamentId),
-      seasonId: String(seasonId),
-      type: "total",
-    },
-  });
+  while (true) {
+    const { data, error } = await supabase
+      .from("teams")
+      .select("api_id")
+      .not("api_id", "is", null)
+      .range(from, from + PAGE_SIZE - 1);
 
-  const data = res.data;
+    if (error) {
+      console.error("❌ Supabase error (getExistingTeamIdsFromDb):", error);
+      throw error;
+    }
 
-  console.log("✅ Standings OK.");
-  console.log("Keys:", Object.keys(data));
+    if (!data || data.length === 0) break;
 
-  // 2.2 Αποθήκευση raw JSON (προαιρετικό)
-  saveJSON(
-    `data/raw/teams/standings/sofascore_t${tournamentId}_s${seasonId}_standings.json`,
-    data,
-  );
+    allRows.push(...data);
 
-  // 2.3 Πάρε τα rows -> κάθε row έχει .team
-  const rows = data?.standings?.[0]?.rows ?? [];
-  if (!rows.length) {
-    console.log("⚠️ No rows in standings");
-    return;
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
   }
 
-  const teams = rows.map((r) => r.team);
-  const teamIds = [...new Set(teams.map((t) => t.id))];
+  const existingIds = new Set(allRows.map((row) => row.api_id).filter(Boolean));
 
-  console.log(`Found ${teams.length} rows, ${teamIds.length} unique teams.`);
-
-  // 2.4 Αποθήκευση ΜΟΝΟ των teamIds σε JSON (αν το θες σαν ενδιάμεσο βήμα)
-  saveJSON(
-    `data/derived/teams/team_ids_t${tournamentId}_s${seasonId}.json`,
-    teamIds,
-  );
-
-  // 2.5 (ΠΡΟΑΙΡΕΤΙΚΟ) – για κάθε teamId, φέρε και extra λεπτομέρειες
-  //     από /teams/detail και ενημέρωσε ξανά τον πίνακα teams
-  for (const teamId of teamIds) {
-    await fetchAndStoreTeamDetails(teamId);
-  }
+  console.log(`Found ${existingIds.size} existing teams in DB.`);
+  return existingIds;
 }
 
 /**
- * 3. Optional: Λεπτομέρειες ομάδας από άλλο endpoint
- *    ΠΡΟΣΟΧΗ: Βάλε το πραγματικό όνομα endpoint & schema.
+ * Compare standings.team_id against teams.api_id
+ * and return only the missing team ids.
+ */
+async function getMissingTeamIdsFromDb() {
+  const standingTeamIds = await getStandingTeamIdsFromDb();
+  const existingTeamIds = await getExistingTeamIdsFromDb();
+
+  const missingTeamIds = standingTeamIds.filter(
+    (teamId) => !existingTeamIds.has(teamId),
+  );
+
+  saveJSON(
+    "../data/derived/teams/team_ids_from_standings.json",
+    standingTeamIds,
+  );
+  saveJSON("../data/derived/teams/missing_team_ids.json", missingTeamIds);
+
+  console.log(
+    `Need to fetch ${missingTeamIds.length} missing team details from API.`,
+  );
+
+  return missingTeamIds;
+}
+
+/**
+ * Fetch one team detail and upsert into teams table.
  */
 async function fetchAndStoreTeamDetails(teamId) {
   console.log(`   -> fetching team detail for team ${teamId}`);
 
-  // άλλαξε το endpoint/path ανάλογα με το SofaScore API σου
-  const res = await client.get("/teams/detail", {
-    params: { teamId: String(teamId) },
-  });
+  try {
+    const res = await client.get("/teams/detail", {
+      params: { teamId: String(teamId) },
+    });
 
-  const data = res.data;
-  saveJSON(`data/raw/teams/team_${teamId}_detail.json`, data);
+    const data = res.data;
 
-  // εδώ προσαρμόζεις το mapping ανάλογα με το response
-  const t = data.team ?? data; // ανάλογα με το schema του endpoint
+    saveJSON(`../data/raw/teams/team_${teamId}_detail.json`, data);
 
-  const row = {
-    api_id: t.id,
-    name: t.name,
-    tournament_id: t.primaryUniqueTournament?.id ?? null,
-    city: t.venue?.city?.name ?? null,
-    stadium: t.venue?.name ?? null,
-  };
+    const t = data?.team ?? data;
 
-  const { error } = await supabase
-    .from("teams")
-    .upsert([row], { onConflict: "api_id" });
+    if (!t?.id) {
+      console.log(`   ⚠️ No valid team payload for team ${teamId}`);
+      return;
+    }
 
-  if (error) {
-    console.error("❌ Supabase error (upsert team details):", error);
+    const row = {
+      api_id: t.id,
+      name: t.name ?? null,
+      tournament_id: t.primaryUniqueTournament?.id ?? null,
+      city: t.venue?.city?.name ?? null,
+      stadium: t.venue?.name ?? null,
+    };
+
+    const { error } = await supabase
+      .from("teams")
+      .upsert([row], { onConflict: "api_id" });
+
+    if (error) {
+      console.error(`❌ Supabase upsert error for team ${teamId}:`, error);
+      return;
+    }
+
+    console.log(`   ✅ Upserted team ${teamId} (${row.name ?? "unknown"})`);
+  } catch (err) {
+    console.error(
+      `❌ Error fetching team ${teamId}:`,
+      err.response?.data || err.message,
+    );
   }
 }
 
 /**
- * 4. Runner
+ * Main runner
  */
 (async () => {
   try {
-    const pairs = await getTournamentSeasonPairsFromDb();
+    console.log("🚀 Starting Teams Sync from standings table...");
 
-    for (const { tournamentId, seasonId } of pairs) {
-      await fetchAndStoreTeams(tournamentId, seasonId);
+    const missingTeamIds = await getMissingTeamIdsFromDb();
+
+    if (missingTeamIds.length === 0) {
+      console.log("✅ No missing teams. Everything is already synced.");
+      return;
     }
 
-    console.log("\n🎉 Done for all tournaments & seasons!");
+    for (const teamId of missingTeamIds) {
+      await fetchAndStoreTeamDetails(teamId);
+
+      if (THROTTLE_MS > 0) {
+        await delay(THROTTLE_MS);
+      }
+    }
+
+    console.log("\n🎉 Done fetching missing teams!");
   } catch (e) {
-    console.error("❌ Error:", e.response?.data || e.message);
+    console.error("❌ Fatal Error:", e.response?.data || e.message || e);
   }
 })();
