@@ -10,6 +10,7 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [players, setPlayers] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
   
   // 🟢 ΝΕΟ STATE ΓΙΑ ΤΟ POP-UP
   const [isAboutOpen, setIsAboutOpen] = useState(false);
@@ -18,11 +19,21 @@ export default function Home() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const playersData = await getPlayers();
-      const teamsData = await getTeams();
+      try {
+        const [playersData, teamsData] = await Promise.all([
+          getPlayers(),
+          getTeams(),
+        ]);
 
-      setPlayers(playersData || []);
-      setTeams(teamsData || []);
+        setPlayers(playersData || []);
+        setTeams(teamsData || []);
+        setError(null);
+      } catch (err) {
+        console.error(err);
+        setPlayers([]);
+        setTeams([]);
+        setError("Αδυναμία φόρτωσης δεδομένων.");
+      }
     };
 
     fetchData();
@@ -82,8 +93,8 @@ export default function Home() {
                 <h3 className="text-xs font-black text-center text-slate-500 uppercase tracking-[0.3em] px-4 pb-4 pt-2">Ομαδες</h3>
                 {filteredTeams.map((t) => (
                   <div
-                    key={t.id || t.api_id}
-                    onClick={() => navigate(`/team/${t.id || t.api_id}`)}
+                    key={t.id}
+                    onClick={() => navigate(`/team/${t.id}`)}
                     className="flex items-center gap-5 p-4 rounded-2xl hover:bg-slate-800/80 cursor-pointer transition-all border border-transparent hover:border-slate-700 group"
                   >
                     <div className="bg-blue-500/10 p-3 rounded-xl text-blue-400 group-hover:scale-110 transition-transform">
@@ -104,8 +115,8 @@ export default function Home() {
                 <h3 className="text-xs font-black text-center text-slate-500 uppercase tracking-[0.3em] px-4 pb-4 pt-2">Παικτες</h3>
                 {filteredPlayers.map((p) => (
                   <div
-                    key={p.id || p.api_id}
-                    onClick={() => navigate(`/player/${p.id || p.api_id}`)}
+                    key={p.id}
+                    onClick={() => navigate(`/player/${p.id}`)}
                     className="flex items-center gap-5 p-4 rounded-2xl hover:bg-slate-800/80 cursor-pointer transition-all border border-transparent hover:border-slate-700 group"
                   >
                     <div className="bg-purple-500/10 p-3 rounded-xl text-purple-400 group-hover:scale-110 transition-transform">
@@ -119,6 +130,12 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {error && (
+        <div className="mt-6 text-center text-sm font-bold uppercase tracking-widest text-rose-400 relative z-30">
+          {error}
+        </div>
+      )}
 
       {/* QUICK LINKS & ΕΠΕΞΗΓΗΣΗ ΠΛΑΤΦΟΡΜΑΣ */}
       <div className="w-full max-w-6xl mt-24 grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">

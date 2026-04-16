@@ -8,20 +8,29 @@ export default function PlayerProfile() {
   const { id } = useParams();
   const [player, setPlayer] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchPlayerData = async () => {
-      if (id) {
-        const data = await getPlayer(id);
-        setPlayer(data);
+      try {
+        if (id) {
+          const data = await getPlayer(id);
+          setPlayer(data);
+        }
+        setError(null);
+      } catch (err) {
+        console.error(err);
+        setPlayer(null);
+        setError("Player not found.");
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     fetchPlayerData();
   }, [id]);
 
   if (loading) return <div className="min-h-screen bg-slate-950 p-10 text-white italic">Loading...</div>;
-  if (!player) return <div className="min-h-screen bg-slate-950 p-10 text-white font-bold">Player not found.</div>;
+  if (!player) return <div className="min-h-screen bg-slate-950 p-10 text-white font-bold">{error || "Player not found."}</div>;
 
   return (
     <div className="min-h-screen bg-slate-950 p-10 text-white">

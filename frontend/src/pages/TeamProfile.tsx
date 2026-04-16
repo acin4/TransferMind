@@ -128,24 +128,35 @@ export default function TeamProfile() {
   const [team, setTeam] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
-      if (id) {
-        const teamData = await getTeam(id);
-        if (teamData) {
+      try {
+        if (id) {
+          const teamData = await getTeam(id);
           setTeam(teamData);
-          const statsData = await getTeamStats(teamData.api_id);
-          setStats(statsData);
+
+          if (teamData) {
+            const statsData = await getTeamStats(teamData.id);
+            setStats(statsData);
+          }
         }
+        setError(null);
+      } catch (err) {
+        console.error(err);
+        setTeam(null);
+        setStats(null);
+        setError("DATA UNAVAILABLE");
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     fetchData();
   }, [id]);
 
   if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-blue-500 font-black animate-pulse uppercase tracking-widest">Analyzing Tactical Data...</div>;
-  if (!team || !stats) return <div className="min-h-screen bg-slate-950 text-white p-10 text-center font-bold">DATA UNAVAILABLE</div>;
+  if (!team || !stats) return <div className="min-h-screen bg-slate-950 text-white p-10 text-center font-bold">{error || "DATA UNAVAILABLE"}</div>;
 
   // Normalized Scores (0-100)
   const attackScore = Math.min(100, (((stats?.goals_scored || 0) * 2) + ((stats?.shots || 0) / 2) + (stats?.goalspershot_ratio || 0)) / 3).toFixed(1);

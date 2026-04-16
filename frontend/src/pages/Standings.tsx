@@ -9,14 +9,27 @@ export default function Standings() {
   const [selectedTournament, setSelectedTournament] = useState<any>(null);
   const [standings, setStandings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // ΒΗΜΑ 1: Φέρνουμε τα πρωταθλήματα
   useEffect(() => {
     const init = async () => {
-      const leagues = await getCurrentTournaments();
-      setTournaments(leagues);
-      if (leagues.length > 0) {
-        setSelectedTournament(leagues[0]);
+      try {
+        const leagues = await getCurrentTournaments();
+        setTournaments(leagues);
+
+        if (leagues.length > 0) {
+          setSelectedTournament(leagues[0]);
+          setError(null);
+        } else {
+          setError("Δεν βρέθηκαν διοργανώσεις.");
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error(err);
+        setTournaments([]);
+        setError("Αδυναμία φόρτωσης διοργανώσεων.");
+        setLoading(false);
       }
     };
     init();
@@ -26,10 +39,17 @@ export default function Standings() {
   useEffect(() => {
     if (selectedTournament) {
       setLoading(true);
-      // 🟢 Η ΛΥΣΗ: Στέλνουμε τα API IDs (π.χ. 185) και ΟΧΙ τα εσωτερικά IDs (π.χ. 7)
-      getStandings(selectedTournament.tournament_api_id, selectedTournament.season_api_id)
-        .then(data => {
+      getStandings(selectedTournament.tournament_id, selectedTournament.season_id)
+        .then((data) => {
           setStandings(data);
+          setError(null);
+        })
+        .catch((err) => {
+          console.error(err);
+          setStandings([]);
+          setError("Αδυναμία φόρτωσης βαθμολογίας.");
+        })
+        .finally(() => {
           setLoading(false);
         });
     }
@@ -38,7 +58,13 @@ export default function Standings() {
   if (!selectedTournament) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center text-blue-500 font-black gap-2">
-        <Loader2 className="animate-spin" /> <span className="italic uppercase">Initializing...</span>
+        {error ? (
+          <span className="italic uppercase text-rose-400">{error}</span>
+        ) : (
+          <>
+            <Loader2 className="animate-spin" /> <span className="italic uppercase">Initializing...</span>
+          </>
+        )}
       </div>
     );
   }
@@ -80,6 +106,10 @@ export default function Standings() {
            <div className="text-center p-20 opacity-50 italic animate-pulse font-black uppercase tracking-widest">
              Updating {selectedTournament.season_name}...
            </div>
+        ) : error ? (
+          <div className="text-center p-20 text-rose-400 font-black uppercase tracking-widest">
+            {error}
+          </div>
         ) : (
 
           <div className="bg-slate-900/40 border border-slate-800/60 rounded-[3rem] overflow-hidden shadow-2xl backdrop-blur-xl">
@@ -118,12 +148,18 @@ export default function Standings() {
                         <span className="text-2xl font-black text-blue-400">{row.points}</span>
                       </td>
                       <td className="px-8 py-5 text-right">
-                        <Link 
-                          to={`/team/${row.team_id}`} 
-                          className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-slate-800 text-slate-600 group-hover:border-blue-500 group-hover:text-blue-400 transition-all hover:bg-blue-500 hover:text-white"
-                        >
-                          <ChevronRight size={18} />
-                        </Link>
+                        {row.team_id ? (
+                          <Link 
+                            to={`/team/${row.team_id}`} 
+                            className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-slate-800 text-slate-600 group-hover:border-blue-500 group-hover:text-blue-400 transition-all hover:bg-blue-500 hover:text-white"
+                          >
+                            <ChevronRight size={18} />
+                          </Link>
+                        ) : (
+                          <span className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-slate-800 text-slate-700">
+                            <ChevronRight size={18} />
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { getTeams, getTeamStats } from "../api/api";
-import { supabase } from "../supabaseClient";
+import { getPlayers, getTeams, getTeamStats } from "../api/api";
 import { 
   Users, ChevronRight, MapPin, Landmark, ArrowLeft, 
   Sword, Shield, Zap, Activity, Loader2, User 
@@ -9,6 +8,7 @@ import {
 export default function Teams() {
   const [teams, setTeams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   const [selectedTeam, setSelectedTeam] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
@@ -20,9 +20,17 @@ export default function Teams() {
 
   useEffect(() => {
     const fetchTeams = async () => {
-      const data = await getTeams();
-      setTeams(data || []);
-      setLoading(false);
+      try {
+        const data = await getTeams();
+        setTeams(data || []);
+        setError(null);
+      } catch (err) {
+        console.error(err);
+        setTeams([]);
+        setError("Αδυναμία φόρτωσης ομάδων.");
+      } finally {
+        setLoading(false);
+      }
     };
     fetchTeams();
   }, []);
@@ -32,31 +40,23 @@ export default function Teams() {
     setViewMode('stats'); // Επαναφορά στα στατιστικά κάθε φορά που αλλάζεις ομάδα
     setStatsLoading(true);
     
-    console.log("Επιλέχθηκε η ομάδα:", team.name);
-    console.log("ID Εσωτερικό:", team.id, "| API ID:", team.api_id);
-    
-    const targetId = team.api_id || team.id; 
-    
-    // Τραβάμε ταυτόχρονα Στατιστικά και Παίκτες για καλύτερη ταχύτητα
-    const [teamStats, squadRes1, squadRes2] = await Promise.all([
-      getTeamStats(targetId),
-      supabase.from('players').select('*').eq('team_id', targetId),
-      supabase.from('players').select('*').eq('team_id', team.id)
-    ]);
-    
-    console.log("Στατιστικά που βρέθηκαν:", teamStats);
-    setStats(teamStats);
+    try {
+      const [teamStats, squad] = await Promise.all([
+        getTeamStats(team.id),
+        getPlayers(team.id),
+      ]);
 
-    // Αποθήκευση του ρόστερ ανάλογα με το ποιο ID πέτυχε
-    if (squadRes1.data && squadRes1.data.length > 0) {
-      setTeamSquad(squadRes1.data);
-    } else if (squadRes2.data && squadRes2.data.length > 0) {
-      setTeamSquad(squadRes2.data);
-    } else {
+      setStats(teamStats);
+      setTeamSquad(squad || []);
+      setError(null);
+    } catch (err) {
+      console.error(err);
+      setStats(null);
       setTeamSquad([]);
+      setError("Αδυναμία φόρτωσης αναλυτικών δεδομένων.");
+    } finally {
+      setStatsLoading(false);
     }
-
-    setStatsLoading(false);
   };
 
   const getAvg = (val: number, matches: number) => matches > 0 && val ? (val / matches).toFixed(1) : "0.0";
@@ -97,6 +97,10 @@ export default function Teams() {
             {statsLoading ? (
               <div className="py-20 text-center text-blue-500 font-black tracking-widest uppercase flex flex-col items-center gap-4">
                 <Loader2 className="animate-spin" size={40} /> Αναλυση Δεδομενων...
+              </div>
+            ) : error ? (
+              <div className="bg-slate-900/20 p-20 text-center border-2 border-dashed border-slate-800 rounded-[3rem] text-rose-400 font-bold uppercase italic">
+                {error}
               </div>
             ) : viewMode === 'stats' ? (
               
@@ -225,7 +229,7 @@ export default function Teams() {
                       <Users className="text-blue-500" size={24} />
                     </div>
                     <span className="text-[10px] bg-slate-800 px-2 py-1 rounded text-slate-400 font-bold">
-                      ID: {team.api_id}
+                      ID: {team.id}
                     </span>
                   </div>
 
@@ -255,6 +259,12 @@ export default function Teams() {
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {!selectedTeam && error && (
+          <div className="mt-8 text-center text-sm font-bold uppercase tracking-widest text-rose-400">
+            {error}
           </div>
         )}
       </div>
