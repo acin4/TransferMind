@@ -146,18 +146,18 @@ async function getExistingPlayersMapFromDb() {
  * Returns:
  * - Array of unique player ids
  */
-async function fetchSquadPlayerIds(teamApiId) {
-  console.log(`\n=== Squad for team API ${teamApiId} ===`);
+async function fetchSquadPlayerIds(team_api_id) {
+  console.log(`\n=== Squad for team API ${team_api_id} ===`);
 
   // API call to retrieve squad players for the given teamId
   const res = await client.get("/teams/get-squad", {
-    params: { teamId: String(teamApiId) },
+    params: { teamId: String(team_api_id) },
   });
 
   const data = res.data;
 
   // Save raw response so you can debug and validate the API shape anytime
-  saveJSON(`../data/raw/players/teams/team_${teamApiId}_squad.json`, data);
+  saveJSON(`../data/raw/players/teams/team_${team_api_id}_squad.json`, data);
 
   // Set used to deduplicate player IDs
   const playerIdSet = new Set();
@@ -185,7 +185,7 @@ async function fetchSquadPlayerIds(teamApiId) {
 
   const playerIds = [...playerIdSet];
   console.log(
-    `➡️  Found ${playerIds.length} unique players for team API ${teamApiId}`,
+    `➡️  Found ${playerIds.length} unique players for team API ${team_api_id}`,
   );
   return playerIds;
 }

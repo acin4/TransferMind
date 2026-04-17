@@ -5,6 +5,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
+    "dev": "node --watch index.js",
+    "start": "node index.js",
     "test:api": "node api/fetchTest.js"
   },
   "keywords": [],
@@ -13,6 +15,8 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.86.0",
     "axios": "^1.12.2",
-    "dotenv": "^17.2.3"
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1"
   }
 }
