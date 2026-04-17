@@ -7,11 +7,7 @@ import { handleError } from "./lib/http.js";
 
 export const app = express();
 const port = Number(process.env.PORT || 3001);
-const corsOrigin = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(",").map((origin) => origin.trim())
-  : true;
-
-app.use(cors({ origin: corsOrigin }));
+app.use(cors({ origin: true }));
 app.use(express.json());
 
 app.get("/health", (req, res) => {
