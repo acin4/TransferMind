@@ -5,12 +5,14 @@
 // Axios client wrapper for external API calls (Sofascore proxy or similar)
 import { client } from "../lib/client.js";
 // Utility helper to save raw JSON responses locally (for debugging / auditing)
-import { saveJSON } from "../lib/utils.js";
+import {
+  calcPerc,
+  saveJSON,
+  truncateNumericStatFields,
+  truncateStatNumber,
+} from "../lib/utils.js";
 // Supabase client (PostgreSQL connection via Supabase SDK)
 import { supabase } from "../lib/supabaseClient.js";
-// Percentage helper (your own utility).
-// Used to compute ratios like goals per shots, penalty conversion, etc.
-import { calcPerc } from "../lib/utils.js";
 
 // ==============================================================================
 // GLOBAL CONFIGURATION
@@ -250,272 +252,278 @@ async function getTargetData() {
     // - You store both absolute values (shots, goals, passes)
     // - AND derived ratios using calcPerc()
     // - You also compute some custom ratios directly (goals/shots)
-    const statsRow = {
-      // Flag: this row contains real stats
-      has_stats: true,
-      // -------------------------
-      // IDs
-      // -------------------------
-      team_id: team_id,
-      tournament_id: tournament_id,
-      season_id: season_id,
+    const statsRow = truncateNumericStatFields(
+      {
+        // Flag: this row contains real stats
+        has_stats: true,
+        // -------------------------
+        // IDs
+        // -------------------------
+        team_id: team_id,
+        tournament_id: tournament_id,
+        season_id: season_id,
 
       // --- General Stats ---
-      matches: s.matches ?? null,
+        matches: s.matches ?? null,
 
       // --- Attack ---
-      goals_scored: s.goalsScored ?? null,
-      goals_conceded: s.goalsConceded ?? null,
-      own_goals: s.ownGoals ?? null,
-      assists: s.assists ?? null,
-      shots: s.shots ?? null,
+        goals_scored: s.goalsScored ?? null,
+        goals_conceded: s.goalsConceded ?? null,
+        own_goals: s.ownGoals ?? null,
+        assists: s.assists ?? null,
+        shots: s.shots ?? null,
 
       // --- Set Pieces ---
       // calcPerc(a, b) should return:
       // - null when missing data
       // - 0 when a=0 and b>0 (depending on your desired rules)
       // - and avoid division by zero
-      penalty_scored: s.penaltyGoals ?? null,
-      penalty_taken: s.penaltiesTaken ?? null,
-      penalty_ratio: calcPerc(s.penaltyGoals, s.penaltiesTaken),
+        penalty_scored: s.penaltyGoals ?? null,
+        penalty_taken: s.penaltiesTaken ?? null,
+        penalty_ratio: calcPerc(s.penaltyGoals, s.penaltiesTaken),
 
-      freekick_goals: s.freeKickGoals ?? null,
-      freekick_taken: s.freeKickShots ?? null,
-      freekick_ratio: calcPerc(s.freeKickGoals, s.freeKickShots),
+        freekick_goals: s.freeKickGoals ?? null,
+        freekick_taken: s.freeKickShots ?? null,
+        freekick_ratio: calcPerc(s.freeKickGoals, s.freeKickShots),
 
-      corners: s.corners ?? null,
+        corners: s.corners ?? null,
 
       // --- Goals/Shots Location ---
-      goals_inside_box: s.goalsFromInsideTheBox ?? null,
-      goals_outside_box: s.goalsFromOutsideTheBox ?? null,
-      shots_inside_box: s.shotsFromInsideTheBox ?? null,
-      shots_outside_box: s.shotsFromOutsideTheBox ?? null,
+        goals_inside_box: s.goalsFromInsideTheBox ?? null,
+        goals_outside_box: s.goalsFromOutsideTheBox ?? null,
+        shots_inside_box: s.shotsFromInsideTheBox ?? null,
+        shots_outside_box: s.shotsFromOutsideTheBox ?? null,
 
       // Ratios relative to totals
-      goals_inside_ratio: calcPerc(s.goalsFromInsideTheBox, s.goalsScored),
-      goals_outside_ratio: calcPerc(s.goalsFromOutsideTheBox, s.goalsScored),
-      shots_inside_ratio: calcPerc(s.shotsFromInsideTheBox, s.shots),
-      shots_outside_ratio: calcPerc(s.shotsFromOutsideTheBox, s.shots),
+        goals_inside_ratio: calcPerc(s.goalsFromInsideTheBox, s.goalsScored),
+        goals_outside_ratio: calcPerc(s.goalsFromOutsideTheBox, s.goalsScored),
+        shots_inside_ratio: calcPerc(s.shotsFromInsideTheBox, s.shots),
+        shots_outside_ratio: calcPerc(s.shotsFromOutsideTheBox, s.shots),
 
       // --- Headers ---
-      goals_header: s.headedGoals ?? null,
-      goals_header_ratio: calcPerc(s.headedGoals, s.goalsScored),
+        goals_header: s.headedGoals ?? null,
+        goals_header_ratio: calcPerc(s.headedGoals, s.goalsScored),
 
       // --- Shots Quality ---
-      shots_ontarget: s.shotsOnTarget ?? null,
-      shots_offtarget: s.shotsOffTarget ?? null,
-      shots_blocked: s.blockedScoringAttempt ?? null,
-      woodwork: s.hitWoodwork ?? null,
+        shots_ontarget: s.shotsOnTarget ?? null,
+        shots_offtarget: s.shotsOffTarget ?? null,
+        shots_blocked: s.blockedScoringAttempt ?? null,
+        woodwork: s.hitWoodwork ?? null,
       // Ratios from totals
-      shots_ontarget_ratio: calcPerc(s.shotsOnTarget, s.shots),
-      // Custom ratio: goals per shot (rounded to 2 decimals)
-      // IMPORTANT: null if shots are missing or 0 to avoid division by zero.
-      goalspershot_ratio:
-        s.shots && s.shots > 0
-          ? parseFloat((s.goalsScored / s.shots).toFixed(2))
-          : null,
+        shots_ontarget_ratio: calcPerc(s.shotsOnTarget, s.shots),
+        // Custom ratio: goals per shot, truncated to 2 decimals.
+        // IMPORTANT: null if shots are missing or 0 to avoid division by zero.
+        goalspershot_ratio:
+          s.shots && s.shots > 0
+            ? truncateStatNumber(s.goalsScored / s.shots)
+            : null,
 
       // --- Big Chances ---
-      big_chances: s.bigChances ?? null,
-      big_chances_created: s.bigChancesCreated ?? null,
-      big_chances_missed: s.bigChancesMissed ?? null,
+        big_chances: s.bigChances ?? null,
+        big_chances_created: s.bigChancesCreated ?? null,
+        big_chances_missed: s.bigChancesMissed ?? null,
       // Your formula: (Big Chances - Missed) / Big Chances
       // This approximates "conversion of big chances".
-      big_chances_goal_ratio: calcPerc(
-        s.bigChances - s.bigChancesMissed,
-        s.bigChances,
-      ),
+        big_chances_goal_ratio: calcPerc(
+          s.bigChances - s.bigChancesMissed,
+          s.bigChances,
+        ),
 
       // --- Dribbling ---
-      dribbles_success: s.successfulDribbles ?? null,
-      dribbles_attempts: s.dribbleAttempts ?? null,
-      dribbles_success_ratio: calcPerc(s.successfulDribbles, s.dribbleAttempts),
+        dribbles_success: s.successfulDribbles ?? null,
+        dribbles_attempts: s.dribbleAttempts ?? null,
+        dribbles_success_ratio: calcPerc(
+          s.successfulDribbles,
+          s.dribbleAttempts,
+        ),
 
       // --- Fast Breaks ---
-      fastbreak_total: s.fastBreaks ?? null,
-      fastbreak_goals: s.fastBreakGoals ?? null,
-      fastbreak_shots: s.fastBreakShots ?? null,
-      fastbreak_ratio: calcPerc(s.fastBreakGoals, s.fastBreaks),
+        fastbreak_total: s.fastBreaks ?? null,
+        fastbreak_goals: s.fastBreakGoals ?? null,
+        fastbreak_shots: s.fastBreakShots ?? null,
+        fastbreak_ratio: calcPerc(s.fastBreakGoals, s.fastBreaks),
 
       // --- Ball Possession ---
       // averageBallPossession often comes as string, so parseFloat it
-      avg_ball_possession: s.averageBallPossession
-        ? parseFloat(s.averageBallPossession)
-        : null,
-      possession_lost: s.possessionLost ?? null,
+        avg_ball_possession: s.averageBallPossession
+          ? parseFloat(s.averageBallPossession)
+          : null,
+        possession_lost: s.possessionLost ?? null,
 
       // --- Passes (General) ---
-      pass_total: s.totalPasses ?? null,
-      pass_acc: s.accuratePasses ?? null,
-      pass_acc_percentage: s.accuratePassesPercentage
-        ? parseFloat(s.accuratePassesPercentage)
-        : null,
+        pass_total: s.totalPasses ?? null,
+        pass_acc: s.accuratePasses ?? null,
+        pass_acc_percentage: s.accuratePassesPercentage
+          ? parseFloat(s.accuratePassesPercentage)
+          : null,
 
       // --- Passing (By field areas) ---
-      pass_ownhalf_total: s.totalOwnHalfPasses ?? null,
-      pass_ownhalf_acc: s.accurateOwnHalfPasses ?? null,
-      pass_ownhalf_perc: s.accurateOwnHalfPassesPercentage
-        ? parseFloat(s.accurateOwnHalfPassesPercentage)
-        : null,
+        pass_ownhalf_total: s.totalOwnHalfPasses ?? null,
+        pass_ownhalf_acc: s.accurateOwnHalfPasses ?? null,
+        pass_ownhalf_perc: s.accurateOwnHalfPassesPercentage
+          ? parseFloat(s.accurateOwnHalfPassesPercentage)
+          : null,
 
-      pass_opphalf_total: s.totalOppositionHalfPasses ?? null,
-      pass_opphalf_acc: s.accurateOppositionHalfPasses ?? null,
-      pass_opphalf_perc: s.accurateOppositionHalfPassesPercentage
-        ? parseFloat(s.accurateOppositionHalfPassesPercentage)
-        : null,
+        pass_opphalf_total: s.totalOppositionHalfPasses ?? null,
+        pass_opphalf_acc: s.accurateOppositionHalfPasses ?? null,
+        pass_opphalf_perc: s.accurateOppositionHalfPassesPercentage
+          ? parseFloat(s.accurateOppositionHalfPassesPercentage)
+          : null,
 
       // --- Long Balls & Crosses ---
-      longballs_total: s.totalLongBalls ?? null,
-      longballs_acc: s.accurateLongBalls ?? null,
-      longballs_perc: s.accurateLongBallsPercentage
-        ? parseFloat(s.accurateLongBallsPercentage)
-        : null,
+        longballs_total: s.totalLongBalls ?? null,
+        longballs_acc: s.accurateLongBalls ?? null,
+        longballs_perc: s.accurateLongBallsPercentage
+          ? parseFloat(s.accurateLongBallsPercentage)
+          : null,
 
-      cross_total: s.totalCrosses ?? null,
-      cross_acc: s.accurateCrosses ?? null,
-      cross_perc: s.accurateCrossesPercentage
-        ? parseFloat(s.accurateCrossesPercentage)
-        : null,
+        cross_total: s.totalCrosses ?? null,
+        cross_acc: s.accurateCrosses ?? null,
+        cross_perc: s.accurateCrossesPercentage
+          ? parseFloat(s.accurateCrossesPercentage)
+          : null,
 
       // --- Defending ---
-      cleansheats: s.cleanSheets ?? null, // Προσοχή: όπως είναι γραμμένο στη βάση (cleansheats)
-      tackles: s.tackles ?? null,
-      interceptions: s.interceptions ?? null,
-      saves: s.saves ?? null,
-      clearences: s.clearances ?? null,
-      clearences_offline: s.clearancesOffLine ?? null,
-      lastman_tackles: s.lastManTackles ?? null,
-      errors_to_goals: s.errorsLeadingToGoal ?? null,
-      errors_to_shot: s.errorsLeadingToShot ?? null,
+        cleansheats: s.cleanSheets ?? null, // Προσοχή: όπως είναι γραμμένο στη βάση (cleansheats)
+        tackles: s.tackles ?? null,
+        interceptions: s.interceptions ?? null,
+        saves: s.saves ?? null,
+        clearences: s.clearances ?? null,
+        clearences_offline: s.clearancesOffLine ?? null,
+        lastman_tackles: s.lastManTackles ?? null,
+        errors_to_goals: s.errorsLeadingToGoal ?? null,
+        errors_to_shot: s.errorsLeadingToShot ?? null,
 
-      penalty_commited: s.penaltiesCommited ?? null,
-      penalty_conceded: s.penaltyGoalsConceded ?? null,
+        penalty_commited: s.penaltiesCommited ?? null,
+        penalty_conceded: s.penaltyGoalsConceded ?? null,
 
       // --- Duels ---
-      duels_total: s.totalDuels ?? null,
-      duels_won: s.duelsWon ?? null,
-      duels_perc: s.duelsWonPercentage
-        ? parseFloat(s.duelsWonPercentage)
-        : null,
+        duels_total: s.totalDuels ?? null,
+        duels_won: s.duelsWon ?? null,
+        duels_perc: s.duelsWonPercentage
+          ? parseFloat(s.duelsWonPercentage)
+          : null,
 
-      ground_duels_total: s.totalGroundDuels ?? null,
-      // This line supports two possible API keys.
-      // If groundGroundDuels exists, use it; otherwise use groundDuelsWon.
-      ground_duels_won: s.groundGroundDuels ?? s.groundDuelsWon ?? null,
-      ground_duels_perc: s.groundDuelsWonPercentage
-        ? parseFloat(s.groundDuelsWonPercentage)
-        : null,
+        ground_duels_total: s.totalGroundDuels ?? null,
+        // This line supports two possible API keys.
+        // If groundGroundDuels exists, use it; otherwise use groundDuelsWon.
+        ground_duels_won: s.groundGroundDuels ?? s.groundDuelsWon ?? null,
+        ground_duels_perc: s.groundDuelsWonPercentage
+          ? parseFloat(s.groundDuelsWonPercentage)
+          : null,
 
-      aerial_duels_total: s.totalAerialDuels ?? null,
-      aerial_duels_won: s.aerialDuelsWon ?? null,
-      aerial_duels_perc: s.aerialDuelsWonPercentage
-        ? parseFloat(s.aerialDuelsWonPercentage)
-        : null,
+        aerial_duels_total: s.totalAerialDuels ?? null,
+        aerial_duels_won: s.aerialDuelsWon ?? null,
+        aerial_duels_perc: s.aerialDuelsWonPercentage
+          ? parseFloat(s.aerialDuelsWonPercentage)
+          : null,
 
       // --- Discipline ---
-      fouls: s.fouls ?? null,
-      offsides: s.offsides ?? null,
-      yellowcards: s.yellowCards ?? null,
-      yellowcards_second: s.yellowRedCards ?? null,
-      redcards: s.redCards ?? null,
+        fouls: s.fouls ?? null,
+        offsides: s.offsides ?? null,
+        yellowcards: s.yellowCards ?? null,
+        yellowcards_second: s.yellowRedCards ?? null,
+        redcards: s.redCards ?? null,
 
       // --- Opponent Performance Against Stats ---
 
-      shots_against: s.shotsAgainst ?? null,
-      shots_blocked_against:
-        s.shotsBlockedAgainst ?? s.blockedScoringAttemptAgainst ?? null,
-      shots_inside_against: s.shotsFromInsideTheBoxAgainst ?? null,
-      shots_outside_against: s.shotsFromOutsideTheBoxAgainst ?? null,
-      shots_ontarget_against: s.shotsOnTargetAgainst ?? null,
-      shots_offtarget_against: s.shotsOffTargetAgainst ?? null,
-      woodwork_against: s.hitWoodworkAgainst ?? null,
+        shots_against: s.shotsAgainst ?? null,
+        shots_blocked_against:
+          s.shotsBlockedAgainst ?? s.blockedScoringAttemptAgainst ?? null,
+        shots_inside_against: s.shotsFromInsideTheBoxAgainst ?? null,
+        shots_outside_against: s.shotsFromOutsideTheBoxAgainst ?? null,
+        shots_ontarget_against: s.shotsOnTargetAgainst ?? null,
+        shots_offtarget_against: s.shotsOffTargetAgainst ?? null,
+        woodwork_against: s.hitWoodworkAgainst ?? null,
 
       // goals conceded per shot faced
-      goalspershot_against_ratio:
-        s.shotsAgainst && s.shotsAgainst > 0
-          ? parseFloat((s.goalsConceded / s.shotsAgainst).toFixed(2))
-          : null,
+        goalspershot_against_ratio:
+          s.shotsAgainst && s.shotsAgainst > 0
+            ? truncateStatNumber(s.goalsConceded / s.shotsAgainst)
+            : null,
 
       // shots on target against as % of all shots against
-      shots_ontarget_against_ratio: calcPerc(
-        s.shotsOnTargetAgainst,
-        s.shotsAgainst,
-      ),
+        shots_ontarget_against_ratio: calcPerc(
+          s.shotsOnTargetAgainst,
+          s.shotsAgainst,
+        ),
 
       // Big chances conceded
-      big_chances_against: s.bigChancesAgainst ?? null,
-      big_chances_against_created: s.bigChancesCreatedAgainst ?? null,
-      big_chances_against_missed: s.bigChancesMissedAgainst ?? null,
+        big_chances_against: s.bigChancesAgainst ?? null,
+        big_chances_against_created: s.bigChancesCreatedAgainst ?? null,
+        big_chances_against_missed: s.bigChancesMissedAgainst ?? null,
       // goals conceded per big chance faced
-      big_chances_goal_against_ratio:
-        s.bigChancesAgainst && s.bigChancesAgainst > 0
-          ? parseFloat((s.goalsConceded / s.bigChancesAgainst).toFixed(2))
-          : null,
+        big_chances_goal_against_ratio:
+          s.bigChancesAgainst && s.bigChancesAgainst > 0
+            ? truncateStatNumber(s.goalsConceded / s.bigChancesAgainst)
+            : null,
 
-      errors_to_goals_against: s.errorsLeadingToGoalAgainst ?? null,
-      errors_to_shot_against: s.errorsLeadingToShotAgainst ?? null,
+        errors_to_goals_against: s.errorsLeadingToGoalAgainst ?? null,
+        errors_to_shot_against: s.errorsLeadingToShotAgainst ?? null,
 
       // Passing against ratios
-      pass_against_total: s.totalPassesAgainst ?? null,
-      pass_against_acc: s.accuratePassesAgainst ?? null,
-      pass_against_ratio: calcPerc(
-        s.accuratePassesAgainst,
-        s.totalPassesAgainst,
-      ),
+        pass_against_total: s.totalPassesAgainst ?? null,
+        pass_against_acc: s.accuratePassesAgainst ?? null,
+        pass_against_ratio: calcPerc(
+          s.accuratePassesAgainst,
+          s.totalPassesAgainst,
+        ),
 
-      finalthirdpass_against_total: s.totalFinalThirdPassesAgainst ?? null,
-      finalthirdpass_against_acc: s.accurateFinalThirdPassesAgainst ?? null,
-      finalthirdpass_against_ratio: calcPerc(
-        s.accurateFinalThirdPassesAgainst,
-        s.totalFinalThirdPassesAgainst,
-      ),
+        finalthirdpass_against_total: s.totalFinalThirdPassesAgainst ?? null,
+        finalthirdpass_against_acc: s.accurateFinalThirdPassesAgainst ?? null,
+        finalthirdpass_against_ratio: calcPerc(
+          s.accurateFinalThirdPassesAgainst,
+          s.totalFinalThirdPassesAgainst,
+        ),
 
-      opphalfpass_against_total: s.oppositionHalfPassesTotalAgainst ?? null,
-      opphalfpass_against_acc: s.accurateOppositionHalfPassesAgainst ?? null,
-      opphalfpass_against_ratio: calcPerc(
-        s.accurateOppositionHalfPassesAgainst,
-        s.oppositionHalfPassesTotalAgainst,
-      ),
+        opphalfpass_against_total: s.oppositionHalfPassesTotalAgainst ?? null,
+        opphalfpass_against_acc: s.accurateOppositionHalfPassesAgainst ?? null,
+        opphalfpass_against_ratio: calcPerc(
+          s.accurateOppositionHalfPassesAgainst,
+          s.oppositionHalfPassesTotalAgainst,
+        ),
 
-      ownhalfpass_against_total: s.ownHalfPassesTotalAgainst ?? null,
-      ownhalfpass_against_acc: s.accurateOwnHalfPassesAgainst ?? null,
-      ownhalfpass_against_ratio: calcPerc(
-        s.accurateOwnHalfPassesAgainst,
-        s.ownHalfPassesTotalAgainst,
-      ),
+        ownhalfpass_against_total: s.ownHalfPassesTotalAgainst ?? null,
+        ownhalfpass_against_acc: s.accurateOwnHalfPassesAgainst ?? null,
+        ownhalfpass_against_ratio: calcPerc(
+          s.accurateOwnHalfPassesAgainst,
+          s.ownHalfPassesTotalAgainst,
+        ),
 
-      keypass_against: s.keyPassesAgainst ?? null,
+        keypass_against: s.keyPassesAgainst ?? null,
 
-      longballs_against_total: s.longBallsTotalAgainst ?? null,
-      longballs_against_acc: s.longBallsSuccessfulAgainst ?? null,
-      longballs_against_ratio: calcPerc(
-        s.longBallsSuccessfulAgainst,
-        s.longBallsTotalAgainst,
-      ),
+        longballs_against_total: s.longBallsTotalAgainst ?? null,
+        longballs_against_acc: s.longBallsSuccessfulAgainst ?? null,
+        longballs_against_ratio: calcPerc(
+          s.longBallsSuccessfulAgainst,
+          s.longBallsTotalAgainst,
+        ),
 
-      cross_against_total: s.crossesTotalAgainst ?? null,
-      cross_against_acc: s.crossesSuccessfulAgainst ?? null,
-      cross_against_ratio: calcPerc(
-        s.crossesSuccessfulAgainst,
-        s.crossesTotalAgainst,
-      ),
+        cross_against_total: s.crossesTotalAgainst ?? null,
+        cross_against_acc: s.crossesSuccessfulAgainst ?? null,
+        cross_against_ratio: calcPerc(
+          s.crossesSuccessfulAgainst,
+          s.crossesTotalAgainst,
+        ),
 
-      dribbles_against_total: s.dribbleAttemptsTotalAgainst ?? null,
-      dribbles_against_acc: s.dribbleAttemptsWonAgainst ?? null,
-      dribbles_against_ratio: calcPerc(
-        s.dribbleAttemptsWonAgainst,
-        s.dribbleAttemptsTotalAgainst,
-      ),
+        dribbles_against_total: s.dribbleAttemptsTotalAgainst ?? null,
+        dribbles_against_acc: s.dribbleAttemptsWonAgainst ?? null,
+        dribbles_against_ratio: calcPerc(
+          s.dribbleAttemptsWonAgainst,
+          s.dribbleAttemptsTotalAgainst,
+        ),
 
       // General against stats
-      tackles_against: s.tacklesAgainst ?? null,
-      clearences_against: s.clearancesAgainst ?? null,
-      interceptions_against: s.interceptionsAgainst ?? null,
-      corners_against: s.cornersAgainst ?? null,
-      offsides_against: s.offsidesAgainst ?? null,
-      yellowcards_against: s.yellowCardsAgainst ?? null,
-      redcards_against: s.redCardsAgainst ?? null,
-    };
+        tackles_against: s.tacklesAgainst ?? null,
+        clearences_against: s.clearancesAgainst ?? null,
+        interceptions_against: s.interceptionsAgainst ?? null,
+        corners_against: s.cornersAgainst ?? null,
+        offsides_against: s.offsidesAgainst ?? null,
+        yellowcards_against: s.yellowCardsAgainst ?? null,
+        redcards_against: s.redCardsAgainst ?? null,
+      },
+      ["team_id", "tournament_id", "season_id"],
+    );
 
     // Save into DB using upsert so repeated runs update existing rows
     const { error } = await supabase.from("team_stats").upsert(statsRow, {

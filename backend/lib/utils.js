@@ -23,6 +23,32 @@ export function saveJSON(filepath, data) {
   );
 }
 
+export function truncateStatNumber(value) {
+  if (value == null || value === "") return null;
+
+  const num = Number(value);
+  if (Number.isNaN(num)) return null;
+
+  return Math.trunc(num * 100) / 100;
+}
+
+export function truncateNumericStatFields(row, excludedKeys = []) {
+  const excluded = new Set(excludedKeys);
+
+  return Object.fromEntries(
+    Object.entries(row).map(([key, value]) => {
+      if (excluded.has(key)) return [key, value];
+      if (value == null || value === "") return [key, null];
+      if (typeof value !== "number" && typeof value !== "string") {
+        return [key, value];
+      }
+
+      const truncated = truncateStatNumber(value);
+      return [key, truncated ?? value];
+    }),
+  );
+}
+
 // Βοηθητική για υπολογισμό ποσοστών (π.χ. 30/100 -> 30.00)
 // Επιστρέφει null αν ο παρονομαστής είναι 0 ή null
 export const calcPerc = (num, total) => {
@@ -30,7 +56,7 @@ export const calcPerc = (num, total) => {
   if (total === 0) return null;
   if (num === 0) return 0;
 
-  return parseFloat(((num / total) * 100).toFixed(2));
+  return truncateStatNumber((num / total) * 100);
 };
 
 function parseSeasonEndYear(seasonYear) {
