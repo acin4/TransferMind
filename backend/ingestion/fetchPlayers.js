@@ -146,7 +146,7 @@ async function getExistingPlayersMapFromDb() {
  * Returns:
  * - Array of unique player ids
  */
-async function fetchSquadPlayerIds(teams) {
+async function fetchSquadPlayerIds(team_api_id) {
   console.log(`\n=== Squad for team API ${team_api_id} ===`);
 
   // API call to retrieve squad players for the given teamId
@@ -185,7 +185,7 @@ async function fetchSquadPlayerIds(teams) {
 
   const playerIds = [...playerIdSet];
   console.log(
-    `➡️  Found ${playerIds.length} unique players for team API ${teamApiId}`,
+    `➡️  Found ${playerIds.length} unique players for team API ${team_api_id}`,
   );
   return playerIds;
 }
