@@ -14,12 +14,20 @@ import {
   Trophy,
   Shield,
 } from "lucide-react";
+import {
+  TEAM_STATS_CATEGORIES,
+  formatTeamStatValue,
+  getTeamStatMeta,
+  type TeamStats,
+  type TeamStatsCategoryId,
+  type TeamStatKey,
+} from "../teamStatsConfig";
 
 export default function TeamProfile() {
   const { id } = useParams();
   
   const [team, setTeam] = useState<any>(null);
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<TeamStats | null>(null);
   const [teamSquad, setTeamSquad] = useState<any[]>([]);
   const [availableSeasons, setAvailableSeasons] = useState<any[]>([]);
   const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null);
@@ -32,6 +40,9 @@ export default function TeamProfile() {
   const [error, setError] = useState<string | null>(null);
   const [seasonError, setSeasonError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'standings' | 'statistics' | 'squad'>('statistics');
+  const [activeStatsCategory, setActiveStatsCategory] = useState<TeamStatsCategoryId>(
+    TEAM_STATS_CATEGORIES[0].id,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -185,6 +196,10 @@ export default function TeamProfile() {
   const standingsLabel =
     [team?.tournament_name, selectedSeason?.season_name].filter(Boolean).join(" - ") ||
     "League Position";
+
+  const selectedStatsCategory =
+    TEAM_STATS_CATEGORIES.find((category) => category.id === activeStatsCategory) ??
+    TEAM_STATS_CATEGORIES[0];
 
   const handleSeasonChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedSeasonId(Number(event.target.value));
@@ -345,15 +360,34 @@ export default function TeamProfile() {
                   Loading season statistics...
                 </p>
               ) : stats ? (
-                <div className="bg-slate-900/50 rounded-3xl border border-slate-800 overflow-hidden shadow-inner">
-                  <StatLine label="Matches Played" value={stats.matches || 0} />
-                  <StatLine label="Goals Scored" value={stats.goals_scored || 0} />
-                  <StatLine label="Goals Conceded" value={stats.goals_conceded || 0} />
-                  <StatLine label="Total Assists" value={stats.assists || 0} />
-                  <StatLine label="Clean Sheets" value={stats.cleansheats || 0} />
-                  <StatLine label="Yellow Cards" value={stats.yellowcards || 0} isCard="yellow" />
-                  <StatLine label="Red Cards" value={stats.redcards || 0} isCard="red" />
-                </div>
+                <>
+                  <div className="flex gap-2 mb-6 bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800 overflow-x-auto">
+                    {TEAM_STATS_CATEGORIES.map((category) => (
+                      <StatsCategoryTabButton
+                        key={category.id}
+                        label={`${category.label} (${category.statKeys.length})`}
+                        isActive={activeStatsCategory === category.id}
+                        onClick={() => setActiveStatsCategory(category.id)}
+                      />
+                    ))}
+                  </div>
+                  <div className="bg-slate-900/50 rounded-3xl border border-slate-800 overflow-hidden shadow-inner">
+                    {selectedStatsCategory.statKeys.map((statKey) => {
+                      const statMeta = getTeamStatMeta(statKey);
+                      return (
+                        <StatLine
+                          key={statKey}
+                          label={statMeta.label}
+                          value={formatTeamStatValue(
+                            stats[statKey],
+                            statMeta.format,
+                          )}
+                          isCard={getStatCardColor(statKey)}
+                        />
+                      );
+                    })}
+                  </div>
+                </>
               ) : (
                 <p className="text-slate-500 italic bg-slate-900/50 p-8 rounded-2xl border border-slate-800 text-center font-bold">
                   Δεν βρέθηκαν στατιστικά για αυτή την ομάδα.
@@ -436,6 +470,29 @@ function TabButton({ label, isActive, onClick }: { label: string, isActive: bool
   );
 }
 
+function StatsCategoryTabButton({
+  label,
+  isActive,
+  onClick,
+}: {
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+        isActive
+          ? 'bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] border-b-2 border-blue-400'
+          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-b-2 border-transparent'
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
 function StatLine({ label, value, isCard }: { label: string, value: string | number, isCard?: 'yellow' | 'red' }) {
   return (
     <div className="flex justify-between items-center py-5 px-8 border-b border-slate-800/80 last:border-0 hover:bg-white/[0.02] transition-colors group">
@@ -447,4 +504,16 @@ function StatLine({ label, value, isCard }: { label: string, value: string | num
       <span className="text-white font-black text-lg">{value}</span>
     </div>
   );
+}
+
+function getStatCardColor(statKey: TeamStatKey) {
+  if (statKey === "yellowcards" || statKey === "yellowcards_against") {
+    return "yellow";
+  }
+
+  if (statKey === "redcards" || statKey === "redcards_against") {
+    return "red";
+  }
+
+  return undefined;
 }
