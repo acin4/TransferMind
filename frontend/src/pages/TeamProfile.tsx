@@ -1,7 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getTeam, getTeamStats, getPlayers, getCurrentTournaments, getStandings } from "../api/api";
-import { ArrowLeft, Trophy, Shield } from "lucide-react";
+import {
+  getTeam,
+  getTeamSeasons,
+  getTeamStats,
+  getPlayers,
+  getStandings,
+} from "../api/api";
+import {
+  ArrowLeft,
+  Calendar,
+  ChevronRight,
+  Trophy,
+  Shield,
+} from "lucide-react";
 
 export default function TeamProfile() {
   const { id } = useParams();
@@ -9,73 +21,174 @@ export default function TeamProfile() {
   const [team, setTeam] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
   const [teamSquad, setTeamSquad] = useState<any[]>([]);
+  const [availableSeasons, setAvailableSeasons] = useState<any[]>([]);
+  const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null);
   
   const [teamStanding, setTeamStanding] = useState<any>(null);
   const [miniStandings, setMiniStandings] = useState<any[]>([]); 
   
   const [loading, setLoading] = useState(true);
+  const [seasonLoading, setSeasonLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [seasonError, setSeasonError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'standings' | 'statistics' | 'squad'>('statistics');
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        if (!id) return;
+    let cancelled = false;
 
-        const [fetchedTeam, fetchedStats, fetchedPlayers, tournaments] = await Promise.all([
+    const fetchStaticData = async () => {
+      try {
+        if (!id) {
+          setLoading(false);
+          return;
+        }
+
+        setLoading(true);
+        setError(null);
+        setSeasonError(null);
+        setTeam(null);
+        setStats(null);
+        setTeamSquad([]);
+        setTeamStanding(null);
+        setMiniStandings([]);
+        setAvailableSeasons([]);
+        setSelectedSeasonId(null);
+
+        const [fetchedTeam, fetchedPlayers, fetchedSeasons] = await Promise.all([
           getTeam(id),
-          getTeamStats(id),
           getPlayers(id),
-          getCurrentTournaments()
+          getTeamSeasons(id),
         ]);
 
-        setTeam(fetchedTeam);
-        setStats(fetchedStats || null);
-        setTeamSquad(fetchedPlayers || []);
-
-        let foundStanding = null;
-        let nearbyTeams: any[] = [];
-
-        if (tournaments && tournaments.length > 0) {
-          const standingsPromises = tournaments.map((t: any) => 
-            getStandings(t.tournament_id, t.season_id)
-          );
-          const allStandings = await Promise.all(standingsPromises);
-
-          allStandings.forEach((standingsArray, index) => {
-            const teamIndex = standingsArray?.findIndex((row: any) => String(row.team_id) === String(id));
-            
-            if (teamIndex !== -1 && teamIndex !== undefined) {
-              const teamPos = standingsArray[teamIndex];
-              foundStanding = {
-                ...teamPos,
-                leagueName: tournaments[index].season_name
-              };
-
-              let startIdx = Math.max(0, teamIndex - 1);
-              let endIdx = Math.min(standingsArray.length, startIdx + 4);
-              
-              if (endIdx - startIdx < 4) {
-                  startIdx = Math.max(0, endIdx - 4);
-              }
-
-              nearbyTeams = standingsArray.slice(startIdx, endIdx);
-            }
-          });
+        if (cancelled) {
+          return;
         }
-        
-        setTeamStanding(foundStanding);
-        setMiniStandings(nearbyTeams);
+
+        setTeam(fetchedTeam);
+        setTeamSquad(fetchedPlayers || []);
+        setAvailableSeasons(fetchedSeasons || []);
+
+        const defaultSeason =
+          fetchedSeasons?.find((season: any) => season.is_current) ??
+          fetchedSeasons?.[0] ??
+          null;
+
+        setSelectedSeasonId(defaultSeason?.season_id ?? null);
+
+        if (!fetchedTeam?.tournament_id || !defaultSeason?.season_id) {
+          setLoading(false);
+        }
 
       } catch (err) {
         console.error("Σφάλμα κατά τη φόρτωση του Profile:", err);
-        setError("Δεν βρέθηκαν δεδομένα για αυτή την ομάδα.");
-      } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setError("Δεν βρέθηκαν δεδομένα για αυτή την ομάδα.");
+          setLoading(false);
+        }
       }
     };
-    fetchData();
+
+    fetchStaticData();
+
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchSeasonData = async () => {
+      if (!id || !team?.tournament_id || !selectedSeasonId) {
+        setStats(null);
+        setTeamStanding(null);
+        setMiniStandings([]);
+        setSeasonLoading(false);
+        setSeasonError(null);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setSeasonLoading(true);
+        setSeasonError(null);
+
+        const [fetchedStats, standings] = await Promise.all([
+          getTeamStats(id, selectedSeasonId),
+          getStandings(team.tournament_id, selectedSeasonId),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        setStats(fetchedStats || null);
+
+        const standingsRows = standings || [];
+        const teamIndex = standingsRows.findIndex(
+          (row: any) => String(row.team_id) === String(id),
+        );
+
+        if (teamIndex === -1) {
+          setTeamStanding(null);
+          setMiniStandings([]);
+          return;
+        }
+
+        const teamPos = standingsRows[teamIndex];
+        let startIdx = Math.max(0, teamIndex - 1);
+        let endIdx = Math.min(standingsRows.length, startIdx + 4);
+
+        if (endIdx - startIdx < 4) {
+          startIdx = Math.max(0, endIdx - 4);
+        }
+
+        setTeamStanding(teamPos);
+        setMiniStandings(standingsRows.slice(startIdx, endIdx));
+      } catch (err) {
+        console.error("Σφάλμα κατά τη φόρτωση δεδομένων σεζόν:", err);
+
+        if (!cancelled) {
+          setStats(null);
+          setTeamStanding(null);
+          setMiniStandings([]);
+          setSeasonError("Αδυναμία φόρτωσης δεδομένων για τη σεζόν.");
+        }
+      } finally {
+        if (!cancelled) {
+          setSeasonLoading(false);
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchSeasonData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, selectedSeasonId, team?.tournament_id]);
+
+  const selectedSeason = useMemo(
+    () =>
+      availableSeasons.find(
+        (season: any) => season.season_id === selectedSeasonId,
+      ) ?? null,
+    [availableSeasons, selectedSeasonId],
+  );
+
+  const headerSubtitle =
+    [team?.tournament_name, selectedSeason?.season_name].filter(Boolean).join(" - ") ||
+    team?.city ||
+    "Professional Club";
+
+  const standingsLabel =
+    [team?.tournament_name, selectedSeason?.season_name].filter(Boolean).join(" - ") ||
+    "League Position";
+
+  const handleSeasonChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedSeasonId(Number(event.target.value));
+  };
 
   const getAge = (dobString: string) => {
     if (!dobString) return "-";
@@ -98,28 +211,49 @@ export default function TeamProfile() {
           <ArrowLeft size={16} /> Back to Teams
         </Link>
 
-        <div className="flex items-center gap-6 mb-10 pb-8 border-b border-slate-800">
-          <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center border-4 border-slate-900 shadow-2xl p-3 overflow-hidden">
-            {team.logo_url ? (
-              <img src={team.logo_url} alt={team.name} className="w-full h-full object-contain" />
-            ) : (
-              <Shield className="text-slate-400" size={40} />
-            )}
-          </div>
-          <div>
-            <h1 className="text-5xl font-black uppercase text-white tracking-tight italic">
-              {team.name}
-            </h1>
-            {teamStanding ? (
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-10 pb-8 border-b border-slate-800">
+          <div className="flex items-center gap-6">
+            <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center border-4 border-slate-900 shadow-2xl p-3 overflow-hidden">
+              {team.logo_url ? (
+                <img src={team.logo_url} alt={team.name} className="w-full h-full object-contain" />
+              ) : (
+                <Shield className="text-slate-400" size={40} />
+              )}
+            </div>
+            <div>
+              <h1 className="text-5xl font-black uppercase text-white tracking-tight italic">
+                {team.name}
+              </h1>
               <p className="text-blue-400 text-sm font-black mt-2 uppercase tracking-widest flex items-center gap-2">
                 <Trophy size={14} className="text-blue-500" />
-                {teamStanding.leagueName}
+                {headerSubtitle}
               </p>
-            ) : (
-              <p className="text-slate-500 text-sm font-bold mt-2 uppercase tracking-widest">
-                {team.city || "Professional Club"}
-              </p>
-            )}
+            </div>
+          </div>
+
+          <div className="relative w-full sm:w-auto group">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500 pointer-events-none group-hover:text-white transition-colors">
+              <Calendar size={18} />
+            </div>
+            <select
+              className="w-full sm:w-[200px] appearance-none bg-slate-900 border-2 border-slate-800 text-white pl-12 pr-10 py-4 rounded-[2rem] font-black uppercase text-xs tracking-widest focus:outline-none focus:border-emerald-500 transition-all cursor-pointer hover:bg-slate-800 shadow-xl disabled:opacity-50 truncate"
+              value={selectedSeasonId ?? ""}
+              onChange={handleSeasonChange}
+              disabled={availableSeasons.length === 0}
+            >
+              {availableSeasons.length === 0 ? (
+                <option value="">No Seasons</option>
+              ) : (
+                availableSeasons.map((season: any) => (
+                  <option key={season.season_id} value={season.season_id}>
+                    {season.season_name || `Season ${season.season_id}`}
+                  </option>
+                ))
+              )}
+            </select>
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none group-hover:text-emerald-400 transition-colors">
+              <ChevronRight size={16} className="rotate-90" />
+            </div>
           </div>
         </div>
 
@@ -130,15 +264,24 @@ export default function TeamProfile() {
         </div>
 
         <div className="bg-slate-900/40 rounded-[2.5rem] border border-slate-800/60 p-6 md:p-10 shadow-2xl backdrop-blur-sm">
+          {seasonError ? (
+            <div className="mb-6 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-5 py-4 text-xs font-black uppercase tracking-widest text-rose-400">
+              {seasonError}
+            </div>
+          ) : null}
           
           {activeTab === 'standings' && (
             <div className="animate-in fade-in duration-300">
               <h3 className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-6 flex items-center gap-2">
                 <Trophy size={16} className="text-blue-500" /> 
-                {teamStanding ? teamStanding.leagueName : "League Position"}
+                {standingsLabel}
               </h3>
               
-              {teamStanding && miniStandings.length > 0 ? (
+              {seasonLoading ? (
+                <p className="text-slate-500 italic bg-slate-900/50 p-8 rounded-2xl border border-slate-800 text-center font-bold">
+                  Loading season standings...
+                </p>
+              ) : teamStanding && miniStandings.length > 0 ? (
                 <div className="bg-slate-900/50 rounded-3xl border border-slate-800 overflow-hidden shadow-inner">
                   <table className="w-full text-left">
                     <thead>
@@ -197,7 +340,11 @@ export default function TeamProfile() {
           {activeTab === 'statistics' && (
             <div className="animate-in fade-in duration-300">
               <h3 className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-6">Season Statistics</h3>
-              {stats ? (
+              {seasonLoading ? (
+                <p className="text-slate-500 italic bg-slate-900/50 p-8 rounded-2xl border border-slate-800 text-center font-bold">
+                  Loading season statistics...
+                </p>
+              ) : stats ? (
                 <div className="bg-slate-900/50 rounded-3xl border border-slate-800 overflow-hidden shadow-inner">
                   <StatLine label="Matches Played" value={stats.matches || 0} />
                   <StatLine label="Goals Scored" value={stats.goals_scored || 0} />

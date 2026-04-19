@@ -56,8 +56,22 @@ export const getTeam = async (id: string | number) => {
   return request(`/api/teams/${id}`);
 };
 
-export const getTeamStats = async (teamId: number | string) => {
-  return request(`/api/teams/${teamId}/stats`);
+export const getTeamSeasons = async (teamId: number | string) => {
+  return request(`/api/teams/${teamId}/seasons`);
+};
+
+export const getTeamStats = async (
+  teamId: number | string,
+  seasonId?: number,
+) => {
+  const params = new URLSearchParams();
+
+  if (seasonId !== undefined) {
+    params.set("seasonId", String(seasonId));
+  }
+
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return request(`/api/teams/${teamId}/stats${suffix}`);
 };
 
 // ==========================================
