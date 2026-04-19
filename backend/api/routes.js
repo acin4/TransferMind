@@ -7,6 +7,7 @@ import {
 import {
   listCurrentSeasonsController,
   getStandingsController,
+  listTournamentSeasonsController,
 } from "../controllers/standingsController.js";
 import {
   getTeamController,
@@ -26,6 +27,10 @@ router.get("/players/:id", asyncHandler(getPlayerController));
 router.get(
   "/tournaments/current-seasons",
   asyncHandler(listCurrentSeasonsController),
+);
+router.get(
+  "/tournaments/:tournamentId/seasons",
+  asyncHandler(listTournamentSeasonsController),
 );
 router.get("/standings", asyncHandler(getStandingsController));
 

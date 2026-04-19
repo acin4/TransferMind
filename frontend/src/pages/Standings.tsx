@@ -1,37 +1,70 @@
 import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { getCurrentTournaments, getStandings } from "../api/api";
-import { Trophy, Hash, ChevronRight, Loader2, Award, Calendar, Shield } from "lucide-react";
+import {
+  getCurrentTournaments,
+  getStandings,
+  getTournamentSeasons,
+} from "../api/api";
+import { Trophy, ChevronRight, Loader2, Award, Calendar, Shield } from "lucide-react";
+
+const STAGE_ORDER = [
+  "Regular Season",
+  "Championship Round",
+  "Playoffs",
+  "Playout",
+  "Relegation Round",
+  "Qualifying",
+];
+
+const STAGE_PRIORITY = new Map(
+  STAGE_ORDER.map((label, index) => [normalizeStageKey(label), index]),
+);
+
+function normalizeStageKey(value: unknown) {
+  if (value == null) {
+    return null;
+  }
+
+  const trimmed = String(value).trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  return trimmed.toLocaleLowerCase();
+}
 
 export default function Standings() {
   const [tournaments, setTournaments] = useState<any[]>([]);
+  const [availableSeasons, setAvailableSeasons] = useState<any[]>([]);
   const [standings, setStandings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [selectedLeagueId, setSelectedLeagueId] = useState<number | null>(null);
   const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null);
+  const [selectedStageKey, setSelectedStageKey] = useState<string | null>(null);
 
   // 1. Φόρτωση Λίστας Πρωταθλημάτων & Σεζόν από το Backend
   useEffect(() => {
     const fetchTournaments = async () => {
       try {
         const data = await getCurrentTournaments();
-        
+
         if (data && data.length > 0) {
           setTournaments(data);
-          // Διαλέγουμε το 1ο πρωτάθλημα και την 1η του σεζόν ως αρχική επιλογή
           setSelectedLeagueId(data[0].tournament_id);
-          setSelectedSeasonId(data[0].season_id);
           setError(null);
         } else {
           setTournaments([]);
+          setAvailableSeasons([]);
           setError("Δεν βρέθηκαν διαθέσιμες διοργανώσεις.");
           setLoading(false);
         }
       } catch (err) {
         console.error("Σφάλμα φόρτωσης διοργανώσεων:", err);
         setTournaments([]);
+        setAvailableSeasons([]);
         setError("Αδυναμία φόρτωσης διοργανώσεων από τον server.");
         setLoading(false);
       }
@@ -39,60 +72,177 @@ export default function Standings() {
     fetchTournaments();
   }, []);
 
+  useEffect(() => {
+    if (!selectedLeagueId) {
+      setAvailableSeasons([]);
+      setSelectedSeasonId(null);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    setLoading(true);
+    setError(null);
+    setStandings([]);
+
+    const fetchSeasons = async () => {
+      try {
+        const seasons = await getTournamentSeasons(selectedLeagueId);
+
+        if (cancelled) {
+          return;
+        }
+
+        const nextSeasons = seasons || [];
+        const defaultSeason =
+          nextSeasons.find((season: any) => season.is_current) ??
+          nextSeasons[0] ??
+          null;
+
+        setAvailableSeasons(nextSeasons);
+        setSelectedSeasonId(defaultSeason?.season_id ?? null);
+
+        if (!defaultSeason) {
+          setError("Δεν βρέθηκαν διαθέσιμες σεζόν για αυτό το πρωτάθλημα.");
+          setLoading(false);
+        }
+      } catch (err) {
+        if (cancelled) {
+          return;
+        }
+
+        console.error("Σφάλμα φόρτωσης σεζόν:", err);
+        setAvailableSeasons([]);
+        setSelectedSeasonId(null);
+        setError("Αδυναμία φόρτωσης των σεζόν.");
+        setLoading(false);
+      }
+    };
+
+    fetchSeasons();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedLeagueId]);
+
   // 2. Φόρτωση Βαθμολογίας όταν αλλάζει η Λίγκα ή η Σεζόν
   useEffect(() => {
-    if (selectedLeagueId && selectedSeasonId) {
-      setLoading(true);
-      getStandings(selectedLeagueId, selectedSeasonId)
-        .then((data) => {
-          setStandings(data || []);
-          setError(null);
-        })
-        .catch((err) => {
-          console.error("Σφάλμα φόρτωσης βαθμολογίας:", err);
-          setStandings([]);
-          setError("Αδυναμία φόρτωσης της βαθμολογίας.");
-        })
-        .finally(() => {
-          setLoading(false);
-        });
+    if (!selectedLeagueId || !selectedSeasonId) {
+      setStandings([]);
+      return;
     }
+
+    let cancelled = false;
+
+    setLoading(true);
+    getStandings(selectedLeagueId, selectedSeasonId)
+      .then((data) => {
+        if (cancelled) {
+          return;
+        }
+
+        setStandings(data || []);
+        setError(null);
+      })
+      .catch((err) => {
+        if (cancelled) {
+          return;
+        }
+
+        console.error("Σφάλμα φόρτωσης βαθμολογίας:", err);
+        setStandings([]);
+        setError("Αδυναμία φόρτωσης της βαθμολογίας.");
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedLeagueId, selectedSeasonId]);
 
   // 3. Δυναμικά Φίλτρα (Dropdowns) με βάση τα δεδομένα
-  const { uniqueLeagues, availableSeasons } = useMemo(() => {
+  const uniqueLeagues = useMemo(() => {
     if (!tournaments || tournaments.length === 0) {
-      return { uniqueLeagues: [], availableSeasons: [] };
+      return [];
     }
 
-    // Βρίσκουμε τα μοναδικά Πρωταθλήματα
     const leagueMap = new Map();
-    tournaments.forEach(t => {
+    tournaments.forEach((t) => {
       if (!leagueMap.has(t.tournament_id)) {
         leagueMap.set(t.tournament_id, {
           id: t.tournament_id,
-          name: t.tournament_name || `Tournament ${t.tournament_id}` 
-          // (Αν το backend επιστρέφει το όνομα αλλιώς, άλλαξε το t.tournament_name στο σωστό)
+          name: t.tournament_name || `Tournament ${t.tournament_id}`,
         });
       }
     });
 
-    const leagues = Array.from(leagueMap.values());
-    const seasons = tournaments.filter(t => t.tournament_id === selectedLeagueId);
+    return Array.from(leagueMap.values());
+  }, [tournaments]);
 
-    return { uniqueLeagues: leagues, availableSeasons: seasons };
-  }, [tournaments, selectedLeagueId]);
+  const availableStages = useMemo(() => {
+    const stageMap = new Map<string, { key: string; label: string }>();
+
+    standings.forEach((row) => {
+      const stageKey = normalizeStageKey(row.stage_label);
+
+      if (!stageKey || stageMap.has(stageKey)) {
+        return;
+      }
+
+      stageMap.set(stageKey, {
+        key: stageKey,
+        label: String(row.stage_label).trim(),
+      });
+    });
+
+    return Array.from(stageMap.values()).sort((a, b) => {
+      const aPriority = STAGE_PRIORITY.get(a.key);
+      const bPriority = STAGE_PRIORITY.get(b.key);
+
+      if (aPriority != null || bPriority != null) {
+        if (aPriority == null) return 1;
+        if (bPriority == null) return -1;
+        if (aPriority !== bPriority) return aPriority - bPriority;
+      }
+
+      return a.label.localeCompare(b.label);
+    });
+  }, [standings]);
+
+  const showStageTabs = availableStages.length > 1;
+
+  useEffect(() => {
+    if (!showStageTabs) {
+      setSelectedStageKey(null);
+      return;
+    }
+
+    const preferredStage =
+      availableStages.find((stage) => stage.key === normalizeStageKey("Regular Season")) ??
+      availableStages[0];
+
+    setSelectedStageKey(preferredStage?.key ?? null);
+  }, [selectedLeagueId, selectedSeasonId, availableStages, showStageTabs]);
+
+  const filteredStandings = useMemo(() => {
+    if (!showStageTabs || !selectedStageKey) {
+      return standings;
+    }
+
+    return standings.filter((row) => normalizeStageKey(row.stage_label) === selectedStageKey);
+  }, [standings, selectedStageKey, showStageTabs]);
 
   // Handle αλλαγής Πρωταθλήματος
   const handleLeagueChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newLeagueId = Number(e.target.value);
     setSelectedLeagueId(newLeagueId);
-    
-    // Όταν ο χρήστης αλλάζει λίγκα, βάζουμε αυτόματα την 1η διαθέσιμη σεζόν αυτής της νέας λίγκας!
-    const seasonsForNewLeague = tournaments.filter(t => t.tournament_id === newLeagueId);
-    if (seasonsForNewLeague.length > 0) {
-      setSelectedSeasonId(seasonsForNewLeague[0].season_id);
-    }
+    setSelectedSeasonId(null);
   };
 
   // Handle αλλαγής Σεζόν
@@ -100,8 +250,7 @@ export default function Standings() {
     setSelectedSeasonId(Number(e.target.value));
   };
 
-
-  if (!selectedLeagueId || !selectedSeasonId) {
+  if (!selectedLeagueId || (!selectedSeasonId && loading)) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center text-blue-500 font-black gap-2">
         {error ? (
@@ -166,7 +315,7 @@ export default function Standings() {
                 onChange={handleSeasonChange}
                 disabled={availableSeasons.length === 0}
               >
-                {availableSeasons.map(season => (
+                {availableSeasons.map((season) => (
                   <option key={season.season_id} value={season.season_id}>
                     {season.season_name || `Season ${season.season_id}`}
                   </option>
@@ -193,60 +342,95 @@ export default function Standings() {
         ) : (
 
           <div className="bg-slate-900/40 border border-slate-800/60 rounded-[3rem] overflow-hidden shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {showStageTabs && (
+              <div className="px-6 pt-6 md:px-8 md:pt-8">
+                <div className="flex gap-2 bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800 w-full md:w-max overflow-x-auto">
+                  {availableStages.map((stage) => (
+                    <StageTabButton
+                      key={stage.key}
+                      label={stage.label}
+                      isActive={selectedStageKey === stage.key}
+                      onClick={() => setSelectedStageKey(stage.key)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+              <table className="min-w-[980px] w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-900/90 border-b border-slate-800 text-slate-500 uppercase text-[10px] font-black tracking-[0.25em]">
-                    <th className="px-8 py-6 text-center"><Hash size={14} /></th>
-                    <th className="px-8 py-6">Club</th>
-                    <th className="px-4 py-6 text-center">MP</th>
-                    <th className="px-4 py-6 text-center text-blue-400 font-bold italic">Pts</th>
-                    <th className="px-8 py-6 text-right">Analysis</th>
+                    <th className="px-6 py-6 text-center">#</th>
+                    <th className="px-8 py-6">CLUB</th>
+                    <th className="px-3 py-6 text-center">MP</th>
+                    <th className="px-3 py-6 text-center">W</th>
+                    <th className="px-3 py-6 text-center">D</th>
+                    <th className="px-3 py-6 text-center">L</th>
+                    <th className="px-3 py-6 text-center">GF</th>
+                    <th className="px-3 py-6 text-center">GA</th>
+                    <th className="px-3 py-6 text-center">GD</th>
+                    <th className="px-6 py-6 text-center text-blue-400 font-bold italic">PTS</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/30">
-                  {standings.map((row, index) => (
+                  {filteredStandings.map((row, index) => (
                     <tr key={row.id || row.team_id} className="hover:bg-blue-500/[0.03] transition-all group">
-                      <td className="px-8 py-5 text-center">
+                      <td className="px-6 py-5 text-center">
                         <span className={`inline-flex items-center justify-center w-10 h-10 rounded-2xl font-black text-sm transition-colors ${index === 0 ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/20' : index < 3 ? 'bg-slate-800 text-slate-300' : 'text-slate-600'}`}>
                           {row.position}
                         </span>
                       </td>
                       <td className="px-8 py-5">
-                        <div className="flex items-center gap-4">
-                          <span className="font-black text-xl tracking-tighter uppercase italic group-hover:text-blue-400 transition-colors">
-                            {row.team_name || "Unknown Team"}
-                          </span>
-                          {index === 0 && <Trophy size={18} className="text-yellow-500 animate-pulse" />}
-                        </div>
-                      </td>
-                      <td className="px-4 py-5 text-center font-bold text-slate-500">
-                        {row.matches || 0}
-                      </td>
-                      <td className="px-4 py-5 text-center">
-                        <span className="text-2xl font-black text-blue-400 drop-shadow-[0_0_10px_rgba(59,130,246,0.3)]">
-                          {row.points}
-                        </span>
-                      </td>
-                      <td className="px-8 py-5 text-right">
                         {row.team_id ? (
-                          <Link 
-                            to={`/team/${row.team_id}`} 
-                            className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-slate-800 text-slate-600 group-hover:border-blue-500 group-hover:text-blue-400 transition-all hover:bg-blue-500 hover:text-white hover:scale-110"
+                          <Link
+                            to={`/team/${row.team_id}`}
+                            className="flex items-center gap-4 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/70"
                           >
-                            <ChevronRight size={18} />
+                            <span className="font-black text-xl tracking-tighter uppercase italic group-hover:text-blue-400 transition-colors">
+                              {row.team_name || "Unknown Team"}
+                            </span>
+                            {index === 0 && <Trophy size={18} className="text-yellow-500 animate-pulse" />}
                           </Link>
                         ) : (
-                          <span className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-slate-800 text-slate-700">
-                            <ChevronRight size={18} />
-                          </span>
+                          <div className="flex items-center gap-4">
+                            <span className="font-black text-xl tracking-tighter uppercase italic group-hover:text-blue-400 transition-colors">
+                              {row.team_name || "Unknown Team"}
+                            </span>
+                            {index === 0 && <Trophy size={18} className="text-yellow-500 animate-pulse" />}
+                          </div>
                         )}
+                      </td>
+                      <td className="px-3 py-5 text-center font-bold text-slate-400 tabular-nums">
+                        {row.matches ?? 0}
+                      </td>
+                      <td className="px-3 py-5 text-center font-bold text-slate-400 tabular-nums">
+                        {row.wins ?? 0}
+                      </td>
+                      <td className="px-3 py-5 text-center font-bold text-slate-400 tabular-nums">
+                        {row.draws ?? 0}
+                      </td>
+                      <td className="px-3 py-5 text-center font-bold text-slate-400 tabular-nums">
+                        {row.losses ?? 0}
+                      </td>
+                      <td className="px-3 py-5 text-center font-bold text-slate-400 tabular-nums">
+                        {row.goals_for ?? 0}
+                      </td>
+                      <td className="px-3 py-5 text-center font-bold text-slate-400 tabular-nums">
+                        {row.goals_against ?? 0}
+                      </td>
+                      <td className="px-3 py-5 text-center font-bold text-slate-300 tabular-nums">
+                        {row.goal_diff ?? 0}
+                      </td>
+                      <td className="px-6 py-5 text-center">
+                        <span className="text-2xl font-black text-blue-400 drop-shadow-[0_0_10px_rgba(59,130,246,0.3)] tabular-nums">
+                          {row.points ?? 0}
+                        </span>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              {standings.length === 0 && (
+              {filteredStandings.length === 0 && (
                 <div className="p-32 text-center flex flex-col items-center gap-4">
                   <Shield size={48} className="text-slate-800 mb-4" />
                   <span className="text-slate-500 font-bold italic uppercase tracking-widest text-lg">Δεν υπαρχουν δεδομενα βαθμολογιας.</span>
@@ -258,5 +442,20 @@ export default function Standings() {
         )}
       </div>
     </div>
+  );
+}
+
+function StageTabButton({ label, isActive, onClick }: { label: string, isActive: boolean, onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+        isActive
+          ? 'bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] border-b-2 border-blue-400'
+          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-b-2 border-transparent'
+      }`}
+    >
+      {label}
+    </button>
   );
 }

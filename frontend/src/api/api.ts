@@ -36,6 +36,10 @@ export const getCurrentTournaments = async () => {
   return request("/api/tournaments/current-seasons");
 };
 
+export const getTournamentSeasons = async (tournamentId: number) => {
+  return request(`/api/tournaments/${tournamentId}/seasons`);
+};
+
 export const getStandings = async (tournamentId: number, seasonId: number) => {
   const params = new URLSearchParams({
     tournamentId: String(tournamentId),

@@ -2,6 +2,7 @@ import { parseInteger } from "../lib/http.js";
 import {
   getCurrentSeasons,
   getStandings,
+  getTournamentSeasons,
 } from "../services/standingsService.js";
 
 export async function listCurrentSeasonsController(req, res) {
@@ -15,4 +16,11 @@ export async function getStandingsController(req, res) {
   const standings = await getStandings(tournamentId, seasonId);
 
   res.status(200).json({ data: standings });
+}
+
+export async function listTournamentSeasonsController(req, res) {
+  const tournamentId = parseInteger(req.params.tournamentId, "tournamentId");
+  const seasons = await getTournamentSeasons(tournamentId);
+
+  res.status(200).json({ data: seasons });
 }

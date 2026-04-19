@@ -1,17 +1,44 @@
 import { HttpError } from "../lib/http.js";
 import {
-  getCurrentTournamentSeason,
+  getTournamentSeason,
   listCurrentTournamentSeasons,
+  listTournamentSeasons,
   listStandingsRows,
 } from "../repositories/standingsRepository.js";
 import { listTeamMappings } from "../repositories/teamRepository.js";
+
+function normalizeStageLabel(...values) {
+  for (const value of values) {
+    if (value == null) {
+      continue;
+    }
+
+    const trimmed = String(value).trim();
+
+    if (trimmed) {
+      return trimmed;
+    }
+  }
+
+  return null;
+}
 
 export async function getCurrentSeasons() {
   return listCurrentTournamentSeasons();
 }
 
+export async function getTournamentSeasons(tournamentId) {
+  const seasons = await listTournamentSeasons(tournamentId);
+
+  if (seasons == null) {
+    throw new HttpError(404, "Tournament not found.");
+  }
+
+  return seasons;
+}
+
 export async function getStandings(tournamentId, seasonId) {
-  const currentSeason = await getCurrentTournamentSeason(tournamentId, seasonId);
+  const currentSeason = await getTournamentSeason(tournamentId, seasonId);
 
   if (!currentSeason) {
     throw new HttpError(404, "Tournament season not found.");
@@ -35,7 +62,7 @@ export async function getStandings(tournamentId, seasonId) {
       teamIdByApiReference.get(String(row.team_id)) ??
       null,
     team_name: row.team_name || "Unknown Team",
-    position: index + 1,
+    position: row.position ?? index + 1,
     matches: row.matches ?? 0,
     wins: row.wins ?? 0,
     draws: row.draws ?? 0,
@@ -44,5 +71,14 @@ export async function getStandings(tournamentId, seasonId) {
     goals_against: row.goals_against ?? 0,
     goal_diff: row.goal_diff ?? 0,
     points: row.points ?? 0,
+    standing_group_id: row.standing_group_id ?? null,
+    standing_group_name: row.standing_group_name?.trim() || null,
+    stage_tournament_id: row.stage_tournament_id ?? null,
+    stage_tournament_name: row.stage_tournament_name?.trim() || null,
+    stage_tournament_slug: row.stage_tournament_slug ?? null,
+    stage_label: normalizeStageLabel(
+      row.stage_tournament_name,
+      row.standing_group_name,
+    ),
   }));
 }
