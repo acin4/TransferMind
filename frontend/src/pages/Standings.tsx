@@ -5,7 +5,14 @@ import {
   getStandings,
   getTournamentSeasons,
 } from "../api/api";
-import { Trophy, ChevronRight, Loader2, Award, Calendar, Shield } from "lucide-react";
+import {
+  Trophy,
+  ChevronRight,
+  Loader2,
+  Award,
+  Calendar,
+  Shield,
+} from "lucide-react";
 
 const STAGE_ORDER = [
   "Regular Season",
@@ -224,8 +231,9 @@ export default function Standings() {
     }
 
     const preferredStage =
-      availableStages.find((stage) => stage.key === normalizeStageKey("Regular Season")) ??
-      availableStages[0];
+      availableStages.find(
+        (stage) => stage.key === normalizeStageKey("Regular Season"),
+      ) ?? availableStages[0];
 
     setSelectedStageKey(preferredStage?.key ?? null);
   }, [selectedLeagueId, selectedSeasonId, availableStages, showStageTabs]);
@@ -235,7 +243,9 @@ export default function Standings() {
       return standings;
     }
 
-    return standings.filter((row) => normalizeStageKey(row.stage_label) === selectedStageKey);
+    return standings.filter(
+      (row) => normalizeStageKey(row.stage_label) === selectedStageKey,
+    );
   }, [standings, selectedStageKey, showStageTabs]);
 
   // Handle αλλαγής Πρωταθλήματος
@@ -257,7 +267,8 @@ export default function Standings() {
           <span className="italic uppercase text-rose-400">{error}</span>
         ) : (
           <>
-            <Loader2 className="animate-spin" /> <span className="italic uppercase">Initializing Data...</span>
+            <Loader2 className="animate-spin" />{" "}
+            <span className="italic uppercase">Initializing Data...</span>
           </>
         )}
       </div>
@@ -267,33 +278,31 @@ export default function Standings() {
   return (
     <div className="min-h-screen bg-slate-950 p-6 md:p-12 text-white font-sans selection:bg-blue-500/30">
       <div className="max-w-6xl mx-auto">
-        
         {/* HEADER & ΤΑ 2 DROPDOWNS */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-12 gap-8">
-          
           <div>
             <h1 className="text-6xl font-black italic uppercase tracking-tighter bg-gradient-to-r from-white via-blue-400 to-blue-600 bg-clip-text text-transparent leading-none">
               Standings
             </h1>
             <p className="text-slate-500 font-bold uppercase tracking-[0.3em] text-[10px] mt-4 flex items-center gap-2">
-              <Award size={14} className="text-blue-500" /> Professional Scouting Network
+              <Award size={14} className="text-blue-500" /> Professional
+              Scouting Network
             </p>
           </div>
 
           {/* ΤΑ ΦΙΛΤΡΑ (DROPDOWNS) */}
           <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto animate-in fade-in slide-in-from-right-8 duration-700">
-            
             {/* 🟢 DROPDOWN 1: LEAGUE */}
             <div className="relative w-full sm:w-auto group">
               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500 pointer-events-none group-hover:text-white transition-colors">
                 <Shield size={18} />
               </div>
-              <select 
+              <select
                 className="w-full sm:w-[240px] appearance-none bg-slate-900 border-2 border-slate-800 text-white pl-12 pr-10 py-4 rounded-[2rem] font-black uppercase text-xs tracking-widest focus:outline-none focus:border-blue-500 transition-all cursor-pointer hover:bg-slate-800 shadow-xl truncate"
                 value={selectedLeagueId}
                 onChange={handleLeagueChange}
               >
-                {uniqueLeagues.map(league => (
+                {uniqueLeagues.map((league) => (
                   <option key={league.id} value={league.id}>
                     {league.name}
                   </option>
@@ -309,9 +318,9 @@ export default function Standings() {
               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500 pointer-events-none group-hover:text-white transition-colors">
                 <Calendar size={18} />
               </div>
-              <select 
+              <select
                 className="w-full sm:w-[200px] appearance-none bg-slate-900 border-2 border-slate-800 text-white pl-12 pr-10 py-4 rounded-[2rem] font-black uppercase text-xs tracking-widest focus:outline-none focus:border-emerald-500 transition-all cursor-pointer hover:bg-slate-800 shadow-xl disabled:opacity-50 truncate"
-                value={selectedSeasonId}
+                value={selectedSeasonId ?? ""}
                 onChange={handleSeasonChange}
                 disabled={availableSeasons.length === 0}
               >
@@ -325,22 +334,20 @@ export default function Standings() {
                 <ChevronRight size={16} className="rotate-90" />
               </div>
             </div>
-
           </div>
         </div>
 
         {/* TABLE SECTION */}
         {loading ? (
-           <div className="text-center p-32 bg-slate-900/20 border-2 border-dashed border-slate-800 rounded-[3rem] italic animate-pulse font-black uppercase tracking-widest text-blue-500 flex flex-col items-center gap-4">
-             <Loader2 className="animate-spin" size={40} />
-             Loading Standings...
-           </div>
+          <div className="text-center p-32 bg-slate-900/20 border-2 border-dashed border-slate-800 rounded-[3rem] italic animate-pulse font-black uppercase tracking-widest text-blue-500 flex flex-col items-center gap-4">
+            <Loader2 className="animate-spin" size={40} />
+            Loading Standings...
+          </div>
         ) : error ? (
           <div className="text-center p-20 bg-rose-500/10 border border-rose-500/20 rounded-[3rem] text-rose-400 font-black uppercase tracking-widest">
             {error}
           </div>
         ) : (
-
           <div className="bg-slate-900/40 border border-slate-800/60 rounded-[3rem] overflow-hidden shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
             {showStageTabs && (
               <div className="px-6 pt-6 md:px-8 md:pt-8">
@@ -369,14 +376,21 @@ export default function Standings() {
                     <th className="px-3 py-6 text-center">GF</th>
                     <th className="px-3 py-6 text-center">GA</th>
                     <th className="px-3 py-6 text-center">GD</th>
-                    <th className="px-6 py-6 text-center text-blue-400 font-bold italic">PTS</th>
+                    <th className="px-6 py-6 text-center text-blue-400 font-bold italic">
+                      PTS
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/30">
                   {filteredStandings.map((row, index) => (
-                    <tr key={row.id || row.team_id} className="hover:bg-blue-500/[0.03] transition-all group">
+                    <tr
+                      key={row.id || row.team_id}
+                      className="hover:bg-blue-500/[0.03] transition-all group"
+                    >
                       <td className="px-6 py-5 text-center">
-                        <span className={`inline-flex items-center justify-center w-10 h-10 rounded-2xl font-black text-sm transition-colors ${index === 0 ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/20' : index < 3 ? 'bg-slate-800 text-slate-300' : 'text-slate-600'}`}>
+                        <span
+                          className={`inline-flex items-center justify-center w-10 h-10 rounded-2xl font-black text-sm transition-colors ${index === 0 ? "bg-yellow-500/20 text-yellow-500 border border-yellow-500/20" : index < 3 ? "bg-slate-800 text-slate-300" : "text-slate-600"}`}
+                        >
                           {row.position}
                         </span>
                       </td>
@@ -389,14 +403,24 @@ export default function Standings() {
                             <span className="font-black text-xl tracking-tighter uppercase italic group-hover:text-blue-400 transition-colors">
                               {row.team_name || "Unknown Team"}
                             </span>
-                            {index === 0 && <Trophy size={18} className="text-yellow-500 animate-pulse" />}
+                            {index === 0 && (
+                              <Trophy
+                                size={18}
+                                className="text-yellow-500 animate-pulse"
+                              />
+                            )}
                           </Link>
                         ) : (
                           <div className="flex items-center gap-4">
                             <span className="font-black text-xl tracking-tighter uppercase italic group-hover:text-blue-400 transition-colors">
                               {row.team_name || "Unknown Team"}
                             </span>
-                            {index === 0 && <Trophy size={18} className="text-yellow-500 animate-pulse" />}
+                            {index === 0 && (
+                              <Trophy
+                                size={18}
+                                className="text-yellow-500 animate-pulse"
+                              />
+                            )}
                           </div>
                         )}
                       </td>
@@ -433,8 +457,12 @@ export default function Standings() {
               {filteredStandings.length === 0 && (
                 <div className="p-32 text-center flex flex-col items-center gap-4">
                   <Shield size={48} className="text-slate-800 mb-4" />
-                  <span className="text-slate-500 font-bold italic uppercase tracking-widest text-lg">Δεν υπαρχουν δεδομενα βαθμολογιας.</span>
-                  <span className="text-slate-600 text-sm">Επίλεξε διαφορετικό Πρωτάθλημα ή Σεζόν από το μενού.</span>
+                  <span className="text-slate-500 font-bold italic uppercase tracking-widest text-lg">
+                    Δεν υπαρχουν δεδομενα βαθμολογιας.
+                  </span>
+                  <span className="text-slate-600 text-sm">
+                    Επίλεξε διαφορετικό Πρωτάθλημα ή Σεζόν από το μενού.
+                  </span>
                 </div>
               )}
             </div>
@@ -445,14 +473,22 @@ export default function Standings() {
   );
 }
 
-function StageTabButton({ label, isActive, onClick }: { label: string, isActive: boolean, onClick: () => void }) {
+function StageTabButton({
+  label,
+  isActive,
+  onClick,
+}: {
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
+}) {
   return (
     <button
       onClick={onClick}
       className={`px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
         isActive
-          ? 'bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] border-b-2 border-blue-400'
-          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-b-2 border-transparent'
+          ? "bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] border-b-2 border-blue-400"
+          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-b-2 border-transparent"
       }`}
     >
       {label}

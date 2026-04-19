@@ -1,43 +1,31 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { getTeams, getCurrentTournaments, getStandings } from "../api/api";
+import { getTeams } from "../api/api";
 import { Users, ChevronRight, Trophy } from "lucide-react";
+
+const ALL_TAB = "ALL";
+const OTHER_TAB = "Other";
+
+function normalizeCountry(value: unknown) {
+  if (value == null) {
+    return null;
+  }
+
+  const text = String(value).trim();
+  return text || null;
+}
 
 export default function Teams() {
   const [teams, setTeams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeCountry, setActiveCountry] = useState(ALL_TAB);
 
   useEffect(() => {
-    const fetchTeamsAndLeagues = async () => {
+    const fetchTeams = async () => {
       try {
         const fetchedTeams = await getTeams();
-        
-        // Φέρνουμε τα πρωταθλήματα για να ξέρουμε ποια ομάδα παίζει πού
-        const tournaments = await getCurrentTournaments();
-        let leagueMap: Record<string, string> = {};
 
-        if (tournaments && tournaments.length > 0) {
-          const standingsPromises = tournaments.map((t: any) => 
-            getStandings(t.tournament_id, t.season_id)
-          );
-          const allStandings = await Promise.all(standingsPromises);
-          
-          allStandings.forEach((standingsArray, index) => {
-            standingsArray?.forEach((row: any) => {
-              if (row.team_id) {
-                leagueMap[row.team_id] = tournaments[index].season_name;
-              }
-            });
-          });
-        }
-
-        // Ενώνουμε τα δεδομένα
-        const teamsWithLeagues = (fetchedTeams || []).map((team: any) => ({
-          ...team,
-          leagueName: leagueMap[team.id] || "Professional League"
-        }));
-
-        setTeams(teamsWithLeagues);
+        setTeams(fetchedTeams || []);
       } catch (error) {
         console.error("Σφάλμα κατά τη φόρτωση λίστας ομάδων:", error);
       } finally {
@@ -45,8 +33,53 @@ export default function Teams() {
       }
     };
 
-    fetchTeamsAndLeagues();
+    fetchTeams();
   }, []);
+
+  const countryTabs = useMemo(() => {
+    const countries = new Set<string>();
+    let hasOther = false;
+
+    teams.forEach((team) => {
+      const country = normalizeCountry(team.country);
+
+      if (country) {
+        countries.add(country);
+      } else {
+        hasOther = true;
+      }
+    });
+
+    const orderedCountries = Array.from(countries).sort((a, b) =>
+      a.localeCompare(b),
+    );
+
+    return [
+      ALL_TAB,
+      ...orderedCountries,
+      ...(hasOther ? [OTHER_TAB] : []),
+    ];
+  }, [teams]);
+
+  useEffect(() => {
+    if (!countryTabs.includes(activeCountry)) {
+      setActiveCountry(ALL_TAB);
+    }
+  }, [activeCountry, countryTabs]);
+
+  const filteredTeams = useMemo(() => {
+    if (activeCountry === ALL_TAB) {
+      return teams;
+    }
+
+    if (activeCountry === OTHER_TAB) {
+      return teams.filter((team) => !normalizeCountry(team.country));
+    }
+
+    return teams.filter(
+      (team) => normalizeCountry(team.country) === activeCountry,
+    );
+  }, [activeCountry, teams]);
 
   if (loading) {
     return (
@@ -62,10 +95,22 @@ export default function Teams() {
         <h1 className="text-4xl font-black uppercase mb-10 text-white tracking-tight">
           Teams
         </h1>
+
+        <div className="mb-8">
+          <div className="flex gap-2 bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800 w-full md:w-max overflow-x-auto">
+            {countryTabs.map((country) => (
+              <CountryTabButton
+                key={country}
+                label={country}
+                isActive={activeCountry === country}
+                onClick={() => setActiveCountry(country)}
+              />
+            ))}
+          </div>
+        </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {teams.map((team) => (
-            // 🟢 ΕΔΩ Η ΑΛΛΑΓΗ: Είναι Link πλέον και σε πάει στο /team/:id
+          {filteredTeams.map((team) => (
             <Link 
               key={team.id} 
               to={`/team/${team.id}`}
@@ -80,10 +125,18 @@ export default function Teams() {
                   )}
                 </div>
                 
-                <span className="text-[9px] bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full text-blue-400 font-black uppercase tracking-widest flex items-center gap-1">
-                  <Trophy size={10} />
-                  {team.leagueName}
-                </span>
+                {team.badge_label ? (
+                  <span
+                    className={`text-[9px] px-3 py-1 rounded-full font-black uppercase tracking-widest flex items-center gap-1 border ${
+                      team.badge_is_current
+                        ? "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                        : "bg-slate-800/80 border-slate-700 text-slate-300"
+                    }`}
+                  >
+                    <Trophy size={10} />
+                    {team.badge_label}
+                  </span>
+                ) : null}
               </div>
               
               <h2 className="text-2xl font-black uppercase italic mb-4 group-hover:text-blue-400 transition-colors leading-tight">
@@ -96,7 +149,36 @@ export default function Teams() {
             </Link>
           ))}
         </div>
+
+        {filteredTeams.length === 0 && (
+          <div className="mt-10 text-center p-16 bg-slate-900/20 border-2 border-dashed border-slate-800 rounded-[3rem] font-black uppercase tracking-widest text-slate-500">
+            No teams found for this country.
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+function CountryTabButton({
+  label,
+  isActive,
+  onClick,
+}: {
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+        isActive
+          ? "bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] border-b-2 border-blue-400"
+          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-b-2 border-transparent"
+      }`}
+    >
+      {label}
+    </button>
   );
 }

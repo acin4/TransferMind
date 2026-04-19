@@ -16,6 +16,9 @@ function sanitizeTeam(team) {
     city: team.city,
     stadium: team.stadium,
     logo_url: team.logo_url,
+    country: team.country ?? null,
+    badge_label: team.badge_label ?? null,
+    badge_is_current: Boolean(team.badge_is_current),
   };
 }
 

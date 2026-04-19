@@ -1,20 +1,166 @@
 import { supabase } from "../lib/supabaseClient.js";
+import { getSeasonEndYear, getSeasonLabel } from "../lib/seasonLabels.js";
 
-const TEAM_SELECT = "id, api_id, name, city, stadium, logo_url";
+const TEAM_SELECT = "id, api_id, name, tournament_id, city, stadium, logo_url";
 
 function getTeamsBaseQuery() {
   return supabase.from("teams").select(TEAM_SELECT);
 }
 
+function buildParticipationKey(row) {
+  const teamKey = row.team_db_id ?? row.team_id;
+  const tournamentKey = row.tournament_db_id ?? row.tournament_id;
+  const seasonKey = row.season_db_id ?? row.season_id;
+
+  return `${teamKey}::${tournamentKey}::${seasonKey}`;
+}
+
+function normalizeCountry(value) {
+  if (value == null) {
+    return null;
+  }
+
+  const text = String(value).trim();
+  return text || null;
+}
+
+function compareParticipationRows(a, b) {
+  const currentDelta = Number(Boolean(b.is_current)) - Number(Boolean(a.is_current));
+
+  if (currentDelta !== 0) {
+    return currentDelta;
+  }
+
+  const endYearDelta = getSeasonEndYear(b) - getSeasonEndYear(a);
+
+  if (endYearDelta !== 0) {
+    return endYearDelta;
+  }
+
+  const seasonIdDelta = (b.season_db_id ?? -1) - (a.season_db_id ?? -1);
+
+  if (seasonIdDelta !== 0) {
+    return seasonIdDelta;
+  }
+
+  return String(a.tournament_name ?? "").localeCompare(
+    String(b.tournament_name ?? ""),
+  );
+}
+
+function toBadgeLabel(row) {
+  const seasonLabel = getSeasonLabel(row);
+  const tournamentName = row.tournament_name?.trim() || null;
+
+  if (!tournamentName || !seasonLabel) {
+    return null;
+  }
+
+  return `${tournamentName} ${seasonLabel}`.toLocaleUpperCase();
+}
+
+function buildParticipationSummary(rows) {
+  const uniqueRows = new Map();
+
+  for (const row of rows ?? []) {
+    if (!row?.team_db_id) {
+      continue;
+    }
+
+    const key = buildParticipationKey(row);
+
+    if (!uniqueRows.has(key)) {
+      uniqueRows.set(key, row);
+    }
+  }
+
+  const summaryByTeamId = new Map();
+
+  for (const row of uniqueRows.values()) {
+    const teamId = row.team_db_id;
+    const existing = summaryByTeamId.get(teamId);
+
+    if (!existing || compareParticipationRows(row, existing) < 0) {
+      summaryByTeamId.set(teamId, row);
+    }
+  }
+
+  return summaryByTeamId;
+}
+
 export async function listTeams() {
   const query = getTeamsBaseQuery();
-  const { data, error } = await query.order("name", { ascending: true });
+  const [{ data: teams, error }, { data: participationRows, error: participationError }] =
+    await Promise.all([
+      query.order("name", { ascending: true }),
+      supabase
+        .from("standings_with_team_info")
+        .select(
+          [
+            "team_db_id",
+            "team_id",
+            "tournament_id",
+            "tournament_db_id",
+            "tournament_name",
+            "tournament_country",
+            "season_id",
+            "season_db_id",
+            "season_name",
+            "season_year",
+            "is_current",
+          ].join(","),
+        )
+        .not("team_db_id", "is", null),
+    ]);
 
   if (error) {
     throw error;
   }
 
-  return data ?? [];
+  if (participationError) {
+    throw participationError;
+  }
+
+  const nextTeams = teams ?? [];
+  const teamTournamentApiIds = [
+    ...new Set(nextTeams.map((team) => team.tournament_id).filter(Boolean)),
+  ];
+
+  let fallbackCountryByTournamentApiId = new Map();
+
+  if (teamTournamentApiIds.length > 0) {
+    const { data: tournaments, error: tournamentsError } = await supabase
+      .from("tournaments")
+      .select("api_id, country")
+      .in("api_id", teamTournamentApiIds);
+
+    if (tournamentsError) {
+      throw tournamentsError;
+    }
+
+    fallbackCountryByTournamentApiId = new Map(
+      (tournaments ?? []).map((tournament) => [
+        tournament.api_id,
+        normalizeCountry(tournament.country),
+      ]),
+    );
+  }
+
+  const summaryByTeamId = buildParticipationSummary(participationRows ?? []);
+
+  return nextTeams.map((team) => {
+    const participation = summaryByTeamId.get(team.id);
+
+    return {
+      ...team,
+      country:
+        normalizeCountry(participation?.tournament_country) ??
+        fallbackCountryByTournamentApiId.get(team.tournament_id) ??
+        null,
+      badge_label: toBadgeLabel(participation),
+      badge_is_current: Boolean(participation?.is_current),
+    };
+  });
 }
 
 export async function getTeamById(id) {
