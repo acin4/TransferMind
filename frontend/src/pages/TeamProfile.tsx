@@ -25,24 +25,25 @@ import {
 
 export default function TeamProfile() {
   const { id } = useParams();
-  
+
   const [team, setTeam] = useState<any>(null);
   const [stats, setStats] = useState<TeamStats | null>(null);
   const [teamSquad, setTeamSquad] = useState<any[]>([]);
   const [availableSeasons, setAvailableSeasons] = useState<any[]>([]);
   const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null);
-  
+
   const [teamStanding, setTeamStanding] = useState<any>(null);
-  const [miniStandings, setMiniStandings] = useState<any[]>([]); 
-  
+  const [miniStandings, setMiniStandings] = useState<any[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [seasonLoading, setSeasonLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [seasonError, setSeasonError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'standings' | 'statistics' | 'squad'>('statistics');
-  const [activeStatsCategory, setActiveStatsCategory] = useState<TeamStatsCategoryId>(
-    TEAM_STATS_CATEGORIES[0].id,
-  );
+  const [activeTab, setActiveTab] = useState<
+    "standings" | "statistics" | "squad"
+  >("statistics");
+  const [activeStatsCategory, setActiveStatsCategory] =
+    useState<TeamStatsCategoryId>(TEAM_STATS_CATEGORIES[0].id);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,11 +66,9 @@ export default function TeamProfile() {
         setAvailableSeasons([]);
         setSelectedSeasonId(null);
 
-        const [fetchedTeam, fetchedPlayers, fetchedSeasons] = await Promise.all([
-          getTeam(id),
-          getPlayers(id),
-          getTeamSeasons(id),
-        ]);
+        const [fetchedTeam, fetchedPlayers, fetchedSeasons] = await Promise.all(
+          [getTeam(id), getPlayers(id), getTeamSeasons(id)],
+        );
 
         if (cancelled) {
           return;
@@ -89,7 +88,6 @@ export default function TeamProfile() {
         if (!fetchedTeam?.tournament_id || !defaultSeason?.season_id) {
           setLoading(false);
         }
-
       } catch (err) {
         console.error("Σφάλμα κατά τη φόρτωση του Profile:", err);
         if (!cancelled) {
@@ -110,7 +108,11 @@ export default function TeamProfile() {
     let cancelled = false;
 
     const fetchSeasonData = async () => {
-      if (!id || !team?.tournament_id || !selectedSeasonId) {
+      if (!team) {
+        return;
+      }
+
+      if (!id || !team.tournament_id || !selectedSeasonId) {
         setStats(null);
         setTeamStanding(null);
         setMiniStandings([]);
@@ -189,17 +191,21 @@ export default function TeamProfile() {
   );
 
   const headerSubtitle =
-    [team?.tournament_name, selectedSeason?.season_name].filter(Boolean).join(" - ") ||
+    [team?.tournament_name, selectedSeason?.season_name]
+      .filter(Boolean)
+      .join(" - ") ||
     team?.city ||
     "Professional Club";
 
   const standingsLabel =
-    [team?.tournament_name, selectedSeason?.season_name].filter(Boolean).join(" - ") ||
-    "League Position";
+    [team?.tournament_name, selectedSeason?.season_name]
+      .filter(Boolean)
+      .join(" - ") || "League Position";
 
   const selectedStatsCategory =
-    TEAM_STATS_CATEGORIES.find((category) => category.id === activeStatsCategory) ??
-    TEAM_STATS_CATEGORIES[0];
+    TEAM_STATS_CATEGORIES.find(
+      (category) => category.id === activeStatsCategory,
+    ) ?? TEAM_STATS_CATEGORIES[0];
 
   const handleSeasonChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedSeasonId(Number(event.target.value));
@@ -212,14 +218,23 @@ export default function TeamProfile() {
     return new Date(diff).getUTCFullYear() - 1970;
   };
 
-  if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-blue-500 font-black animate-pulse uppercase tracking-widest">Loading Profile...</div>;
-  if (error || !team) return <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center font-bold uppercase tracking-widest text-rose-500">{error || "Team not found"}</div>;
+  if (loading)
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-blue-500 font-black animate-pulse uppercase tracking-widest">
+        Loading Profile...
+      </div>
+    );
+  if (error || !team)
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center font-bold uppercase tracking-widest text-rose-500">
+        {error || "Team not found"}
+      </div>
+    );
 
   return (
     <div className="min-h-screen bg-slate-950 p-6 md:p-12 text-white font-sans">
       <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-        
-        <Link 
+        <Link
           to="/teams"
           className="inline-flex items-center gap-2 text-slate-400 hover:text-white mb-8 transition-colors font-bold uppercase text-xs tracking-widest"
         >
@@ -230,7 +245,11 @@ export default function TeamProfile() {
           <div className="flex items-center gap-6">
             <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center border-4 border-slate-900 shadow-2xl p-3 overflow-hidden">
               {team.logo_url ? (
-                <img src={team.logo_url} alt={team.name} className="w-full h-full object-contain" />
+                <img
+                  src={team.logo_url}
+                  alt={team.name}
+                  className="w-full h-full object-contain"
+                />
               ) : (
                 <Shield className="text-slate-400" size={40} />
               )}
@@ -273,9 +292,21 @@ export default function TeamProfile() {
         </div>
 
         <div className="flex gap-2 mb-8 bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800 w-full md:w-max">
-          <TabButton label="Standings" isActive={activeTab === 'standings'} onClick={() => setActiveTab('standings')} />
-          <TabButton label="Statistics" isActive={activeTab === 'statistics'} onClick={() => setActiveTab('statistics')} />
-          <TabButton label="Squad" isActive={activeTab === 'squad'} onClick={() => setActiveTab('squad')} />
+          <TabButton
+            label="Standings"
+            isActive={activeTab === "standings"}
+            onClick={() => setActiveTab("standings")}
+          />
+          <TabButton
+            label="Statistics"
+            isActive={activeTab === "statistics"}
+            onClick={() => setActiveTab("statistics")}
+          />
+          <TabButton
+            label="Squad"
+            isActive={activeTab === "squad"}
+            onClick={() => setActiveTab("squad")}
+          />
         </div>
 
         <div className="bg-slate-900/40 rounded-[2.5rem] border border-slate-800/60 p-6 md:p-10 shadow-2xl backdrop-blur-sm">
@@ -284,14 +315,14 @@ export default function TeamProfile() {
               {seasonError}
             </div>
           ) : null}
-          
-          {activeTab === 'standings' && (
+
+          {activeTab === "standings" && (
             <div className="animate-in fade-in duration-300">
               <h3 className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-6 flex items-center gap-2">
-                <Trophy size={16} className="text-blue-500" /> 
+                <Trophy size={16} className="text-blue-500" />
                 {standingsLabel}
               </h3>
-              
+
               {seasonLoading ? (
                 <p className="text-slate-500 italic bg-slate-900/50 p-8 rounded-2xl border border-slate-800 text-center font-bold">
                   Loading season standings...
@@ -312,25 +343,40 @@ export default function TeamProfile() {
                     </thead>
                     <tbody className="divide-y divide-slate-800/50">
                       {miniStandings.map((row: any) => {
-                        const isCurrentTeam = String(row.team_id) === String(id);
+                        const isCurrentTeam =
+                          String(row.team_id) === String(id);
                         return (
-                          <tr 
-                            key={row.team_id} 
-                            className={`transition-colors ${isCurrentTeam ? 'bg-blue-600/10' : 'hover:bg-slate-800/40'}`}
+                          <tr
+                            key={row.team_id}
+                            className={`transition-colors ${isCurrentTeam ? "bg-blue-600/10" : "hover:bg-slate-800/40"}`}
                           >
                             <td className="py-4 pl-6 text-center">
-                              <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black mx-auto ${isCurrentTeam ? 'bg-blue-500 text-white' : 'text-slate-500'}`}>
+                              <span
+                                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black mx-auto ${isCurrentTeam ? "bg-blue-500 text-white" : "text-slate-500"}`}
+                              >
                                 {row.position}
                               </span>
                             </td>
-                            <td className={`py-4 pl-4 font-bold ${isCurrentTeam ? 'text-blue-400' : 'text-slate-300'}`}>
+                            <td
+                              className={`py-4 pl-4 font-bold ${isCurrentTeam ? "text-blue-400" : "text-slate-300"}`}
+                            >
                               {row.team_name || "Unknown"}
                             </td>
-                            <td className="py-4 text-center text-slate-400 text-sm">{row.matches || 0}</td>
-                            <td className="py-4 text-center text-slate-400 text-sm">{row.wins || 0}</td>
-                            <td className="py-4 text-center text-slate-400 text-sm">{row.draws || 0}</td>
-                            <td className="py-4 text-center text-slate-400 text-sm">{row.losses || 0}</td>
-                            <td className={`py-4 pr-6 text-right font-black ${isCurrentTeam ? 'text-white' : 'text-slate-300'}`}>
+                            <td className="py-4 text-center text-slate-400 text-sm">
+                              {row.matches || 0}
+                            </td>
+                            <td className="py-4 text-center text-slate-400 text-sm">
+                              {row.wins || 0}
+                            </td>
+                            <td className="py-4 text-center text-slate-400 text-sm">
+                              {row.draws || 0}
+                            </td>
+                            <td className="py-4 text-center text-slate-400 text-sm">
+                              {row.losses || 0}
+                            </td>
+                            <td
+                              className={`py-4 pr-6 text-right font-black ${isCurrentTeam ? "text-white" : "text-slate-300"}`}
+                            >
                               {row.points || 0}
                             </td>
                           </tr>
@@ -339,9 +385,12 @@ export default function TeamProfile() {
                     </tbody>
                   </table>
                   <div className="bg-slate-900/80 border-t border-slate-800 p-4 text-center">
-                     <Link to="/standings" className="text-[10px] font-black uppercase text-blue-500 tracking-widest hover:text-blue-400 transition-colors">
-                        View Full Standings
-                     </Link>
+                    <Link
+                      to="/standings"
+                      className="text-[10px] font-black uppercase text-blue-500 tracking-widest hover:text-blue-400 transition-colors"
+                    >
+                      View Full Standings
+                    </Link>
                   </div>
                 </div>
               ) : (
@@ -352,9 +401,11 @@ export default function TeamProfile() {
             </div>
           )}
 
-          {activeTab === 'statistics' && (
+          {activeTab === "statistics" && (
             <div className="animate-in fade-in duration-300">
-              <h3 className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-6">Season Statistics</h3>
+              <h3 className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-6">
+                Season Statistics
+              </h3>
               {seasonLoading ? (
                 <p className="text-slate-500 italic bg-slate-900/50 p-8 rounded-2xl border border-slate-800 text-center font-bold">
                   Loading season statistics...
@@ -396,32 +447,49 @@ export default function TeamProfile() {
             </div>
           )}
 
-          {activeTab === 'squad' && (
+          {activeTab === "squad" && (
             <div className="animate-in fade-in duration-300">
-              <h3 className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-6">Current Squad</h3>
+              <h3 className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-6">
+                Current Squad
+              </h3>
               {teamSquad && teamSquad.length > 0 ? (
                 <div className="overflow-x-auto bg-slate-900/50 rounded-3xl border border-slate-800 p-2 shadow-inner">
                   <table className="w-full text-left">
                     <thead>
                       <tr className="text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-800/80 bg-slate-900/50">
-                        <th className="py-5 pl-6 font-normal rounded-tl-2xl">Player</th>
+                        <th className="py-5 pl-6 font-normal rounded-tl-2xl">
+                          Player
+                        </th>
                         <th className="py-5 font-normal">Nationality</th>
-                        <th className="py-5 font-normal text-center">Position</th>
-                        <th className="py-5 pr-6 font-normal text-right rounded-tr-2xl">Age</th>
+                        <th className="py-5 font-normal text-center">
+                          Position
+                        </th>
+                        <th className="py-5 pr-6 font-normal text-right rounded-tr-2xl">
+                          Age
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/50">
                       {teamSquad.map((player: any) => (
-                        <tr key={player.id} className="hover:bg-slate-800/40 transition-colors group">
+                        <tr
+                          key={player.id}
+                          className="hover:bg-slate-800/40 transition-colors group"
+                        >
                           <td className="py-4 pl-6 font-bold text-slate-200 flex items-center gap-4">
                             <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 text-sm font-black overflow-hidden shrink-0 border border-slate-700 group-hover:border-blue-500 transition-colors">
                               {player.photo_url ? (
-                                <img src={player.photo_url} alt="" className="w-full h-full object-cover" />
+                                <img
+                                  src={player.photo_url}
+                                  alt=""
+                                  className="w-full h-full object-cover"
+                                />
                               ) : (
                                 player.name.charAt(0)
                               )}
                             </div>
-                            <span className="truncate max-w-[150px] sm:max-w-[250px] text-sm md:text-base group-hover:text-blue-400 transition-colors">{player.name}</span>
+                            <span className="truncate max-w-[150px] sm:max-w-[250px] text-sm md:text-base group-hover:text-blue-400 transition-colors">
+                              {player.name}
+                            </span>
                           </td>
                           <td className="py-4 text-slate-400 text-sm font-medium">
                             {player.country?.name || player.nationality || "-"}
@@ -446,7 +514,6 @@ export default function TeamProfile() {
               )}
             </div>
           )}
-
         </div>
       </div>
     </div>
@@ -455,14 +522,22 @@ export default function TeamProfile() {
 
 /* === ΒΟΗΘΗΤΙΚΑ COMPONENTS (Που είχα ξεχάσει!) === */
 
-function TabButton({ label, isActive, onClick }: { label: string, isActive: boolean, onClick: () => void }) {
+function TabButton({
+  label,
+  isActive,
+  onClick,
+}: {
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
+}) {
   return (
     <button
       onClick={onClick}
       className={`px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${
-        isActive 
-          ? 'bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] border-b-2 border-blue-400' 
-          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-b-2 border-transparent'
+        isActive
+          ? "bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] border-b-2 border-blue-400"
+          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-b-2 border-transparent"
       }`}
     >
       {label}
@@ -484,8 +559,8 @@ function StatsCategoryTabButton({
       onClick={onClick}
       className={`px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
         isActive
-          ? 'bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] border-b-2 border-blue-400'
-          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-b-2 border-transparent'
+          ? "bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] border-b-2 border-blue-400"
+          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-b-2 border-transparent"
       }`}
     >
       {label}
@@ -493,13 +568,27 @@ function StatsCategoryTabButton({
   );
 }
 
-function StatLine({ label, value, isCard }: { label: string, value: string | number, isCard?: 'yellow' | 'red' }) {
+function StatLine({
+  label,
+  value,
+  isCard,
+}: {
+  label: string;
+  value: string | number;
+  isCard?: "yellow" | "red";
+}) {
   return (
     <div className="flex justify-between items-center py-5 px-8 border-b border-slate-800/80 last:border-0 hover:bg-white/[0.02] transition-colors group">
       <div className="flex items-center gap-3">
-        {isCard === 'yellow' && <div className="w-3 h-4 bg-yellow-500 rounded-sm shadow-sm" />}
-        {isCard === 'red' && <div className="w-3 h-4 bg-red-500 rounded-sm shadow-sm" />}
-        <span className="text-slate-400 text-sm font-bold uppercase tracking-wider group-hover:text-slate-300 transition-colors">{label}</span>
+        {isCard === "yellow" && (
+          <div className="w-3 h-4 bg-yellow-500 rounded-sm shadow-sm" />
+        )}
+        {isCard === "red" && (
+          <div className="w-3 h-4 bg-red-500 rounded-sm shadow-sm" />
+        )}
+        <span className="text-slate-400 text-sm font-bold uppercase tracking-wider group-hover:text-slate-300 transition-colors">
+          {label}
+        </span>
       </div>
       <span className="text-white font-black text-lg">{value}</span>
     </div>
