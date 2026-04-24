@@ -6,6 +6,7 @@ import TeamProfile from "./pages/TeamProfile"; // 🟢 ΑΥΤΟ ΕΛΕΙΠΕ Λ�
 import PlayerProfile from "./pages/PlayerProfile";
 import Players from "./pages/Players";
 import Teams from "./pages/Teams";
+import TeamsComparison from "./pages/TeamsComparison";
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
             <Route path="/team/:id" element={<TeamProfile />} /> 
             <Route path="/player/:id" element={<PlayerProfile />} />
             <Route path="/players" element={<Players />} />
+            <Route path="/teams-comparison" element={<TeamsComparison />} />
             <Route path="/teams" element={<Teams />} />
           </Routes>
         </main>

@@ -12,6 +12,7 @@ export default function Navbar() {
     { name: 'Standings', path: '/standings', icon: Table2 },
     { name: 'Teams', path: '/teams', icon: Shield },
     { name: 'Players', path: '/players', icon: Users },
+    { name: 'Teams Comparison', path: '/teams-comparison', icon: Activity },
   ];
 
   return (
