@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { getTeams } from "../api/api";
-import { Users, ChevronRight, Trophy } from "lucide-react";
+import { getTeams, type TeamListItem } from "../api/api";
+import { Users, ChevronRight, Trophy, Building2, MapPin } from "lucide-react";
 
 const ALL_TAB = "ALL";
 const OTHER_TAB = "Other";
@@ -15,8 +15,42 @@ function normalizeCountry(value: unknown) {
   return text || null;
 }
 
+function getTeamLocation(team: TeamListItem) {
+  const city =
+    (typeof team.city === "string" ? team.city : null) ||
+    (typeof team.venue === "object" && team.venue
+      ? team.venue.city ?? null
+      : null);
+  const country = normalizeCountry(team.country);
+
+  if (city && country) {
+    return `${city}, ${country}`;
+  }
+
+  return city || country || null;
+}
+
+function getTeamStadium(team: TeamListItem) {
+  if (typeof team.venue === "object" && team.venue) {
+    const venueName = team.venue.name?.trim();
+    if (venueName) {
+      return venueName;
+    }
+  }
+
+  if (typeof team.stadium === "string" && team.stadium.trim()) {
+    return team.stadium.trim();
+  }
+
+  if (typeof team.venue === "string" && team.venue.trim()) {
+    return team.venue.trim();
+  }
+
+  return null;
+}
+
 export default function Teams() {
-  const [teams, setTeams] = useState<any[]>([]);
+  const [teams, setTeams] = useState<TeamListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCountry, setActiveCountry] = useState(ALL_TAB);
 
@@ -142,6 +176,17 @@ export default function Teams() {
               <h2 className="text-2xl font-black uppercase italic mb-4 group-hover:text-blue-400 transition-colors leading-tight">
                 {team.name}
               </h2>
+
+              <div className="space-y-2 min-h-[48px]">
+                <TeamMetaLine
+                  icon={<MapPin size={14} />}
+                  value={getTeamLocation(team)}
+                />
+                <TeamMetaLine
+                  icon={<Building2 size={14} />}
+                  value={getTeamStadium(team)}
+                />
+              </div>
               
               <div className="mt-4 flex items-center text-slate-500 text-xs font-black uppercase tracking-widest group-hover:gap-3 group-hover:text-blue-500 transition-all">
                 View Profile <ChevronRight size={16} />
@@ -156,6 +201,27 @@ export default function Teams() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function TeamMetaLine({
+  icon,
+  value,
+}: {
+  icon: ReactNode;
+  value: string | null | undefined;
+}) {
+  if (!value) {
+    return null;
+  }
+
+  return (
+    <div className="flex items-center gap-2 min-w-0 text-sm">
+      <span className="shrink-0 text-blue-500">{icon}</span>
+      <span className="truncate text-slate-300 font-medium" title={value}>
+        {value}
+      </span>
     </div>
   );
 }

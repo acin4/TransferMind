@@ -1,5 +1,28 @@
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
+export type TeamListItem = {
+  id: number;
+  name: string;
+  logo_url?: string | null;
+  country?: string | null;
+  city?: string | null;
+  stadium?: string | null;
+  venue?:
+    | string
+    | {
+        name?: string | null;
+        city?: string | null;
+      }
+    | null;
+  badge_label?: string | null;
+  badge_is_current?: boolean;
+};
+
+export type TeamProfileData = TeamListItem & {
+  tournament_id?: number | null;
+  tournament_name?: string | null;
+};
+
 async function request(path: string) {
   const response = await fetch(`${apiBaseUrl}${path}`);
   const payload = await response.json().catch(() => null);

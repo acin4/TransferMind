@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
+  type TeamProfileData,
   getTeam,
   getTeamSeasons,
   getTeamStats,
@@ -13,6 +14,8 @@ import {
   ChevronRight,
   Trophy,
   Shield,
+  Building2,
+  MapPin,
 } from "lucide-react";
 import {
   TEAM_STATS_CATEGORIES,
@@ -23,10 +26,61 @@ import {
   type TeamStatKey,
 } from "../teamStatsConfig";
 
+function normalizeCountry(value: unknown) {
+  if (value == null) {
+    return null;
+  }
+
+  const text = String(value).trim();
+  return text || null;
+}
+
+function getTeamLocation(team: TeamProfileData | null) {
+  if (!team) {
+    return null;
+  }
+
+  const city =
+    (typeof team.city === "string" ? team.city : null) ||
+    (typeof team.venue === "object" && team.venue
+      ? team.venue.city ?? null
+      : null);
+  const country = normalizeCountry(team.country);
+
+  if (city && country) {
+    return `${city}, ${country}`;
+  }
+
+  return city || country || null;
+}
+
+function getTeamStadium(team: TeamProfileData | null) {
+  if (!team) {
+    return null;
+  }
+
+  if (typeof team.venue === "object" && team.venue) {
+    const venueName = team.venue.name?.trim();
+    if (venueName) {
+      return venueName;
+    }
+  }
+
+  if (typeof team.stadium === "string" && team.stadium.trim()) {
+    return team.stadium.trim();
+  }
+
+  if (typeof team.venue === "string" && team.venue.trim()) {
+    return team.venue.trim();
+  }
+
+  return null;
+}
+
 export default function TeamProfile() {
   const { id } = useParams();
 
-  const [team, setTeam] = useState<any>(null);
+  const [team, setTeam] = useState<TeamProfileData | null>(null);
   const [stats, setStats] = useState<TeamStats | null>(null);
   const [teamSquad, setTeamSquad] = useState<any[]>([]);
   const [availableSeasons, setAvailableSeasons] = useState<any[]>([]);
@@ -262,6 +316,16 @@ export default function TeamProfile() {
                 <Trophy size={14} className="text-blue-500" />
                 {headerSubtitle}
               </p>
+              <div className="mt-4 space-y-2">
+                <HeaderMetaLine
+                  icon={<MapPin size={14} />}
+                  value={getTeamLocation(team)}
+                />
+                <HeaderMetaLine
+                  icon={<Building2 size={14} />}
+                  value={getTeamStadium(team)}
+                />
+              </div>
             </div>
           </div>
 
@@ -605,4 +669,23 @@ function getStatCardColor(statKey: TeamStatKey) {
   }
 
   return undefined;
+}
+
+function HeaderMetaLine({
+  icon,
+  value,
+}: {
+  icon: ReactNode;
+  value: string | null | undefined;
+}) {
+  if (!value) {
+    return null;
+  }
+
+  return (
+    <div className="flex items-center gap-2 min-w-0" title={value}>
+      <span className="shrink-0 text-blue-500">{icon}</span>
+      <span className="truncate text-sm font-bold text-slate-300">{value}</span>
+    </div>
+  );
 }
