@@ -6,11 +6,16 @@ import {
   getTeamById,
   getTeamProfileById,
   getTeamStatsByApiReferences,
+  listTeamComparisonRowsByContext,
   listTeamsComparisonDatasetRows,
   listTeams,
   listTeamSeasonsById,
 } from "../repositories/teamRepository.js";
 import { getTournamentSeason } from "../repositories/standingsRepository.js";
+import {
+  getTeamStatMetadata,
+  listTeamStatMetadata,
+} from "../lib/teamStatsMetadata.js";
 
 const TEAM_STATS_PRIVATE_FIELDS = new Set([
   "id",
@@ -90,6 +95,102 @@ function sanitizeComparisonStats(stats) {
   }
 
   return sanitizedStats;
+}
+
+function toNumericStatValue(value) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+function parsePositiveIntegerField(value, fieldName) {
+  const parsed = Number(value);
+
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new HttpError(400, `${fieldName} must be a positive integer.`);
+  }
+
+  return parsed;
+}
+
+function parsePositiveIntegerArray(value, fieldName) {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new HttpError(400, `${fieldName} must be a non-empty array.`);
+  }
+
+  const parsedValues = value.map((item, index) =>
+    parsePositiveIntegerField(item, `${fieldName}[${index}]`),
+  );
+
+  return [...new Set(parsedValues)];
+}
+
+function parseStatKeys(value) {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new HttpError(400, "statKeys must be a non-empty array.");
+  }
+
+  const statKeys = [
+    ...new Set(
+      value.map((item) => String(item ?? "").trim()).filter(Boolean),
+    ),
+  ];
+
+  if (statKeys.length === 0) {
+    throw new HttpError(400, "statKeys must include at least one valid key.");
+  }
+
+  const invalidStatKey = statKeys.find(
+    (statKey) => !getTeamStatMetadata(statKey),
+  );
+
+  if (invalidStatKey) {
+    throw new HttpError(400, `Unknown statistic key: ${invalidStatKey}.`);
+  }
+
+  return statKeys;
+}
+
+function normalizeStatValue(rawValue, validValues) {
+  if (rawValue == null) {
+    return null;
+  }
+
+  if (validValues.length === 0) {
+    return null;
+  }
+
+  if (validValues.length === 1) {
+    return 0.5;
+  }
+
+  const minValue = Math.min(...validValues);
+  const maxValue = Math.max(...validValues);
+
+  if (minValue === maxValue) {
+    return 0.5;
+  }
+
+  const normalized = (rawValue - minValue) / (maxValue - minValue);
+  return Number(Math.max(0, Math.min(1, normalized)).toFixed(6));
+}
+
+function adjustStatScore(normalizedValue, direction) {
+  if (normalizedValue == null) {
+    return null;
+  }
+
+  const adjusted =
+    direction === "negative" ? 1 - normalizedValue : normalizedValue;
+
+  return Number(Math.max(0, Math.min(1, adjusted)).toFixed(6));
 }
 
 function toSeasonLabel(season) {
@@ -429,5 +530,81 @@ export async function getTeamsComparisonDataset() {
     .map(toComparisonEntry)
     .sort((a, b) => a.label.localeCompare(b.label));
 
-  return { entries };
+  return {
+    entries,
+    stats: listTeamStatMetadata(),
+  };
+}
+
+export async function getTeamComparisonMatrix(payload) {
+  const tournamentId = parsePositiveIntegerField(
+    payload?.tournamentId,
+    "tournamentId",
+  );
+  const seasonId = parsePositiveIntegerField(payload?.seasonId, "seasonId");
+  const teamIds = parsePositiveIntegerArray(payload?.teamIds, "teamIds");
+  const statKeys = parseStatKeys(payload?.statKeys);
+  const rows = await listTeamComparisonRowsByContext({
+    tournamentId,
+    seasonId,
+    teamIds,
+  });
+
+  if (rows.length !== teamIds.length) {
+    throw new HttpError(
+      400,
+      "All selected teams must belong to the selected tournament and season.",
+    );
+  }
+
+  const rowsByTeamId = new Map(rows.map((row) => [row.team_id, row]));
+  const orderedRows = teamIds.map((teamId) => rowsByTeamId.get(teamId));
+  const stats = statKeys.map((statKey) => {
+    const metadata = getTeamStatMetadata(statKey);
+    const values = orderedRows
+      .map((row) => toNumericStatValue(row?.stats?.[statKey]))
+      .filter((value) => value != null);
+
+    return {
+      ...metadata,
+      minRawValue: values.length > 0 ? Math.min(...values) : null,
+      maxRawValue: values.length > 0 ? Math.max(...values) : null,
+    };
+  });
+  const statsByKey = new Map(stats.map((stat) => [stat.key, stat]));
+
+  return {
+    context: {
+      tournamentId,
+      seasonId,
+    },
+    stats,
+    entries: orderedRows.map((row) => ({
+      teamId: row.team_id,
+      teamName: row.team_name,
+      teamLogo: row.team_logo ?? null,
+      values: Object.fromEntries(
+        statKeys.map((statKey) => {
+          const stat = statsByKey.get(statKey);
+          const rawValue = toNumericStatValue(row.stats?.[statKey]);
+          const validValues = orderedRows
+            .map((candidate) => toNumericStatValue(candidate?.stats?.[statKey]))
+            .filter((value) => value != null);
+          const normalizedValue = normalizeStatValue(rawValue, validValues);
+
+          return [
+            statKey,
+            {
+              rawValue,
+              normalizedValue,
+              adjustedScore: adjustStatScore(
+                normalizedValue,
+                stat?.direction ?? "positive",
+              ),
+            },
+          ];
+        }),
+      ),
+    })),
+  };
 }

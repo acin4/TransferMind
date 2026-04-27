@@ -10,6 +10,7 @@ import {
   listTournamentSeasonsController,
 } from "../controllers/standingsController.js";
 import {
+  createTeamsComparisonDatasetController,
   getTeamController,
   getTeamProfileController,
   getTeamsComparisonDatasetController,
@@ -24,6 +25,10 @@ router.get("/teams", asyncHandler(listTeamsController));
 router.get(
   "/teams/comparison-dataset",
   asyncHandler(getTeamsComparisonDatasetController),
+);
+router.post(
+  "/teams/comparison-dataset",
+  asyncHandler(createTeamsComparisonDatasetController),
 );
 router.get("/teams/:id/profile", asyncHandler(getTeamProfileController));
 router.get("/teams/:id", asyncHandler(getTeamController));

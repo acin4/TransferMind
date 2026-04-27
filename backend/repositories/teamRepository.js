@@ -578,3 +578,96 @@ export async function listTeamsComparisonDatasetRows() {
         : null,
   }));
 }
+
+export async function listTeamComparisonRowsByContext({
+  tournamentId,
+  seasonId,
+  teamIds,
+}) {
+  const [{ data: teams, error }, { data: participationRows, error: participationError }] =
+    await Promise.all([
+      getTeamsBaseQuery()
+        .in("id", teamIds)
+        .order("name", { ascending: true }),
+      supabase
+        .from("standings_with_team_info")
+        .select(PARTICIPATION_SELECT)
+        .eq("tournament_db_id", tournamentId)
+        .eq("season_db_id", seasonId)
+        .in("team_db_id", teamIds)
+        .not("team_db_id", "is", null)
+        .not("tournament_db_id", "is", null),
+    ]);
+
+  if (error) {
+    throw error;
+  }
+
+  if (participationError) {
+    throw participationError;
+  }
+
+  const teamsById = new Map((teams ?? []).map((team) => [team.id, team]));
+  const participationByTeamId = new Map();
+
+  for (const row of dedupeParticipationRows(participationRows ?? [])) {
+    if (!participationByTeamId.has(row.team_db_id)) {
+      participationByTeamId.set(row.team_db_id, row);
+    }
+  }
+
+  const entries = [];
+  const statsReferences = [];
+
+  for (const teamId of teamIds) {
+    const team = teamsById.get(teamId);
+    const participation = participationByTeamId.get(teamId);
+
+    if (!team || !participation) {
+      continue;
+    }
+
+    const entry = {
+      team_id: team.id,
+      team_api_id: team.api_id ?? null,
+      team_name: team.name,
+      team_logo: team.logo_url ?? null,
+      tournament_id: participation.tournament_db_id ?? null,
+      tournament_api_id: participation.tournament_id ?? null,
+      tournament_name: participation.tournament_name?.trim() || null,
+      season_id: participation.season_db_id ?? null,
+      season_api_id: participation.season_id ?? null,
+      season_name: getSeasonLabel(participation),
+    };
+
+    entries.push(entry);
+
+    if (
+      entry.team_api_id &&
+      entry.tournament_api_id &&
+      entry.season_api_id
+    ) {
+      statsReferences.push({
+        teamApiId: entry.team_api_id,
+        tournamentApiId: entry.tournament_api_id,
+        seasonApiId: entry.season_api_id,
+      });
+    }
+  }
+
+  const statsByReference = await listTeamStatsByApiReferences(statsReferences);
+
+  return entries.map((entry) => ({
+    ...entry,
+    stats:
+      entry.team_api_id && entry.tournament_api_id && entry.season_api_id
+        ? statsByReference.get(
+            buildStatsKey(
+              entry.team_api_id,
+              entry.tournament_api_id,
+              entry.season_api_id,
+            ),
+          ) ?? null
+        : null,
+  }));
+}

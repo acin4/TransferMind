@@ -1,5 +1,5 @@
 import type { TeamSeasonStatEntry } from "../utils/teamsComparison";
-import type { TeamStats } from "../teamStatsConfig";
+import type { TeamStatKey, TeamStats } from "../teamStatsConfig";
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
@@ -71,6 +71,8 @@ export type StandingsGroup = {
   key: string;
   label: string;
   stage: string | null;
+  standingGroupId: number | null;
+  stageTournamentId: number | null;
   priority: number;
   rows: TeamStandingRow[];
 };
@@ -114,10 +116,50 @@ export type TeamProfilePayload = {
 
 export type TeamsComparisonDataset = {
   entries: TeamSeasonStatEntry[];
+  stats?: TeamComparisonStat[];
 };
 
-async function request(path: string) {
-  const response = await fetch(`${apiBaseUrl}${path}`);
+export type TeamComparisonValue = {
+  rawValue: number | null;
+  normalizedValue: number | null;
+  adjustedScore: number | null;
+};
+
+export type TeamComparisonStat = {
+  key: TeamStatKey;
+  label: string;
+  category: string | null;
+  unit: string | null;
+  direction: "positive" | "negative";
+  minRawValue?: number | null;
+  maxRawValue?: number | null;
+};
+
+export type TeamComparisonEntry = {
+  teamId: number;
+  teamName: string;
+  teamLogo: string | null;
+  values: Partial<Record<TeamStatKey, TeamComparisonValue>>;
+};
+
+export type TeamComparisonPayload = {
+  context: {
+    tournamentId: number;
+    seasonId: number;
+  };
+  stats: TeamComparisonStat[];
+  entries: TeamComparisonEntry[];
+};
+
+export type TeamComparisonMatrixRequest = {
+  tournamentId: number;
+  seasonId: number;
+  teamIds: number[];
+  statKeys: TeamStatKey[];
+};
+
+async function request(path: string, options?: RequestInit) {
+  const response = await fetch(`${apiBaseUrl}${path}`, options);
   const payload = await response.json().catch(() => null);
 
   if (!response.ok) {
@@ -220,6 +262,18 @@ export const getTeamsComparisonDataset =
   async (): Promise<TeamsComparisonDataset> => {
     return request("/api/teams/comparison-dataset");
   };
+
+export const getTeamComparisonMatrix = async (
+  payload: TeamComparisonMatrixRequest,
+): Promise<TeamComparisonPayload> => {
+  return request("/api/teams/comparison-dataset", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+};
 
 // ==========================================
 // 4. ΠΡΟΦΙΛ ΠΑΙΚΤΗ (PlayerProfile)

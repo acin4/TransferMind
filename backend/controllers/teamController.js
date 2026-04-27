@@ -1,6 +1,7 @@
 import { parseInteger } from "../lib/http.js";
 import {
   getTeam,
+  getTeamComparisonMatrix,
   getTeamProfile,
   getTeamSeasons,
   getTeamStats,
@@ -15,6 +16,11 @@ export async function listTeamsController(req, res) {
 
 export async function getTeamsComparisonDatasetController(req, res) {
   const dataset = await getTeamsComparisonDataset();
+  res.status(200).json({ data: dataset });
+}
+
+export async function createTeamsComparisonDatasetController(req, res) {
+  const dataset = await getTeamComparisonMatrix(req.body);
   res.status(200).json({ data: dataset });
 }
 

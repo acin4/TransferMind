@@ -24,7 +24,23 @@
                   "  pm.expect(json).to.be.an(\"object\");",
                   "  pm.expect(Object.prototype.hasOwnProperty.call(json, \"data\") || Object.prototype.hasOwnProperty.call(json, \"error\")).to.equal(true);",
                   "});",
-                  "pm.test(\"Response has data\", function () { pm.expect(json).to.have.property(\"data\"); });"
+                  "pm.test(\"Response has data\", function () { pm.expect(json).to.have.property(\"data\"); });",
+                  "pm.test(\"Response has grouped standings contract\", function () {",
+                  "  pm.expect(json.data).to.be.an(\"object\");",
+                  "  pm.expect(json.data).to.have.property(\"groups\").that.is.an(\"array\");",
+                  "  pm.expect(json.data).to.have.property(\"selectedGroupKey\");",
+                  "});",
+                  "pm.test(\"Each group includes ids, priority, and sorted rows\", function () {",
+                  "  json.data.groups.forEach(function (group) {",
+                  "    pm.expect(group).to.include.keys([\"key\", \"label\", \"stage\", \"standingGroupId\", \"stageTournamentId\", \"priority\", \"rows\"]);",
+                  "    pm.expect(group.rows).to.be.an(\"array\");",
+                  "    for (let index = 1; index < group.rows.length; index += 1) {",
+                  "      const previous = group.rows[index - 1].position == null ? Number.MAX_SAFE_INTEGER : group.rows[index - 1].position;",
+                  "      const current = group.rows[index].position == null ? Number.MAX_SAFE_INTEGER : group.rows[index].position;",
+                  "      pm.expect(current).to.be.at.least(previous);",
+                  "    }",
+                  "  });",
+                  "});"
                 ]
               }
             }
@@ -112,6 +128,7 @@
                   "pm.test(\"Response has entries array\", function () {",
                   "  pm.expect(json.data).to.be.an(\"object\");",
                   "  pm.expect(json.data.entries).to.be.an(\"array\");",
+                  "  pm.expect(json.data.stats).to.be.an(\"array\");",
                   "});",
                   "if (json.data && Array.isArray(json.data.entries) && json.data.entries.length > 0) {",
                   "  pm.test(\"First entry uses frontend comparison shape\", function () {",
@@ -120,6 +137,13 @@
                   "    pm.expect(entry).to.not.have.property(\"team_api_id\");",
                   "    pm.expect(entry).to.not.have.property(\"season_api_id\");",
                   "    pm.expect(entry).to.not.have.property(\"tournament_api_id\");",
+                  "  });",
+                  "}",
+                  "if (json.data && Array.isArray(json.data.stats) && json.data.stats.length > 0) {",
+                  "  pm.test(\"First stat exposes comparison metadata\", function () {",
+                  "    const stat = json.data.stats[0];",
+                  "    pm.expect(stat).to.include.keys([\"key\", \"label\", \"category\", \"unit\", \"direction\"]);",
+                  "    pm.expect([\"positive\", \"negative\"]).to.include(stat.direction);",
                   "  });",
                   "}"
                 ]
@@ -140,7 +164,7 @@
                 "comparison-dataset"
               ]
             },
-            "description": "Ready-to-render Teams Comparison dataset. Entries use internal DB ids and do not expose external API ids."
+            "description": "Teams Comparison selector catalog. Entries use internal DB ids and do not expose external API ids. POST the same path with tournamentId, seasonId, teamIds, and statKeys to receive the backend-normalized comparison matrix."
           },
           "response": []
         },

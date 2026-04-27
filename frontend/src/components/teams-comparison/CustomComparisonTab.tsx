@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -14,10 +14,12 @@ import {
   YAxis,
 } from "recharts";
 import {
-  buildStatRanges,
+  getTeamComparisonMatrix,
+  type TeamComparisonPayload,
+} from "../../api/api";
+import {
   formatRawStatValue,
   formatRelativeScoreValue,
-  getNormalizedEntryStat,
   getRelativeScoreBand,
   getRelativeScoreBandTextColorClass,
   type TeamSeasonStatEntry,
@@ -44,12 +46,22 @@ type CustomComparisonTabProps = {
   statKeys: TeamStatKey[];
 };
 
+type ComparisonDisplayEntry = {
+  id: string;
+  label: string;
+  teamId: number;
+};
+
 export default function CustomComparisonTab({
   entries,
   statKeys,
 }: CustomComparisonTabProps) {
   const [selectedEntryIds, setSelectedEntryIds] = useState<string[]>([]);
   const [selectedStatKeys, setSelectedStatKeys] = useState<TeamStatKey[]>([]);
+  const [comparisonPayload, setComparisonPayload] =
+    useState<TeamComparisonPayload | null>(null);
+  const [comparisonLoading, setComparisonLoading] = useState(false);
+  const [comparisonError, setComparisonError] = useState<string | null>(null);
 
   const entryOptions = useMemo(
     () =>
@@ -85,52 +97,124 @@ export default function CustomComparisonTab({
     [selectedStatKeys, statKeys],
   );
 
-  const comparisonRangesByEntryId = useMemo(
-    () =>
-      new Map(
-        selectedEntries.map((selectedEntry) => {
-          const comparisonPool = entries.filter(
-            (entry) =>
-              entry.seasonId === selectedEntry.seasonId &&
-              entry.tournamentId === selectedEntry.tournamentId,
-          );
+  const contextError = useMemo(() => {
+    if (selectedEntries.length === 0) {
+      return null;
+    }
 
-          return [selectedEntry.id, buildStatRanges(comparisonPool)];
-        }),
-      ),
-    [entries, selectedEntries],
+    const [firstEntry] = selectedEntries;
+
+    if (!firstEntry.tournamentId || !firstEntry.seasonId) {
+      return "The selected entry is missing tournament or season context.";
+    }
+
+    const hasMixedContext = selectedEntries.some(
+      (entry) =>
+        entry.tournamentId !== firstEntry.tournamentId ||
+        entry.seasonId !== firstEntry.seasonId,
+    );
+
+    return hasMixedContext
+      ? "Select teams from one tournament and one season to generate a backend-normalized comparison."
+      : null;
+  }, [selectedEntries]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const [firstEntry] = selectedEntries;
+
+    setComparisonPayload(null);
+    setComparisonError(null);
+
+    if (
+      selectedEntries.length === 0 ||
+      selectedStats.length === 0 ||
+      contextError ||
+      !firstEntry?.tournamentId ||
+      !firstEntry?.seasonId
+    ) {
+      setComparisonLoading(false);
+      return;
+    }
+
+    setComparisonLoading(true);
+
+    getTeamComparisonMatrix({
+      tournamentId: firstEntry.tournamentId,
+      seasonId: firstEntry.seasonId,
+      teamIds: selectedEntries.map((entry) => entry.teamId),
+      statKeys: selectedStats,
+    })
+      .then((payload) => {
+        if (!cancelled) {
+          setComparisonPayload(payload);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          console.error("Failed to load team comparison matrix:", error);
+          setComparisonError(
+            error instanceof Error
+              ? error.message
+              : "Failed to load comparison data.",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setComparisonLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [contextError, selectedEntries, selectedStats]);
+
+  const displayEntries = useMemo<ComparisonDisplayEntry[]>(
+    () =>
+      (comparisonPayload?.entries ?? []).map((entry) => {
+        const sourceEntry = selectedEntries.find(
+          (candidate) => candidate.teamId === entry.teamId,
+        );
+
+        return {
+          id: String(entry.teamId),
+          label: sourceEntry?.label ?? entry.teamName,
+          teamId: entry.teamId,
+        };
+      }),
+    [comparisonPayload, selectedEntries],
   );
 
   const chartData = useMemo(
     () =>
-      selectedStats.map((statKey) => {
+      (comparisonPayload?.stats ?? []).map((stat) => {
         const row: Record<string, number | string | null> = {
-          statKey,
-          statLabel: getTeamStatMeta(statKey).label,
+          statKey: stat.key,
+          statLabel: stat.label,
         };
 
-        selectedEntries.forEach((entry) => {
-          row[entry.id] = Number(
-            getNormalizedEntryStat(
-              entry,
-              statKey,
-              comparisonRangesByEntryId.get(entry.id) ?? new Map(),
-            ).toFixed(2),
-          );
-          row[`${entry.id}__raw`] = entry.stats[statKey] ?? null;
+        comparisonPayload?.entries.forEach((entry) => {
+          const value = entry.values[stat.key];
+          row[String(entry.teamId)] =
+            value?.adjustedScore == null
+              ? null
+              : Number((value.adjustedScore * 100).toFixed(2));
+          row[`${entry.teamId}__raw`] = value?.rawValue ?? null;
         });
 
         return row;
       }),
-    [comparisonRangesByEntryId, selectedEntries, selectedStats],
+    [comparisonPayload],
   );
 
   const readyForComparison =
-    selectedEntries.length >= 1 && selectedStats.length >= 1;
+    selectedEntries.length >= 1 && selectedStats.length >= 1 && !contextError;
   const shouldRenderBarChart =
-    readyForComparison && selectedStats.length <= 2;
+    readyForComparison && Boolean(comparisonPayload) && selectedStats.length <= 2;
   const shouldRenderRadarChart =
-    readyForComparison && selectedStats.length > 2;
+    readyForComparison && Boolean(comparisonPayload) && selectedStats.length > 2;
 
   const toggleEntry = (entryId: string) => {
     setSelectedEntryIds((current) =>
@@ -199,8 +283,14 @@ export default function CustomComparisonTab({
           </div>
         </div>
 
-        {!readyForComparison ? (
+        {contextError ? (
+          <EmptyState message={contextError} />
+        ) : !readyForComparison ? (
           <EmptyState message="Select at least one team-season entry and one statistic to generate a comparison." />
+        ) : comparisonLoading ? (
+          <EmptyState message="Loading backend-normalized comparison data..." />
+        ) : comparisonError ? (
+          <EmptyState message={comparisonError} />
         ) : shouldRenderBarChart ? (
           <div className="h-[520px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -228,12 +318,12 @@ export default function CustomComparisonTab({
                 <Tooltip
                   content={
                     <BarComparisonTooltip
-                      selectedEntries={selectedEntries}
+                      selectedEntries={displayEntries}
                     />
                   }
                 />
                 <Legend />
-                {selectedEntries.map((entry, index) => (
+                {displayEntries.map((entry, index) => (
                   <Bar
                     key={entry.id}
                     dataKey={entry.id}
@@ -257,12 +347,12 @@ export default function CustomComparisonTab({
                 <Tooltip
                   content={
                     <RadarComparisonTooltip
-                      selectedEntries={selectedEntries}
+                      selectedEntries={displayEntries}
                     />
                   }
                 />
                 <Legend />
-                {selectedEntries.map((entry, index) => (
+                {displayEntries.map((entry, index) => (
                   <Radar
                     key={entry.id}
                     name={entry.label}
@@ -275,7 +365,9 @@ export default function CustomComparisonTab({
               </RadarChart>
             </ResponsiveContainer>
           </div>
-        ) : null}
+        ) : (
+          <EmptyState message="No comparison values were returned for this selection." />
+        )}
       </section>
     </div>
   );
@@ -308,7 +400,7 @@ function BarComparisonTooltip({
   active?: boolean;
   payload?: Array<{ value?: number; color?: string; dataKey?: string; payload?: Record<string, number | string | null> }>;
   label?: string;
-  selectedEntries: TeamSeasonStatEntry[];
+  selectedEntries: ComparisonDisplayEntry[];
 }) {
   if (!active || !payload || payload.length === 0) {
     return null;
@@ -323,8 +415,10 @@ function BarComparisonTooltip({
         {payload.map((item) => {
           const entry = selectedEntries.find((candidate) => candidate.id === item.dataKey);
           const rawValue = item.payload?.[`${item.dataKey}__raw`] as number | null | undefined;
-          const relativeScore = Number(item.value ?? 50);
-          const interpretation = getRelativeScoreBand(relativeScore);
+          const relativeScore =
+            typeof item.value === "number" ? item.value : null;
+          const interpretation =
+            relativeScore == null ? "N/A" : getRelativeScoreBand(relativeScore);
           const statKey = item.payload?.statKey as TeamStatKey;
 
           if (!entry) {
@@ -356,12 +450,20 @@ function BarComparisonTooltip({
                 Relative Score (0–100)
               </div>
               <div className="text-sm font-bold text-blue-300">
-                {formatRelativeScoreValue(relativeScore)}
+                {relativeScore == null
+                  ? "N/A"
+                  : formatRelativeScoreValue(relativeScore)}
               </div>
               <div className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-2">
                 Interpretation
               </div>
-              <div className={`text-sm font-bold ${getRelativeScoreBandTextColorClass(relativeScore)}`}>
+              <div
+                className={`text-sm font-bold ${
+                  relativeScore == null
+                    ? "text-slate-500"
+                    : getRelativeScoreBandTextColorClass(relativeScore)
+                }`}
+              >
                 {interpretation}
               </div>
             </div>
@@ -381,7 +483,7 @@ function RadarComparisonTooltip({
   active?: boolean;
   payload?: Array<{ value?: number; color?: string; dataKey?: string; payload?: Record<string, number | string | null> }>;
   label?: string;
-  selectedEntries: TeamSeasonStatEntry[];
+  selectedEntries: ComparisonDisplayEntry[];
 }) {
   if (!active || !payload || payload.length === 0) {
     return null;
@@ -398,8 +500,10 @@ function RadarComparisonTooltip({
         {payload.map((item) => {
           const entry = selectedEntries.find((candidate) => candidate.id === item.dataKey);
           const rawValue = item.payload?.[`${item.dataKey}__raw`] as number | null | undefined;
-          const relativeScore = Number(item.value ?? 50);
-          const interpretation = getRelativeScoreBand(relativeScore);
+          const relativeScore =
+            typeof item.value === "number" ? item.value : null;
+          const interpretation =
+            relativeScore == null ? "N/A" : getRelativeScoreBand(relativeScore);
 
           if (!entry) {
             return null;
@@ -430,12 +534,20 @@ function RadarComparisonTooltip({
                 Relative Score (0–100)
               </div>
               <div className="text-sm font-bold text-blue-300">
-                {formatRelativeScoreValue(relativeScore)}
+                {relativeScore == null
+                  ? "N/A"
+                  : formatRelativeScoreValue(relativeScore)}
               </div>
               <div className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-2">
                 Interpretation
               </div>
-              <div className={`text-sm font-bold ${getRelativeScoreBandTextColorClass(relativeScore)}`}>
+              <div
+                className={`text-sm font-bold ${
+                  relativeScore == null
+                    ? "text-slate-500"
+                    : getRelativeScoreBandTextColorClass(relativeScore)
+                }`}
+              >
                 {interpretation}
               </div>
             </div>

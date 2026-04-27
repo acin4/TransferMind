@@ -166,8 +166,10 @@ function selectDefaultGroupKey(groups, selection = {}) {
   const requestedGroup = hasRequestedGroup
     ? groups.find(
         (group) =>
-          group.standingGroupId === selection.standingGroupId &&
-          group.stageTournamentId === selection.stageTournamentId,
+          (selection.standingGroupId == null ||
+            group.standingGroupId === selection.standingGroupId) &&
+          (selection.stageTournamentId == null ||
+            group.stageTournamentId === selection.stageTournamentId),
       )
     : null;
   const preferredGroup =
@@ -185,6 +187,8 @@ function toPublicStandingsGroup(group) {
     key: group.key,
     label: group.label,
     stage: group.stage,
+    standingGroupId: group.standingGroupId,
+    stageTournamentId: group.stageTournamentId,
     priority: group.priority,
     rows: group.rows,
   };

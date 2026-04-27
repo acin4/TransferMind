@@ -1,0 +1,193 @@
+const TEAM_STATS_CATEGORIES = [
+  {
+    label: "Attack",
+    stats: [
+      ["goals_scored", "Goals Scored"],
+      ["assists", "Assists"],
+      ["shots", "Shots"],
+      ["shots_ontarget", "Shots On Target"],
+      ["shots_offtarget", "Shots Off Target"],
+      ["shots_blocked", "Shots Blocked"],
+      ["shots_ontarget_ratio", "Shots On Target Ratio", "percent"],
+      ["goalspershot_ratio", "Goals per Shot Ratio", "ratio"],
+      ["dribbles_success", "Successful Dribbles"],
+      ["dribbles_attempts", "Dribble Attempts"],
+      ["dribbles_success_ratio", "Dribble Success Ratio", "percent"],
+      ["big_chances_created", "Big Chances Created"],
+      ["big_chances", "Big Chances"],
+      ["big_chances_missed", "Big Chances Missed"],
+      ["big_chances_goal_ratio", "Big Chance Conversion Ratio", "percent"],
+      ["goals_inside_box", "Goals Inside Box"],
+      ["shots_inside_box", "Shots Inside Box"],
+      ["goals_inside_ratio", "Goals Inside Box Ratio", "percent"],
+      ["shots_inside_ratio", "Shots Inside Box Ratio", "percent"],
+      ["goals_outside_box", "Goals Outside Box"],
+      ["shots_outside_box", "Shots Outside Box"],
+      ["goals_outside_ratio", "Goals Outside Box Ratio", "percent"],
+      ["shots_outside_ratio", "Shots Outside Box Ratio", "percent"],
+      ["goals_header", "Headed Goals"],
+      ["goals_header_ratio", "Headed Goals Ratio", "percent"],
+      ["woodwork", "Hit Woodwork"],
+      ["fastbreak_total", "Fast Breaks"],
+      ["fastbreak_goals", "Fast Break Goals"],
+      ["fastbreak_shots", "Fast Break Shots"],
+      ["fastbreak_ratio", "Fast Break Ratio", "percent"],
+    ],
+  },
+  {
+    label: "Passing",
+    stats: [
+      ["avg_ball_possession", "Average Ball Possession", "percent"],
+      ["pass_total", "Total Passes"],
+      ["pass_acc", "Accurate Passes"],
+      ["pass_acc_percentage", "Pass Accuracy %", "percent"],
+      ["pass_ownhalf_total", "Own Half Passes"],
+      ["pass_ownhalf_acc", "Accurate Own Half Passes"],
+      ["pass_ownhalf_perc", "Own Half Pass Accuracy %", "percent"],
+      ["pass_opphalf_total", "Opposition Half Passes"],
+      ["pass_opphalf_acc", "Accurate Opposition Half Passes"],
+      ["pass_opphalf_perc", "Opposition Half Pass Accuracy %", "percent"],
+      ["longballs_total", "Total Long Balls"],
+      ["longballs_acc", "Accurate Long Balls"],
+      ["longballs_perc", "Long Ball Accuracy %", "percent"],
+      ["cross_total", "Total Crosses"],
+      ["cross_acc", "Accurate Crosses"],
+      ["cross_perc", "Cross Accuracy %", "percent"],
+    ],
+  },
+  {
+    label: "Defence",
+    stats: [
+      ["goals_conceded", "Goals Conceded"],
+      ["own_goals", "Own Goals"],
+      ["cleansheats", "Clean Sheets"],
+      ["tackles", "Tackles"],
+      ["interceptions", "Interceptions"],
+      ["clearences", "Clearances"],
+      ["duels_total", "Total Duels"],
+      ["duels_won", "Duels Won"],
+      ["duels_perc", "Duel Win %", "percent"],
+      ["ground_duels_total", "Ground Duels"],
+      ["ground_duels_won", "Ground Duels Won"],
+      ["ground_duels_perc", "Ground Duel Win %", "percent"],
+      ["aerial_duels_total", "Aerial Duels"],
+      ["aerial_duels_won", "Aerial Duels Won"],
+      ["aerial_duels_perc", "Aerial Duel Win %", "percent"],
+      ["clearences_offline", "Goal-Line Clearances"],
+      ["saves", "Saves"],
+      ["lastman_tackles", "Last-Man Tackles"],
+      ["errors_to_goals", "Errors Leading to Goals"],
+      ["errors_to_shot", "Errors Leading to Shots"],
+    ],
+  },
+  {
+    label: "Set Pieces / Discipline",
+    stats: [
+      ["penalty_scored", "Penalties Scored"],
+      ["penalty_taken", "Penalties Taken"],
+      ["penalty_ratio", "Penalty Conversion %", "percent"],
+      ["freekick_goals", "Free-Kick Goals"],
+      ["freekick_taken", "Free-Kicks Taken"],
+      ["freekick_ratio", "Free-Kick Conversion %", "percent"],
+      ["fouls", "Fouls"],
+      ["yellowcards", "Yellow Cards"],
+      ["yellowcards_second", "Second Yellow Red Cards"],
+      ["redcards", "Red Cards"],
+      ["offsides", "Offsides"],
+    ],
+  },
+  {
+    label: "Against",
+    stats: [
+      ["possession_lost", "Possession Lost"],
+      ["shots_against", "Shots Against"],
+      ["shots_ontarget_against", "Shots On Target Against"],
+      ["shots_offtarget_against", "Shots Off Target Against"],
+      ["shots_blocked_against", "Shots Blocked Against"],
+      ["shots_ontarget_against_ratio", "Shots On Target Against Ratio", "percent"],
+      ["goalspershot_against_ratio", "Goals per Shot Against Ratio", "ratio"],
+      ["big_chances_against", "Big Chances Against"],
+      ["big_chances_against_created", "Big Chances Created Against"],
+      ["big_chances_against_missed", "Big Chances Missed Against"],
+      ["big_chances_goal_against_ratio", "Goals per Big Chance Against Ratio", "ratio"],
+      ["woodwork_against", "Woodwork Against"],
+      ["penalty_commited", "Penalties Committed"],
+      ["penalty_conceded", "Penalties Conceded"],
+      ["pass_against_total", "Passes Against"],
+      ["pass_against_acc", "Accurate Passes Against"],
+      ["pass_against_ratio", "Pass Accuracy Against %", "percent"],
+      ["finalthirdpass_against_total", "Final Third Passes Against"],
+      ["finalthirdpass_against_acc", "Accurate Final Third Passes Against"],
+      ["finalthirdpass_against_ratio", "Final Third Pass Accuracy Against %", "percent"],
+      ["opphalfpass_against_total", "Opposition Half Passes Against"],
+      ["opphalfpass_against_acc", "Accurate Opposition Half Passes Against"],
+      ["opphalfpass_against_ratio", "Opposition Half Pass Accuracy Against %", "percent"],
+      ["ownhalfpass_against_total", "Own Half Passes Against"],
+      ["ownhalfpass_against_acc", "Accurate Own Half Passes Against"],
+      ["ownhalfpass_against_ratio", "Own Half Pass Accuracy Against %", "percent"],
+      ["keypass_against", "Key Passes Against"],
+      ["longballs_against_total", "Long Balls Against"],
+      ["longballs_against_acc", "Accurate Long Balls Against"],
+      ["longballs_against_ratio", "Long Ball Accuracy Against %", "percent"],
+      ["cross_against_total", "Crosses Against"],
+      ["cross_against_acc", "Accurate Crosses Against"],
+      ["cross_against_ratio", "Cross Accuracy Against %", "percent"],
+      ["dribbles_against_total", "Dribble Attempts Against"],
+      ["dribbles_against_acc", "Successful Dribbles Against"],
+      ["dribbles_against_ratio", "Dribble Success Against %", "percent"],
+      ["tackles_against", "Tackles Against"],
+      ["clearences_against", "Clearances Against"],
+      ["interceptions_against", "Interceptions Against"],
+      ["corners_against", "Corners Against"],
+      ["offsides_against", "Offsides Against"],
+      ["errors_to_goals_against", "Errors Leading to Goals Against"],
+      ["errors_to_shot_against", "Errors Leading to Shots Against"],
+      ["yellowcards_against", "Yellow Cards Against"],
+      ["redcards_against", "Red Cards Against"],
+    ],
+  },
+];
+
+const NEGATIVE_TEAM_STATS = new Set([
+  "goals_conceded",
+  "own_goals",
+  "errors_to_goals",
+  "errors_to_shot",
+  "penalty_commited",
+  "penalty_conceded",
+  "fouls",
+  "yellowcards",
+  "yellowcards_second",
+  "redcards",
+  "offsides",
+  "possession_lost",
+]);
+
+const TEAM_STAT_METADATA = new Map();
+
+for (const category of TEAM_STATS_CATEGORIES) {
+  for (const [key, label, unit = null] of category.stats) {
+    TEAM_STAT_METADATA.set(key, {
+      key,
+      label,
+      category: category.label,
+      unit,
+      direction:
+        NEGATIVE_TEAM_STATS.has(key) || key.includes("against")
+          ? "negative"
+          : "positive",
+    });
+  }
+}
+
+export const TEAM_COMPARISON_STAT_KEYS = [...TEAM_STAT_METADATA.keys()];
+
+export function getTeamStatMetadata(statKey) {
+  return TEAM_STAT_METADATA.get(statKey) ?? null;
+}
+
+export function listTeamStatMetadata() {
+  return TEAM_COMPARISON_STAT_KEYS.map((statKey) =>
+    getTeamStatMetadata(statKey),
+  );
+}
