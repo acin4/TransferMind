@@ -1,4 +1,5 @@
 import type { TeamSeasonStatEntry } from "../utils/teamsComparison";
+import type { TeamStats } from "../teamStatsConfig";
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
@@ -23,6 +24,71 @@ export type TeamListItem = {
 export type TeamProfileData = TeamListItem & {
   tournament_id?: number | null;
   tournament_name?: string | null;
+};
+
+export type TeamProfileSeason = {
+  season_id: number;
+  season_api_id?: number | null;
+  season_name?: string | null;
+  tournament_id?: number | null;
+  tournament_name?: string | null;
+  is_current: boolean;
+};
+
+export type TeamProfilePlayer = {
+  id: number | string;
+  name: string;
+  photo_url?: string | null;
+  country?: { name?: string | null } | null;
+  nationality?: string | null;
+  position?: string | null;
+  date_of_birth?: string | null;
+  [key: string]: unknown;
+};
+
+export type TeamStandingRow = {
+  id?: number | string | null;
+  team_id: number | string | null;
+  team_name?: string | null;
+  position?: number | null;
+  matches?: number | null;
+  wins?: number | null;
+  draws?: number | null;
+  losses?: number | null;
+  points?: number | null;
+  standing_group_id?: number | string | null;
+  standing_group_name?: string | null;
+  stage_tournament_id?: number | string | null;
+  stage_tournament_name?: string | null;
+  stage_label?: string | null;
+  [key: string]: unknown;
+};
+
+export type TeamProfileStandingsGroup = {
+  key?: string;
+  standingGroupId: number | string | null;
+  stageTournamentId: number | string | null;
+  stage_name?: string | null;
+  group_name?: string | null;
+  stage_label?: string | null;
+  rows: TeamStandingRow[];
+};
+
+export type TeamProfilePayload = {
+  team: TeamProfileData;
+  squad: TeamProfilePlayer[];
+  seasons: TeamProfileSeason[];
+  selectedSeason: TeamProfileSeason | null;
+  stats: TeamStats | null;
+  standings: {
+    groups: TeamProfileStandingsGroup[];
+    rows: TeamStandingRow[];
+  };
+  selectedStandingsGroup: TeamProfileStandingsGroup | null;
+  miniTable: {
+    rows: TeamStandingRow[];
+    teamRow: TeamStandingRow | null;
+  };
 };
 
 export type TeamsComparisonDataset = {
@@ -87,6 +153,20 @@ export const getTeam = async (id: string | number) => {
 
 export const getTeamSeasons = async (teamId: number | string) => {
   return request(`/api/teams/${teamId}/seasons`);
+};
+
+export const getTeamProfile = async (
+  teamId: number | string,
+  seasonId?: number | string,
+): Promise<TeamProfilePayload> => {
+  const params = new URLSearchParams();
+
+  if (seasonId !== undefined) {
+    params.set("seasonId", String(seasonId));
+  }
+
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return request(`/api/teams/${teamId}/profile${suffix}`);
 };
 
 export const getTeamStats = async (

@@ -11,6 +11,7 @@ import {
 } from "../controllers/standingsController.js";
 import {
   getTeamController,
+  getTeamProfileController,
   getTeamsComparisonDatasetController,
   listTeamSeasonsController,
   getTeamStatsController,
@@ -24,6 +25,7 @@ router.get(
   "/teams/comparison-dataset",
   asyncHandler(getTeamsComparisonDatasetController),
 );
+router.get("/teams/:id/profile", asyncHandler(getTeamProfileController));
 router.get("/teams/:id", asyncHandler(getTeamController));
 router.get("/teams/:id/seasons", asyncHandler(listTeamSeasonsController));
 router.get("/teams/:id/stats", asyncHandler(getTeamStatsController));

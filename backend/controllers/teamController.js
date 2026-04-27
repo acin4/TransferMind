@@ -1,6 +1,7 @@
 import { parseInteger } from "../lib/http.js";
 import {
   getTeam,
+  getTeamProfile,
   getTeamSeasons,
   getTeamStats,
   getTeamsComparisonDataset,
@@ -27,6 +28,17 @@ export async function getTeamController(req, res) {
   }
 
   res.status(200).json({ data: team });
+}
+
+export async function getTeamProfileController(req, res) {
+  const id = parseInteger(req.params.id, "id");
+  const seasonId =
+    req.query.seasonId !== undefined
+      ? parseInteger(req.query.seasonId, "seasonId")
+      : undefined;
+  const profile = await getTeamProfile(id, seasonId);
+
+  res.status(200).json({ data: profile });
 }
 
 export async function getTeamStatsController(req, res) {

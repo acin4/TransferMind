@@ -1,12 +1,19 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   type TeamProfileData,
-  getTeam,
-  getTeamSeasons,
-  getTeamStats,
-  getPlayers,
-  getStandings,
+  type TeamProfilePayload,
+  type TeamProfilePlayer,
+  type TeamProfileSeason,
+  type TeamProfileStandingsGroup,
+  type TeamStandingRow,
+  getTeamProfile,
 } from "../api/api";
 import {
   ArrowLeft,
@@ -77,124 +84,24 @@ function getTeamStadium(team: TeamProfileData | null) {
   return null;
 }
 
-function normalizeStageKey(value: unknown) {
-  if (value == null) {
-    return null;
-  }
-
-  const trimmed = String(value).trim();
-  return trimmed ? trimmed.toLocaleLowerCase() : null;
-}
-
-function getStandingGroupKey(row: any) {
-  return [
-    row.stage_tournament_id ?? "stage:none",
-    row.standing_group_id ?? "group:none",
-    normalizeStageKey(row.stage_label) ?? "label:none",
-  ].join("::");
-}
-
-function getTeamProfileStagePriority(row: any) {
-  const label = normalizeStageKey(row.stage_label);
-
-  if (!label) {
-    return 50;
-  }
-
-  if (label.includes("championship")) return 0;
-  if (label.includes("playoff") || label.includes("play-off")) return 1;
-  if (label.includes("playout") || label.includes("play-out")) return 2;
-  if (label.includes("relegation")) return 3;
-  if (label.includes("regular")) return 10;
-
-  return 5;
-}
-
-function dedupeStandingsRowsByTeam(rows: any[]) {
-  const rowsByTeamId = new Map<string, any>();
-
-  rows.forEach((row) => {
-    const teamKey = row.team_id == null ? `row:${row.id}` : String(row.team_id);
-    const existing = rowsByTeamId.get(teamKey);
-
-    if (
-      !existing ||
-      (row.position ?? Number.MAX_SAFE_INTEGER) <
-        (existing.position ?? Number.MAX_SAFE_INTEGER)
-    ) {
-      rowsByTeamId.set(teamKey, row);
-    }
-  });
-
-  return Array.from(rowsByTeamId.values()).sort(
-    (a, b) =>
-      (a.position ?? Number.MAX_SAFE_INTEGER) -
-      (b.position ?? Number.MAX_SAFE_INTEGER),
-  );
-}
-
-function selectTeamProfileStandingsRows(rows: any[], teamId: string | number) {
-  const groups = new Map<string, any[]>();
-
-  rows.forEach((row) => {
-    const groupKey = getStandingGroupKey(row);
-    groups.set(groupKey, [...(groups.get(groupKey) ?? []), row]);
-  });
-
-  const candidateGroups = Array.from(groups.values()).filter((groupRows) =>
-    groupRows.some((row) => String(row.team_id) === String(teamId)),
-  );
-
-  if (candidateGroups.length === 0) {
-    return {
-      rows: [],
-      teamRow: null,
-      standingGroupId: null,
-      stageTournamentId: null,
-    };
-  }
-
-  const selectedGroup =
-    candidateGroups.sort((a, b) => {
-      const priorityDelta =
-        getTeamProfileStagePriority(a[0]) - getTeamProfileStagePriority(b[0]);
-
-      if (priorityDelta !== 0) {
-        return priorityDelta;
-      }
-
-      return (
-        Math.max(...b.map((row) => Number(row.id ?? 0))) -
-        Math.max(...a.map((row) => Number(row.id ?? 0)))
-      );
-    })[0] ?? [];
-
-  const dedupedRows = dedupeStandingsRowsByTeam(selectedGroup);
-
-  return {
-    rows: dedupedRows,
-    teamRow:
-      dedupedRows.find((row) => String(row.team_id) === String(teamId)) ?? null,
-    standingGroupId: selectedGroup[0]?.standing_group_id ?? null,
-    stageTournamentId: selectedGroup[0]?.stage_tournament_id ?? null,
-  };
-}
-
 export default function TeamProfile() {
   const { id } = useParams();
 
   const [team, setTeam] = useState<TeamProfileData | null>(null);
   const [stats, setStats] = useState<TeamStats | null>(null);
-  const [teamSquad, setTeamSquad] = useState<any[]>([]);
-  const [availableSeasons, setAvailableSeasons] = useState<any[]>([]);
+  const [teamSquad, setTeamSquad] = useState<TeamProfilePlayer[]>([]);
+  const [availableSeasons, setAvailableSeasons] = useState<
+    TeamProfileSeason[]
+  >([]);
   const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null);
+  const [loadedSeasonId, setLoadedSeasonId] = useState<number | null>(null);
 
-  const [teamStanding, setTeamStanding] = useState<any>(null);
-  const [miniStandings, setMiniStandings] = useState<any[]>([]);
-  const [selectedStandingsGroup, setSelectedStandingsGroup] = useState<{
-    standingGroupId: number | string | null;
-    stageTournamentId: number | string | null;
-  } | null>(null);
+  const [teamStanding, setTeamStanding] = useState<TeamStandingRow | null>(
+    null,
+  );
+  const [miniStandings, setMiniStandings] = useState<TeamStandingRow[]>([]);
+  const [selectedStandingsGroup, setSelectedStandingsGroup] =
+    useState<TeamProfileStandingsGroup | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [seasonLoading, setSeasonLoading] = useState(false);
@@ -206,10 +113,20 @@ export default function TeamProfile() {
   const [activeStatsCategory, setActiveStatsCategory] =
     useState<TeamStatsCategoryId>(TEAM_STATS_CATEGORIES[0].id);
 
+  const applyProfileData = useCallback((profile: TeamProfilePayload) => {
+    setTeam(profile.team);
+    setStats(profile.stats || null);
+    setTeamSquad(profile.squad || []);
+    setAvailableSeasons(profile.seasons || []);
+    setTeamStanding(profile.miniTable?.teamRow ?? null);
+    setMiniStandings(profile.miniTable?.rows ?? []);
+    setSelectedStandingsGroup(profile.selectedStandingsGroup ?? null);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
-    const fetchStaticData = async () => {
+    const fetchProfile = async () => {
       try {
         if (!id) {
           setLoading(false);
@@ -227,29 +144,18 @@ export default function TeamProfile() {
         setSelectedStandingsGroup(null);
         setAvailableSeasons([]);
         setSelectedSeasonId(null);
+        setLoadedSeasonId(null);
 
-        const [fetchedTeam, fetchedPlayers, fetchedSeasons] = await Promise.all(
-          [getTeam(id), getPlayers(id), getTeamSeasons(id)],
-        );
+        const profile = await getTeamProfile(id);
 
         if (cancelled) {
           return;
         }
 
-        setTeam(fetchedTeam);
-        setTeamSquad(fetchedPlayers || []);
-        setAvailableSeasons(fetchedSeasons || []);
-
-        const defaultSeason =
-          fetchedSeasons?.find((season: any) => season.is_current) ??
-          fetchedSeasons?.[0] ??
-          null;
-
-        setSelectedSeasonId(defaultSeason?.season_id ?? null);
-
-        if (!fetchedTeam?.tournament_id || !defaultSeason?.season_id) {
-          setLoading(false);
-        }
+        applyProfileData(profile);
+        setSelectedSeasonId(profile.selectedSeason?.season_id ?? null);
+        setLoadedSeasonId(profile.selectedSeason?.season_id ?? null);
+        setLoading(false);
       } catch (err) {
         console.error("Σφάλμα κατά τη φόρτωση του Profile:", err);
         if (!cancelled) {
@@ -259,35 +165,23 @@ export default function TeamProfile() {
       }
     };
 
-    fetchStaticData();
+    fetchProfile();
 
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [applyProfileData, id]);
 
   useEffect(() => {
     let cancelled = false;
 
     const fetchSeasonData = async () => {
-      if (!team) {
-        return;
-      }
-
-      const selectedSeasonContext = availableSeasons.find(
-        (season: any) => season.season_id === selectedSeasonId,
-      );
-      const standingsTournamentId =
-        selectedSeasonContext?.tournament_id ?? team.tournament_id;
-
-      if (!id || !standingsTournamentId || !selectedSeasonId) {
-        setStats(null);
-        setTeamStanding(null);
-        setMiniStandings([]);
-        setSelectedStandingsGroup(null);
-        setSeasonLoading(false);
-        setSeasonError(null);
-        setLoading(false);
+      if (
+        !id ||
+        !team ||
+        !selectedSeasonId ||
+        selectedSeasonId === loadedSeasonId
+      ) {
         return;
       }
 
@@ -295,46 +189,15 @@ export default function TeamProfile() {
         setSeasonLoading(true);
         setSeasonError(null);
 
-        const [fetchedStats, standings] = await Promise.all([
-          getTeamStats(id, selectedSeasonId),
-          getStandings(standingsTournamentId, selectedSeasonId),
-        ]);
+        const profile = await getTeamProfile(id, selectedSeasonId);
 
         if (cancelled) {
           return;
         }
 
-        setStats(fetchedStats || null);
-
-        const selectedStandings = selectTeamProfileStandingsRows(
-          standings || [],
-          id,
-        );
-        const standingsRows = selectedStandings.rows;
-        const teamIndex = standingsRows.findIndex(
-          (row: any) => String(row.team_id) === String(id),
-        );
-
-        if (teamIndex === -1) {
-          setTeamStanding(null);
-          setMiniStandings([]);
-          setSelectedStandingsGroup(null);
-          return;
-        }
-
-        let startIdx = Math.max(0, teamIndex - 1);
-        let endIdx = Math.min(standingsRows.length, startIdx + 4);
-
-        if (endIdx - startIdx < 4) {
-          startIdx = Math.max(0, endIdx - 4);
-        }
-
-        setTeamStanding(selectedStandings.teamRow);
-        setMiniStandings(standingsRows.slice(startIdx, endIdx));
-        setSelectedStandingsGroup({
-          standingGroupId: selectedStandings.standingGroupId,
-          stageTournamentId: selectedStandings.stageTournamentId,
-        });
+        applyProfileData(profile);
+        setSelectedSeasonId(profile.selectedSeason?.season_id ?? null);
+        setLoadedSeasonId(profile.selectedSeason?.season_id ?? null);
       } catch (err) {
         console.error("Σφάλμα κατά τη φόρτωση δεδομένων σεζόν:", err);
 
@@ -358,12 +221,12 @@ export default function TeamProfile() {
     return () => {
       cancelled = true;
     };
-  }, [availableSeasons, id, selectedSeasonId, team]);
+  }, [applyProfileData, id, loadedSeasonId, selectedSeasonId, team]);
 
   const selectedSeason = useMemo(
     () =>
       availableSeasons.find(
-        (season: any) => season.season_id === selectedSeasonId,
+        (season) => season.season_id === selectedSeasonId,
       ) ?? null,
     [availableSeasons, selectedSeasonId],
   );
@@ -431,7 +294,7 @@ export default function TeamProfile() {
     selectedCompetitionName,
   ]);
 
-  const getAge = (dobString: string) => {
+  const getAge = (dobString: string | null | undefined) => {
     if (!dobString) return "-";
     const dob = new Date(dobString);
     const diff = Date.now() - dob.getTime();
@@ -508,7 +371,7 @@ export default function TeamProfile() {
               {availableSeasons.length === 0 ? (
                 <option value="">No Seasons</option>
               ) : (
-                availableSeasons.map((season: any) => (
+                availableSeasons.map((season) => (
                   <option key={season.season_id} value={season.season_id}>
                     {season.season_name || `Season ${season.season_id}`}
                   </option>
@@ -572,7 +435,7 @@ export default function TeamProfile() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/50">
-                      {miniStandings.map((row: any) => {
+                      {miniStandings.map((row) => {
                         const isCurrentTeam =
                           String(row.team_id) === String(id);
                         return (
@@ -700,7 +563,7 @@ export default function TeamProfile() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/50">
-                      {teamSquad.map((player: any) => (
+                      {teamSquad.map((player) => (
                         <tr
                           key={player.id}
                           className="hover:bg-slate-800/40 transition-colors group"
