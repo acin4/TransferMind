@@ -4,12 +4,16 @@ import {
   ChevronRight, Activity, X, LineChart, Database 
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { getTeams, getPlayers } from "../api/api"; 
+import {
+  getSearchResults,
+  type SearchPlayerResult,
+  type SearchTeamResult,
+} from "../api/api";
 
 export default function Home() {
   const [query, setQuery] = useState("");
-  const [players, setPlayers] = useState<any[]>([]);
-  const [teams, setTeams] = useState<any[]>([]);
+  const [players, setPlayers] = useState<SearchPlayerResult[]>([]);
+  const [teams, setTeams] = useState<SearchTeamResult[]>([]);
   const [error, setError] = useState<string | null>(null);
   
   // 🟢 ΝΕΟ STATE ΓΙΑ ΤΟ POP-UP
@@ -18,34 +22,43 @@ export default function Home() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    const trimmedQuery = query.trim();
+
+    if (!trimmedQuery) {
+      setPlayers([]);
+      setTeams([]);
+      setError(null);
+      return;
+    }
+
+    let cancelled = false;
     const fetchData = async () => {
       try {
-        const [playersData, teamsData] = await Promise.all([
-          getPlayers(),
-          getTeams(),
-        ]);
+        const results = await getSearchResults(trimmedQuery);
 
-        setPlayers(playersData || []);
-        setTeams(teamsData || []);
-        setError(null);
+        if (!cancelled) {
+          setPlayers(results?.players ?? []);
+          setTeams(results?.teams ?? []);
+          setError(null);
+        }
       } catch (err) {
         console.error(err);
+        if (cancelled) {
+          return;
+        }
         setPlayers([]);
         setTeams([]);
         setError("Αδυναμία φόρτωσης δεδομένων.");
       }
     };
 
-    fetchData();
-  }, []);
+    const timeoutId = window.setTimeout(fetchData, 300);
 
-  const filteredPlayers = players.filter((p) =>
-    p?.name?.toLowerCase().includes(query.toLowerCase())
-  );
-
-  const filteredTeams = teams.filter((t) =>
-    t?.name?.toLowerCase().includes(query.toLowerCase())
-  );
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [query]);
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-6 font-sans relative py-32 text-slate-100 overflow-x-hidden">
@@ -82,16 +95,16 @@ export default function Home() {
         {/* RESULTS DROPDOWN */}
         {query && (
           <div className="absolute top-[110%] left-0 w-full mt-4 bg-slate-900/95 backdrop-blur-xl border border-slate-800 rounded-[2rem] shadow-2xl max-h-[400px] overflow-y-auto z-50 custom-scrollbar">
-            {filteredPlayers.length === 0 && filteredTeams.length === 0 && (
+            {players.length === 0 && teams.length === 0 && (
               <div className="p-12 text-center text-slate-500 font-medium text-lg uppercase tracking-widest italic">
                 Δεν βρέθηκαν αποτελέσματα για "{query}"
               </div>
             )}
 
-            {filteredTeams.length > 0 && (
+            {teams.length > 0 && (
               <div className="p-6">
                 <h3 className="text-xs font-black text-center text-slate-500 uppercase tracking-[0.3em] px-4 pb-4 pt-2">Ομαδες</h3>
-                {filteredTeams.map((t) => (
+                {teams.map((t) => (
                   <div
                     key={t.id}
                     onClick={() => navigate(`/team/${t.id}`)}
@@ -106,14 +119,14 @@ export default function Home() {
               </div>
             )}
 
-            {filteredTeams.length > 0 && filteredPlayers.length > 0 && (
+            {teams.length > 0 && players.length > 0 && (
               <div className="h-px bg-slate-800/50 mx-8 my-2"></div>
             )}
 
-            {filteredPlayers.length > 0 && (
+            {players.length > 0 && (
               <div className="p-6">
                 <h3 className="text-xs font-black text-center text-slate-500 uppercase tracking-[0.3em] px-4 pb-4 pt-2">Παικτες</h3>
-                {filteredPlayers.map((p) => (
+                {players.map((p) => (
                   <div
                     key={p.id}
                     onClick={() => navigate(`/player/${p.id}`)}

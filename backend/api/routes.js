@@ -18,8 +18,11 @@ import {
   getTeamStatsController,
   listTeamsController,
 } from "../controllers/teamController.js";
+import { searchController } from "../controllers/searchController.js";
 
 const router = Router();
+
+router.get("/search", asyncHandler(searchController));
 
 router.get("/teams", asyncHandler(listTeamsController));
 router.get(

@@ -445,6 +445,50 @@ export async function listTeamMappings() {
   return data ?? [];
 }
 
+export async function listTeamMappingsByReferences(teamReferences) {
+  const references = [
+    ...new Set(
+      (teamReferences ?? [])
+        .map((reference) => Number(reference))
+        .filter((reference) => Number.isFinite(reference)),
+    ),
+  ];
+
+  if (references.length === 0) {
+    return [];
+  }
+
+  const [teamsByInternalId, teamsByApiId] = await Promise.all([
+    supabase
+      .from("teams")
+      .select("id, api_id, name")
+      .in("id", references),
+    supabase
+      .from("teams")
+      .select("id, api_id, name")
+      .in("api_id", references),
+  ]);
+
+  if (teamsByInternalId.error) {
+    throw teamsByInternalId.error;
+  }
+
+  if (teamsByApiId.error) {
+    throw teamsByApiId.error;
+  }
+
+  const teamsById = new Map();
+
+  for (const team of [
+    ...(teamsByInternalId.data ?? []),
+    ...(teamsByApiId.data ?? []),
+  ]) {
+    teamsById.set(team.id, team);
+  }
+
+  return [...teamsById.values()];
+}
+
 export async function getLatestTeamStatsByApiId(apiId) {
   const { data, error } = await supabase
     .from("team_stats")

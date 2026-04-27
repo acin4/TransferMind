@@ -158,6 +158,30 @@ export type TeamComparisonMatrixRequest = {
   statKeys: TeamStatKey[];
 };
 
+export type SearchTeamResult = {
+  id: number;
+  name: string;
+  logo: string | null;
+  country: string | null;
+  city: string | null;
+  stadium: string | null;
+};
+
+export type SearchPlayerResult = {
+  id: number;
+  name: string;
+  photo: string | null;
+  position: string | null;
+  nationality: string | null;
+  teamId: number | null;
+  teamName: string | null;
+};
+
+export type SearchPayload = {
+  teams: SearchTeamResult[];
+  players: SearchPlayerResult[];
+};
+
 async function request(path: string, options?: RequestInit) {
   const response = await fetch(`${apiBaseUrl}${path}`, options);
   const payload = await response.json().catch(() => null);
@@ -185,6 +209,13 @@ export const getPlayers = async (teamId?: number | string) => {
 
   const suffix = params.toString() ? `?${params.toString()}` : "";
   return request(`/api/players${suffix}`);
+};
+
+export const getSearchResults = async (
+  query: string,
+): Promise<SearchPayload> => {
+  const params = new URLSearchParams({ q: query });
+  return request(`/api/search?${params.toString()}`);
 };
 
 // ==========================================
