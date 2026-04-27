@@ -13,7 +13,18 @@ export async function listCurrentSeasonsController(req, res) {
 export async function getStandingsController(req, res) {
   const tournamentId = parseInteger(req.query.tournamentId, "tournamentId");
   const seasonId = parseInteger(req.query.seasonId, "seasonId");
-  const standings = await getStandings(tournamentId, seasonId);
+  const standingGroupId =
+    req.query.standingGroupId !== undefined
+      ? parseInteger(req.query.standingGroupId, "standingGroupId")
+      : null;
+  const stageTournamentId =
+    req.query.stageTournamentId !== undefined
+      ? parseInteger(req.query.stageTournamentId, "stageTournamentId")
+      : null;
+  const standings = await getStandings(tournamentId, seasonId, {
+    standingGroupId,
+    stageTournamentId,
+  });
 
   res.status(200).json({ data: standings });
 }

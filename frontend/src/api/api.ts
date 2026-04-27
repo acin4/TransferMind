@@ -55,6 +55,9 @@ export type TeamStandingRow = {
   wins?: number | null;
   draws?: number | null;
   losses?: number | null;
+  goals_for?: number | null;
+  goals_against?: number | null;
+  goal_diff?: number | null;
   points?: number | null;
   standing_group_id?: number | string | null;
   standing_group_name?: string | null;
@@ -62,6 +65,24 @@ export type TeamStandingRow = {
   stage_tournament_name?: string | null;
   stage_label?: string | null;
   [key: string]: unknown;
+};
+
+export type StandingsGroup = {
+  key: string;
+  label: string;
+  stage: string | null;
+  priority: number;
+  rows: TeamStandingRow[];
+};
+
+export type StandingsPayload = {
+  groups: StandingsGroup[];
+  selectedGroupKey: string | null;
+};
+
+export type StandingsOptions = {
+  standingGroupId?: number | null;
+  stageTournamentId?: number | null;
 };
 
 export type TeamProfileStandingsGroup = {
@@ -135,11 +156,23 @@ export const getTournamentSeasons = async (tournamentId: number) => {
   return request(`/api/tournaments/${tournamentId}/seasons`);
 };
 
-export const getStandings = async (tournamentId: number, seasonId: number) => {
+export const getStandings = async (
+  tournamentId: number,
+  seasonId: number,
+  options: StandingsOptions = {},
+): Promise<StandingsPayload> => {
   const params = new URLSearchParams({
     tournamentId: String(tournamentId),
     seasonId: String(seasonId),
   });
+
+  if (options.standingGroupId != null) {
+    params.set("standingGroupId", String(options.standingGroupId));
+  }
+
+  if (options.stageTournamentId != null) {
+    params.set("stageTournamentId", String(options.stageTournamentId));
+  }
 
   return request(`/api/standings?${params.toString()}`);
 };

@@ -1,6 +1,6 @@
 import { HttpError } from "../lib/http.js";
 import { getPlayers } from "./playerService.js";
-import { getStandings } from "./standingsService.js";
+import { getStandingsRows } from "./standingsService.js";
 import {
   getLatestTeamStatsByApiId,
   getTeamById,
@@ -306,7 +306,7 @@ async function getOptionalStandings(tournamentId, seasonId) {
   }
 
   try {
-    return await getStandings(tournamentId, seasonId);
+    return await getStandingsRows(tournamentId, seasonId);
   } catch (error) {
     if (isNotFoundError(error)) {
       return [];

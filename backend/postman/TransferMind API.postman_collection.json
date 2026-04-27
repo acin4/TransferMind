@@ -501,7 +501,7 @@
                 }
               ]
             },
-            "description": "Standings by internal tournament and season ids."
+            "description": "Grouped standings by internal tournament and season ids. Returns data.groups and data.selectedGroupKey; optional standingGroupId and stageTournamentId query params preserve legacy default-selection links."
           },
           "response": []
         }

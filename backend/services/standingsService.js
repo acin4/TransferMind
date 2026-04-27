@@ -7,6 +7,33 @@ import {
 } from "../repositories/standingsRepository.js";
 import { listTeamMappings } from "../repositories/teamRepository.js";
 
+const STAGE_ORDER = [
+  "Regular Season",
+  "Championship Round",
+  "Playoffs",
+  "Playout",
+  "Relegation Round",
+  "Qualifying",
+];
+
+const STAGE_PRIORITY = new Map(
+  STAGE_ORDER.map((label, index) => [normalizeStageKey(label), index]),
+);
+
+function normalizeStageKey(value) {
+  if (value == null) {
+    return null;
+  }
+
+  const trimmed = String(value).trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  return trimmed.toLocaleLowerCase();
+}
+
 function normalizeStageLabel(...values) {
   for (const value of values) {
     if (value == null) {
@@ -23,6 +50,146 @@ function normalizeStageLabel(...values) {
   return null;
 }
 
+function getStandingsGroupKey(row) {
+  const stageTournamentKey =
+    row.stage_tournament_id == null
+      ? `stage-name:${normalizeStageKey(row.stage_tournament_name) ?? "none"}`
+      : `stage:${row.stage_tournament_id}`;
+  const standingGroupKey =
+    row.standing_group_id == null
+      ? `group-name:${normalizeStageKey(row.standing_group_name) ?? "none"}`
+      : `group:${row.standing_group_id}`;
+
+  return `${stageTournamentKey}::${standingGroupKey}`;
+}
+
+function getStandingsGroupLabel(row) {
+  const stageName = row.stage_tournament_name?.trim();
+  const groupName = row.standing_group_name?.trim();
+
+  if (stageName && groupName && stageName !== groupName) {
+    return `${stageName} - ${groupName}`;
+  }
+
+  return row.stage_label || stageName || groupName || "Standings";
+}
+
+function dedupeStandingsRowsByTeam(rows) {
+  const rowsByTeamId = new Map();
+
+  rows.forEach((row) => {
+    const teamKey = row.team_id == null ? `row:${row.id}` : String(row.team_id);
+    const existing = rowsByTeamId.get(teamKey);
+
+    if (
+      !existing ||
+      (row.position ?? Number.MAX_SAFE_INTEGER) <
+        (existing.position ?? Number.MAX_SAFE_INTEGER)
+    ) {
+      rowsByTeamId.set(teamKey, row);
+    }
+  });
+
+  return Array.from(rowsByTeamId.values()).sort(
+    (a, b) =>
+      (a.position ?? Number.MAX_SAFE_INTEGER) -
+      (b.position ?? Number.MAX_SAFE_INTEGER),
+  );
+}
+
+function buildStandingsGroups(rows) {
+  const groupMap = new Map();
+
+  rows.forEach((row) => {
+    const groupKey = getStandingsGroupKey(row);
+    const existing = groupMap.get(groupKey);
+
+    if (existing) {
+      existing.rows.push(row);
+      return;
+    }
+
+    const stageLabelKey = normalizeStageKey(row.stage_label);
+    const priority = stageLabelKey
+      ? STAGE_PRIORITY.get(stageLabelKey)
+      : undefined;
+
+    groupMap.set(groupKey, {
+      key: groupKey,
+      label: String(getStandingsGroupLabel(row)).trim(),
+      stage: row.stage_label ?? null,
+      priority: priority ?? Number.MAX_SAFE_INTEGER,
+      rows: [row],
+      stageLabelKey,
+      standingGroupId: row.standing_group_id ?? null,
+      stageTournamentId: row.stage_tournament_id ?? null,
+    });
+  });
+
+  return Array.from(groupMap.values())
+    .filter((group) => group.rows.length > 0)
+    .sort((a, b) => {
+      const aPriority = a.stageLabelKey
+        ? STAGE_PRIORITY.get(a.stageLabelKey)
+        : undefined;
+      const bPriority = b.stageLabelKey
+        ? STAGE_PRIORITY.get(b.stageLabelKey)
+        : undefined;
+
+      if (aPriority != null || bPriority != null) {
+        if (aPriority == null) return 1;
+        if (bPriority == null) return -1;
+        if (aPriority !== bPriority) return aPriority - bPriority;
+      }
+
+      return a.label.localeCompare(b.label);
+    })
+    .map((group) => ({
+      key: group.key,
+      label: group.label,
+      stage: group.stage,
+      priority: group.priority,
+      rows: dedupeStandingsRowsByTeam(group.rows),
+      standingGroupId: group.standingGroupId,
+      stageTournamentId: group.stageTournamentId,
+      stageLabelKey: group.stageLabelKey,
+    }));
+}
+
+function selectDefaultGroupKey(groups, selection = {}) {
+  if (groups.length <= 1) {
+    return groups[0]?.key ?? null;
+  }
+
+  const hasRequestedGroup =
+    selection.standingGroupId != null || selection.stageTournamentId != null;
+  const requestedGroup = hasRequestedGroup
+    ? groups.find(
+        (group) =>
+          group.standingGroupId === selection.standingGroupId &&
+          group.stageTournamentId === selection.stageTournamentId,
+      )
+    : null;
+  const preferredGroup =
+    requestedGroup ??
+    groups.find(
+      (group) => group.stageLabelKey === normalizeStageKey("Regular Season"),
+    ) ??
+    groups[0];
+
+  return preferredGroup?.key ?? null;
+}
+
+function toPublicStandingsGroup(group) {
+  return {
+    key: group.key,
+    label: group.label,
+    stage: group.stage,
+    priority: group.priority,
+    rows: group.rows,
+  };
+}
+
 export async function getCurrentSeasons() {
   return listCurrentTournamentSeasons();
 }
@@ -37,7 +204,7 @@ export async function getTournamentSeasons(tournamentId) {
   return seasons;
 }
 
-export async function getStandings(tournamentId, seasonId) {
+export async function getStandingsRows(tournamentId, seasonId) {
   const currentSeason = await getTournamentSeason(tournamentId, seasonId);
 
   if (!currentSeason) {
@@ -81,4 +248,15 @@ export async function getStandings(tournamentId, seasonId) {
       row.standing_group_name,
     ),
   }));
+}
+
+export async function getStandings(tournamentId, seasonId, selection = {}) {
+  const rows = await getStandingsRows(tournamentId, seasonId);
+  const groups = buildStandingsGroups(rows);
+  const selectedGroupKey = selectDefaultGroupKey(groups, selection);
+
+  return {
+    groups: groups.map(toPublicStandingsGroup),
+    selectedGroupKey,
+  };
 }

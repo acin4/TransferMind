@@ -28,7 +28,7 @@ Files:
 7. `GET /api/teams/:id/stats`
 8. `GET /api/players?teamId=:teamId`
 9. `GET /api/players/:id`
-10. `GET /api/standings?tournamentId=:tournamentId&seasonId=:seasonId`
+10. `GET /api/standings?tournamentId=:tournamentId&seasonId=:seasonId` returns grouped standings with `selectedGroupKey`.
 11. Error-case requests
 
 The seed requests save these environment variables automatically when data exists:
