@@ -171,7 +171,7 @@ export default function TeamsComparison() {
               Teams Comparison
             </h1>
             <p className="text-slate-500 font-black uppercase tracking-[0.3em] text-[10px] mt-4">
-              Team + Season analytics with normalized comparison and clustering
+              Team + Season analytics with relative score comparison and clustering
             </p>
           </div>
 

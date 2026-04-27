@@ -82,7 +82,8 @@ export default function ClusterAnalysisTab({
             </h3>
             <p className="text-xs font-black uppercase tracking-widest text-slate-500 mt-3 max-w-3xl">
               Every row is a team-season entry. Every column is a team statistic
-              normalized to a 0-100 scale, with negative stats reverse-normalized.
+              converted into a Relative Score (0–100), with negative stats
+              reverse-scaled so lower raw values score better.
             </p>
           </div>
 

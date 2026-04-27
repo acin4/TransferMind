@@ -15,8 +15,10 @@ import {
 } from "recharts";
 import {
   formatRawStatValue,
-  formatNormalizedValue,
+  formatRelativeScoreValue,
   getNormalizedEntryStat,
+  getRelativeScoreBand,
+  getRelativeScoreBandTextColorClass,
   type StatRange,
   type TeamSeasonStatEntry,
 } from "../../utils/teamsComparison";
@@ -161,8 +163,8 @@ export default function CustomComparisonTab({
               Custom Comparison
             </h3>
             <p className="text-xs font-black uppercase tracking-widest text-slate-500 mt-3">
-              Normalized values are calculated against all loaded team-season
-              entries.
+              Relative Score (0–100) is calculated across all loaded team-season
+              entries, while raw values remain the real football statistics.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -189,6 +191,13 @@ export default function CustomComparisonTab({
                 />
                 <YAxis
                   domain={[0, 100]}
+                  label={{
+                    value: "Relative Score (0–100)",
+                    angle: -90,
+                    position: "insideLeft",
+                    fill: "#94a3b8",
+                    fontSize: 12,
+                  }}
                   tick={{ fill: "#94a3b8", fontSize: 12 }}
                   axisLine={{ stroke: "#334155" }}
                   tickLine={{ stroke: "#334155" }}
@@ -285,19 +294,22 @@ function BarComparisonTooltip({
   return (
     <div className="rounded-2xl border border-slate-700 bg-slate-950/95 p-4 shadow-2xl">
       <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">
-        {label}
+        Comparison Details
       </p>
       <div className="space-y-3">
         {payload.map((item) => {
           const entry = selectedEntries.find((candidate) => candidate.id === item.dataKey);
           const rawValue = item.payload?.[`${item.dataKey}__raw`] as number | null | undefined;
+          const relativeScore = Number(item.value ?? 50);
+          const interpretation = getRelativeScoreBand(relativeScore);
+          const statKey = item.payload?.statKey as TeamStatKey;
 
           if (!entry) {
             return null;
           }
 
           return (
-            <div key={entry.id}>
+            <div key={entry.id} className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
               <div className="text-sm font-bold text-white flex items-center gap-2">
                 <span
                   className="inline-block h-2.5 w-2.5 rounded-full"
@@ -305,11 +317,29 @@ function BarComparisonTooltip({
                 />
                 {entry.label}
               </div>
-              <div className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">
-                Normalized: {formatNormalizedValue(Number(item.value ?? 50))}
+              <div className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-2">
+                Stat Name
               </div>
-              <div className="text-xs font-bold uppercase tracking-widest text-slate-500 mt-1">
-                Raw: {formatRawStatValue(rawValue, item.payload?.statKey as TeamStatKey)}
+              <div className="text-sm font-bold text-slate-200">
+                {label}
+              </div>
+              <div className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-2">
+                Raw Number
+              </div>
+              <div className="text-sm font-bold text-white">
+                {formatRawStatValue(rawValue, statKey)}
+              </div>
+              <div className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-2">
+                Relative Score (0–100)
+              </div>
+              <div className="text-sm font-bold text-blue-300">
+                {formatRelativeScoreValue(relativeScore)}
+              </div>
+              <div className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-2">
+                Interpretation
+              </div>
+              <div className={`text-sm font-bold ${getRelativeScoreBandTextColorClass(relativeScore)}`}>
+                {interpretation}
               </div>
             </div>
           );
@@ -339,19 +369,21 @@ function RadarComparisonTooltip({
   return (
     <div className="rounded-2xl border border-slate-700 bg-slate-950/95 p-4 shadow-2xl">
       <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">
-        {label}
+        Comparison Details
       </p>
       <div className="space-y-3">
         {payload.map((item) => {
           const entry = selectedEntries.find((candidate) => candidate.id === item.dataKey);
           const rawValue = item.payload?.[`${item.dataKey}__raw`] as number | null | undefined;
+          const relativeScore = Number(item.value ?? 50);
+          const interpretation = getRelativeScoreBand(relativeScore);
 
           if (!entry) {
             return null;
           }
 
           return (
-            <div key={entry.id}>
+            <div key={entry.id} className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
               <div className="text-sm font-bold text-white flex items-center gap-2">
                 <span
                   className="inline-block h-2.5 w-2.5 rounded-full"
@@ -359,11 +391,29 @@ function RadarComparisonTooltip({
                 />
                 {entry.label}
               </div>
-              <div className="text-xs font-bold uppercase tracking-widest text-slate-400 mt-1">
-                Normalized: {formatNormalizedValue(Number(item.value ?? 50))}
+              <div className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-2">
+                Stat Name
               </div>
-              <div className="text-xs font-bold uppercase tracking-widest text-slate-500 mt-1">
-                Raw: {formatRawStatValue(rawValue, statKey)}
+              <div className="text-sm font-bold text-slate-200">
+                {label}
+              </div>
+              <div className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-2">
+                Raw Number
+              </div>
+              <div className="text-sm font-bold text-white">
+                {formatRawStatValue(rawValue, statKey)}
+              </div>
+              <div className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-2">
+                Relative Score (0–100)
+              </div>
+              <div className="text-sm font-bold text-blue-300">
+                {formatRelativeScoreValue(relativeScore)}
+              </div>
+              <div className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-2">
+                Interpretation
+              </div>
+              <div className={`text-sm font-bold ${getRelativeScoreBandTextColorClass(relativeScore)}`}>
+                {interpretation}
               </div>
             </div>
           );

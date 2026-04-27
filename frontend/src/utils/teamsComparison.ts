@@ -1,7 +1,5 @@
 import {
   TEAM_STATS_CATEGORIES,
-  formatTeamStatValue,
-  getTeamStatMeta,
   type TeamStatKey,
   type TeamStats,
 } from "../teamStatsConfig";
@@ -140,15 +138,61 @@ export function getNormalizedEntryStat(
   );
 }
 
-export function formatNormalizedValue(value: number) {
+export function formatRelativeScoreValue(value: number) {
   return `${value.toFixed(1)} / 100`;
 }
 
 export function formatRawStatValue(
   rawValue: number | null | undefined,
-  statKey: TeamStatKey,
+  _statKey: TeamStatKey,
 ) {
-  return formatTeamStatValue(rawValue, getTeamStatMeta(statKey).format);
+  if (!Number.isFinite(rawValue)) {
+    return "â€”";
+  }
+
+  return String(rawValue);
+}
+
+export function getRelativeScoreBand(value: number) {
+  if (value <= 20) {
+    return "Poor";
+  }
+
+  if (value <= 40) {
+    return "Below Average";
+  }
+
+  if (value <= 60) {
+    return "Average";
+  }
+
+  if (value <= 80) {
+    return "Good";
+  }
+
+  return "Elite";
+}
+
+export function getRelativeScoreBandTextColorClass(value: number) {
+  const band = getRelativeScoreBand(value);
+
+  if (band === "Poor") {
+    return "text-red-400";
+  }
+
+  if (band === "Below Average") {
+    return "text-orange-400";
+  }
+
+  if (band === "Average") {
+    return "text-yellow-300";
+  }
+
+  if (band === "Good") {
+    return "text-lime-300";
+  }
+
+  return "text-green-400";
 }
 
 export function sortEntriesByLabel(entries: TeamSeasonStatEntry[]) {
