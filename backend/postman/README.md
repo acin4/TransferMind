@@ -21,14 +21,15 @@ Files:
 
 1. `GET /health`
 2. `GET /api/teams`
-3. `GET /api/players`
-4. `GET /api/tournaments/current-seasons`
-5. `GET /api/teams/:id`
-6. `GET /api/teams/:id/stats`
-7. `GET /api/players?teamId=:teamId`
-8. `GET /api/players/:id`
-9. `GET /api/standings?tournamentId=:tournamentId&seasonId=:seasonId`
-10. Error-case requests
+3. `GET /api/teams/comparison-dataset`
+4. `GET /api/players`
+5. `GET /api/tournaments/current-seasons`
+6. `GET /api/teams/:id`
+7. `GET /api/teams/:id/stats`
+8. `GET /api/players?teamId=:teamId`
+9. `GET /api/players/:id`
+10. `GET /api/standings?tournamentId=:tournamentId&seasonId=:seasonId`
+11. Error-case requests
 
 The seed requests save these environment variables automatically when data exists:
 

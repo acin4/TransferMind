@@ -1,46 +1,14 @@
 import { useEffect, useState } from "react";
 import { BrainCircuit, GitCompareArrows, Loader2 } from "lucide-react";
-import {
-  getTeamSeasons,
-  getTeamStats,
-  getTeams,
-} from "../api/api";
+import { getTeamsComparisonDataset } from "../api/api";
 import {
   TEAM_COMPARISON_STAT_KEYS,
-  sanitizeTeamStats,
-  sortEntriesByLabel,
-  toSeasonLabel,
-  toTeamSeasonEntryId,
-  type TeamSeason,
   type TeamSeasonStatEntry,
-  type TeamSummary,
 } from "../utils/teamsComparison";
 import CustomComparisonTab from "../components/teams-comparison/CustomComparisonTab";
 import ClusterAnalysisTab from "../components/teams-comparison/ClusterAnalysisTab";
 
 type ComparisonTabId = "custom" | "cluster";
-
-let cachedEntries: TeamSeasonStatEntry[] | null = null;
-let datasetPromise: Promise<TeamSeasonStatEntry[]> | null = null;
-const teamsCache = { current: null as TeamSummary[] | null };
-const seasonsCache = new Map<number, TeamSeason[]>();
-const statsCache = new Map<string, TeamSeasonStatEntry["stats"]>();
-
-async function mapInBatches<T, R>(
-  items: T[],
-  batchSize: number,
-  worker: (item: T) => Promise<R>,
-) {
-  const results: R[] = [];
-
-  for (let index = 0; index < items.length; index += batchSize) {
-    const batch = items.slice(index, index + batchSize);
-    const batchResults = await Promise.all(batch.map(worker));
-    results.push(...batchResults);
-  }
-
-  return results;
-}
 
 export default function TeamsComparison() {
   const [entries, setEntries] = useState<TeamSeasonStatEntry[]>([]);
@@ -51,78 +19,19 @@ export default function TeamsComparison() {
   useEffect(() => {
     let cancelled = false;
 
-    const buildDataset = async () => {
-      const teams =
-        teamsCache.current ??
-        ((await getTeams()) as TeamSummary[] | null | undefined) ??
-        [];
-
-      teamsCache.current = teams;
-
-      const teamSeasonGroups = await mapInBatches(teams, 8, async (team) => {
-        if (!seasonsCache.has(team.id)) {
-          const seasons =
-            ((await getTeamSeasons(team.id)) as TeamSeason[] | null | undefined) ??
-            [];
-          seasonsCache.set(team.id, seasons);
-        }
-
-        const seasons = seasonsCache.get(team.id) ?? [];
-
-        return seasons.map((season) => ({
-          id: toTeamSeasonEntryId(team.id, season.season_id),
-          teamId: team.id,
-          teamName: team.name,
-          seasonId: season.season_id,
-          seasonName: toSeasonLabel(season),
-          tournamentId: season.tournament_id ?? null,
-          tournamentName: season.tournament_name?.trim() || null,
-          label: `${team.name} - ${toSeasonLabel(season)}`,
-        }));
-      });
-
-      const flattenedEntries = teamSeasonGroups.flat();
-
-      await mapInBatches(flattenedEntries, 10, async (entry) => {
-        if (!statsCache.has(entry.id)) {
-          const stats = await getTeamStats(entry.teamId, entry.seasonId);
-          statsCache.set(entry.id, sanitizeTeamStats(stats ?? null));
-        }
-
-        return null;
-      });
-
-      return sortEntriesByLabel(
-        flattenedEntries.map((entry) => ({
-          ...entry,
-          stats: statsCache.get(entry.id) ?? {},
-        })),
-      );
-    };
-
     const loadDataset = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        if (cachedEntries) {
-          if (!cancelled) {
-            setEntries(cachedEntries);
-            setLoading(false);
-          }
-          return;
-        }
-
-        datasetPromise ??= buildDataset();
-        const nextEntries = await datasetPromise;
-        cachedEntries = nextEntries;
+        const dataset = await getTeamsComparisonDataset();
+        const nextEntries = dataset?.entries ?? [];
 
         if (!cancelled) {
           setEntries(nextEntries);
         }
       } catch (loadError) {
-        datasetPromise = null;
-        console.error("Failed to build team-season comparison dataset:", loadError);
+        console.error("Failed to load team-season comparison dataset:", loadError);
 
         if (!cancelled) {
           setEntries([]);

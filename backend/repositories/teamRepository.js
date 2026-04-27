@@ -172,6 +172,90 @@ async function listParticipationRowsByTeamId(teamId) {
   return data ?? [];
 }
 
+function buildTeamComparisonSeasons(rows, preferredTournamentDbId) {
+  const seasonsById = new Map();
+
+  for (const row of dedupeParticipationRows(rows)) {
+    if (row.tournament_db_id !== preferredTournamentDbId || !row.season_db_id) {
+      continue;
+    }
+
+    const nextSeason = {
+      season_id: row.season_db_id,
+      season_api_id: row.season_id ?? null,
+      season_name: getSeasonLabel(row),
+      tournament_id: row.tournament_db_id ?? null,
+      tournament_api_id: row.tournament_id ?? null,
+      tournament_name: row.tournament_name?.trim() || null,
+      is_current: Boolean(row.is_current),
+    };
+    const existingSeason = seasonsById.get(nextSeason.season_id);
+
+    if (
+      !existingSeason ||
+      (nextSeason.is_current && !existingSeason.is_current) ||
+      (!existingSeason.season_name && nextSeason.season_name)
+    ) {
+      seasonsById.set(nextSeason.season_id, nextSeason);
+    }
+  }
+
+  return [...seasonsById.values()].sort((a, b) => {
+    const aEndYear = getSeasonEndYear(a);
+    const bEndYear = getSeasonEndYear(b);
+
+    if (aEndYear !== bEndYear) {
+      return bEndYear - aEndYear;
+    }
+
+    return b.season_id - a.season_id;
+  });
+}
+
+function buildStatsKey(teamApiId, tournamentApiId, seasonApiId) {
+  return `${teamApiId}::${tournamentApiId}::${seasonApiId}`;
+}
+
+async function listTeamStatsByApiReferences(references) {
+  const teamApiIds = [
+    ...new Set(references.map((reference) => reference.teamApiId).filter(Boolean)),
+  ];
+  const tournamentApiIds = [
+    ...new Set(
+      references.map((reference) => reference.tournamentApiId).filter(Boolean),
+    ),
+  ];
+  const seasonApiIds = [
+    ...new Set(references.map((reference) => reference.seasonApiId).filter(Boolean)),
+  ];
+
+  if (
+    teamApiIds.length === 0 ||
+    tournamentApiIds.length === 0 ||
+    seasonApiIds.length === 0
+  ) {
+    return new Map();
+  }
+
+  const { data, error } = await supabase
+    .from("team_stats")
+    .select("*")
+    .in("team_id", teamApiIds)
+    .in("tournament_id", tournamentApiIds)
+    .in("season_id", seasonApiIds);
+
+  if (error) {
+    throw error;
+  }
+
+  return new Map(
+    (data ?? []).map((stats) => [
+      buildStatsKey(stats.team_id, stats.tournament_id, stats.season_id),
+      stats,
+    ]),
+  );
+}
+
 export async function listTeams() {
   const query = getTeamsBaseQuery();
   const [{ data: teams, error }, { data: participationRows, error: participationError }] =
@@ -393,4 +477,104 @@ export async function getTeamStatsByApiReferences(
   }
 
   return data ?? null;
+}
+
+export async function listTeamsComparisonDatasetRows() {
+  const [{ data: teams, error }, { data: participationRows, error: participationError }] =
+    await Promise.all([
+      getTeamsBaseQuery().order("name", { ascending: true }),
+      supabase
+        .from("standings_with_team_info")
+        .select(PARTICIPATION_SELECT)
+        .not("team_db_id", "is", null)
+        .not("tournament_db_id", "is", null),
+    ]);
+
+  if (error) {
+    throw error;
+  }
+
+  if (participationError) {
+    throw participationError;
+  }
+
+  const participationRowsByTeamId = new Map();
+
+  for (const row of participationRows ?? []) {
+    const teamId = row.team_db_id;
+
+    if (!teamId) {
+      continue;
+    }
+
+    const rows = participationRowsByTeamId.get(teamId) ?? [];
+    rows.push(row);
+    participationRowsByTeamId.set(teamId, rows);
+  }
+
+  const entries = [];
+  const statsReferences = [];
+
+  for (const team of teams ?? []) {
+    const teamParticipationRows = participationRowsByTeamId.get(team.id) ?? [];
+    const preferredParticipation = getPreferredParticipationRow(
+      teamParticipationRows,
+      team.tournament_id ?? null,
+    );
+
+    if (!preferredParticipation?.tournament_db_id) {
+      continue;
+    }
+
+    const seasons = buildTeamComparisonSeasons(
+      teamParticipationRows,
+      preferredParticipation.tournament_db_id,
+    );
+
+    for (const season of seasons) {
+      const entry = {
+        team_id: team.id,
+        team_api_id: team.api_id ?? null,
+        team_name: team.name,
+        team_logo: team.logo_url ?? null,
+        tournament_id: season.tournament_id,
+        tournament_api_id: season.tournament_api_id,
+        tournament_name: season.tournament_name,
+        season_id: season.season_id,
+        season_api_id: season.season_api_id,
+        season_name: season.season_name,
+        is_current_season: season.is_current,
+      };
+
+      entries.push(entry);
+
+      if (
+        entry.team_api_id &&
+        entry.tournament_api_id &&
+        entry.season_api_id
+      ) {
+        statsReferences.push({
+          teamApiId: entry.team_api_id,
+          tournamentApiId: entry.tournament_api_id,
+          seasonApiId: entry.season_api_id,
+        });
+      }
+    }
+  }
+
+  const statsByReference = await listTeamStatsByApiReferences(statsReferences);
+
+  return entries.map((entry) => ({
+    ...entry,
+    stats:
+      entry.team_api_id && entry.tournament_api_id && entry.season_api_id
+        ? statsByReference.get(
+            buildStatsKey(
+              entry.team_api_id,
+              entry.tournament_api_id,
+              entry.season_api_id,
+            ),
+          ) ?? null
+        : null,
+  }));
 }

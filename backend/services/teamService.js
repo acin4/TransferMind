@@ -4,10 +4,19 @@ import {
   getTeamById,
   getTeamProfileById,
   getTeamStatsByApiReferences,
+  listTeamsComparisonDatasetRows,
   listTeams,
   listTeamSeasonsById,
 } from "../repositories/teamRepository.js";
 import { getTournamentSeason } from "../repositories/standingsRepository.js";
+
+const TEAM_STATS_PRIVATE_FIELDS = new Set([
+  "id",
+  "team_id",
+  "tournament_id",
+  "season_id",
+  "has_stats",
+]);
 
 function sanitizeTeam(team, { includeCompetition = false } = {}) {
   if (!team) {
@@ -48,6 +57,57 @@ function sanitizeTeamStats(stats, teamId) {
   return {
     ...rest,
     team_id: teamId,
+  };
+}
+
+function sanitizeComparisonStats(stats) {
+  const sanitizedStats = {};
+
+  if (!stats) {
+    return sanitizedStats;
+  }
+
+  for (const [key, value] of Object.entries(stats)) {
+    if (TEAM_STATS_PRIVATE_FIELDS.has(key)) {
+      continue;
+    }
+
+    if (value == null || value === "") {
+      sanitizedStats[key] = null;
+      continue;
+    }
+
+    const numericValue =
+      typeof value === "number"
+        ? value
+        : typeof value === "string"
+          ? Number(value)
+          : Number.NaN;
+
+    sanitizedStats[key] = Number.isFinite(numericValue) ? numericValue : null;
+  }
+
+  return sanitizedStats;
+}
+
+function toSeasonLabel(season) {
+  const name = season.season_name?.trim();
+  return name || `Season ${season.season_id}`;
+}
+
+function toComparisonEntry(row) {
+  const seasonName = toSeasonLabel(row);
+
+  return {
+    id: `${row.team_id}-${row.season_id}`,
+    teamId: row.team_id,
+    teamName: row.team_name,
+    seasonId: row.season_id,
+    seasonName,
+    tournamentId: row.tournament_id ?? null,
+    tournamentName: row.tournament_name?.trim() || null,
+    label: `${row.team_name} - ${seasonName}`,
+    stats: sanitizeComparisonStats(row.stats),
   };
 }
 
@@ -107,4 +167,13 @@ export async function getTeamSeasons(id) {
   }
 
   return listTeamSeasonsById(id, team.tournament_id ?? null);
+}
+
+export async function getTeamsComparisonDataset() {
+  const rows = await listTeamsComparisonDatasetRows();
+  const entries = rows
+    .map(toComparisonEntry)
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+  return { entries };
 }

@@ -1,3 +1,5 @@
+import type { TeamSeasonStatEntry } from "../utils/teamsComparison";
+
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
 export type TeamListItem = {
@@ -21,6 +23,10 @@ export type TeamListItem = {
 export type TeamProfileData = TeamListItem & {
   tournament_id?: number | null;
   tournament_name?: string | null;
+};
+
+export type TeamsComparisonDataset = {
+  entries: TeamSeasonStatEntry[];
 };
 
 async function request(path: string) {
@@ -96,6 +102,11 @@ export const getTeamStats = async (
   const suffix = params.toString() ? `?${params.toString()}` : "";
   return request(`/api/teams/${teamId}/stats${suffix}`);
 };
+
+export const getTeamsComparisonDataset =
+  async (): Promise<TeamsComparisonDataset> => {
+    return request("/api/teams/comparison-dataset");
+  };
 
 // ==========================================
 // 4. ΠΡΟΦΙΛ ΠΑΙΚΤΗ (PlayerProfile)

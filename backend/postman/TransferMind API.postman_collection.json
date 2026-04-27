@@ -94,6 +94,57 @@
           "response": []
         },
         {
+          "name": "GET /api/teams/comparison-dataset",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Response is JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"); });",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Response has data or error\", function () {",
+                  "  pm.expect(json).to.be.an(\"object\");",
+                  "  pm.expect(Object.prototype.hasOwnProperty.call(json, \"data\") || Object.prototype.hasOwnProperty.call(json, \"error\")).to.equal(true);",
+                  "});",
+                  "pm.test(\"Response has data\", function () { pm.expect(json).to.have.property(\"data\"); });",
+                  "pm.test(\"Response has entries array\", function () {",
+                  "  pm.expect(json.data).to.be.an(\"object\");",
+                  "  pm.expect(json.data.entries).to.be.an(\"array\");",
+                  "});",
+                  "if (json.data && Array.isArray(json.data.entries) && json.data.entries.length > 0) {",
+                  "  pm.test(\"First entry uses frontend comparison shape\", function () {",
+                  "    const entry = json.data.entries[0];",
+                  "    pm.expect(entry).to.include.keys([\"id\", \"teamId\", \"teamName\", \"seasonId\", \"seasonName\", \"tournamentId\", \"tournamentName\", \"label\", \"stats\"]);",
+                  "    pm.expect(entry).to.not.have.property(\"team_api_id\");",
+                  "    pm.expect(entry).to.not.have.property(\"season_api_id\");",
+                  "    pm.expect(entry).to.not.have.property(\"tournament_api_id\");",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/teams/comparison-dataset",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "teams",
+                "comparison-dataset"
+              ]
+            },
+            "description": "Ready-to-render Teams Comparison dataset. Entries use internal DB ids and do not expose external API ids."
+          },
+          "response": []
+        },
+        {
           "name": "GET /api/teams/:id",
           "event": [
             {
