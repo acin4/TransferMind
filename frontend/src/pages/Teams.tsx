@@ -2,52 +2,14 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { getTeams, type TeamListItem } from "../api/api";
 import { Users, ChevronRight, Trophy, Building2, MapPin } from "lucide-react";
+import {
+  getTeamLocation,
+  getTeamStadium,
+  normalizeCountry,
+} from "../utils/teamDisplay";
 
 const ALL_TAB = "ALL";
 const OTHER_TAB = "Other";
-
-function normalizeCountry(value: unknown) {
-  if (value == null) {
-    return null;
-  }
-
-  const text = String(value).trim();
-  return text || null;
-}
-
-function getTeamLocation(team: TeamListItem) {
-  const city =
-    (typeof team.city === "string" ? team.city : null) ||
-    (typeof team.venue === "object" && team.venue
-      ? team.venue.city ?? null
-      : null);
-  const country = normalizeCountry(team.country);
-
-  if (city && country) {
-    return `${city}, ${country}`;
-  }
-
-  return city || country || null;
-}
-
-function getTeamStadium(team: TeamListItem) {
-  if (typeof team.venue === "object" && team.venue) {
-    const venueName = team.venue.name?.trim();
-    if (venueName) {
-      return venueName;
-    }
-  }
-
-  if (typeof team.stadium === "string" && team.stadium.trim()) {
-    return team.stadium.trim();
-  }
-
-  if (typeof team.venue === "string" && team.venue.trim()) {
-    return team.venue.trim();
-  }
-
-  return null;
-}
 
 export default function Teams() {
   const [teams, setTeams] = useState<TeamListItem[]>([]);

@@ -8,6 +8,7 @@ import {
   Trophy,
 } from "lucide-react";
 import type { TeamProfileData, TeamProfileSeason } from "../../api/api";
+import { getTeamLocation, getTeamStadium } from "../../utils/teamDisplay";
 
 type TeamHeaderProps = {
   team: TeamProfileData;
@@ -16,57 +17,6 @@ type TeamHeaderProps = {
   selectedSeasonId: number | null;
   onSeasonChange: (event: ChangeEvent<HTMLSelectElement>) => void;
 };
-
-function normalizeCountry(value: unknown) {
-  if (value == null) {
-    return null;
-  }
-
-  const text = String(value).trim();
-  return text || null;
-}
-
-function getTeamLocation(team: TeamProfileData | null) {
-  if (!team) {
-    return null;
-  }
-
-  const city =
-    (typeof team.city === "string" ? team.city : null) ||
-    (typeof team.venue === "object" && team.venue
-      ? team.venue.city ?? null
-      : null);
-  const country = normalizeCountry(team.country);
-
-  if (city && country) {
-    return `${city}, ${country}`;
-  }
-
-  return city || country || null;
-}
-
-function getTeamStadium(team: TeamProfileData | null) {
-  if (!team) {
-    return null;
-  }
-
-  if (typeof team.venue === "object" && team.venue) {
-    const venueName = team.venue.name?.trim();
-    if (venueName) {
-      return venueName;
-    }
-  }
-
-  if (typeof team.stadium === "string" && team.stadium.trim()) {
-    return team.stadium.trim();
-  }
-
-  if (typeof team.venue === "string" && team.venue.trim()) {
-    return team.venue.trim();
-  }
-
-  return null;
-}
 
 export default function TeamHeader({
   team,
