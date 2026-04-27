@@ -321,6 +321,8 @@ export async function listTeamSeasonsById(teamId, preferredTournamentApiId = nul
       season_id: row.season_db_id,
       season_api_id: row.season_id ?? null,
       season_name: getSeasonLabel(row),
+      tournament_id: row.tournament_db_id ?? null,
+      tournament_name: row.tournament_name?.trim() || null,
       is_current: Boolean(row.is_current),
     };
     const existingSeason = seasonsById.get(nextSeason.season_id);

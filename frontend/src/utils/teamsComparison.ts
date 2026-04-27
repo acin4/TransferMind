@@ -12,6 +12,8 @@ export type TeamSummary = {
 export type TeamSeason = {
   season_id: number;
   season_name?: string | null;
+  tournament_id?: number | null;
+  tournament_name?: string | null;
   is_current?: boolean;
 };
 
@@ -21,6 +23,8 @@ export type TeamSeasonStatEntry = {
   teamName: string;
   seasonId: number;
   seasonName: string;
+  tournamentId: number | null;
+  tournamentName: string | null;
   label: string;
   stats: Partial<Record<TeamStatKey, number | null>>;
 };

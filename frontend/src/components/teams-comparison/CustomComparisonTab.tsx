@@ -14,12 +14,12 @@ import {
   YAxis,
 } from "recharts";
 import {
+  buildStatRanges,
   formatRawStatValue,
   formatRelativeScoreValue,
   getNormalizedEntryStat,
   getRelativeScoreBand,
   getRelativeScoreBandTextColorClass,
-  type StatRange,
   type TeamSeasonStatEntry,
 } from "../../utils/teamsComparison";
 import {
@@ -41,13 +41,11 @@ const SERIES_COLORS = [
 
 type CustomComparisonTabProps = {
   entries: TeamSeasonStatEntry[];
-  statRanges: Map<TeamStatKey, StatRange>;
   statKeys: TeamStatKey[];
 };
 
 export default function CustomComparisonTab({
   entries,
-  statRanges,
   statKeys,
 }: CustomComparisonTabProps) {
   const [selectedEntryIds, setSelectedEntryIds] = useState<string[]>([]);
@@ -58,7 +56,11 @@ export default function CustomComparisonTab({
       entries.map((entry) => ({
         value: entry.id,
         label: entry.label,
-        helperText: `Team ${entry.teamId} • Season ${entry.seasonId}`,
+        helperText: [
+          `Team ${entry.teamId}`,
+          `Season ${entry.seasonId}`,
+          entry.tournamentName ?? `Tournament ${entry.tournamentId ?? "Unknown"}`,
+        ].join(" • "),
       })),
     [entries],
   );
@@ -83,6 +85,22 @@ export default function CustomComparisonTab({
     [selectedStatKeys, statKeys],
   );
 
+  const comparisonRangesByEntryId = useMemo(
+    () =>
+      new Map(
+        selectedEntries.map((selectedEntry) => {
+          const comparisonPool = entries.filter(
+            (entry) =>
+              entry.seasonId === selectedEntry.seasonId &&
+              entry.tournamentId === selectedEntry.tournamentId,
+          );
+
+          return [selectedEntry.id, buildStatRanges(comparisonPool)];
+        }),
+      ),
+    [entries, selectedEntries],
+  );
+
   const chartData = useMemo(
     () =>
       selectedStats.map((statKey) => {
@@ -93,18 +111,22 @@ export default function CustomComparisonTab({
 
         selectedEntries.forEach((entry) => {
           row[entry.id] = Number(
-            getNormalizedEntryStat(entry, statKey, statRanges).toFixed(2),
+            getNormalizedEntryStat(
+              entry,
+              statKey,
+              comparisonRangesByEntryId.get(entry.id) ?? new Map(),
+            ).toFixed(2),
           );
           row[`${entry.id}__raw`] = entry.stats[statKey] ?? null;
         });
 
         return row;
       }),
-    [selectedEntries, selectedStats, statRanges],
+    [comparisonRangesByEntryId, selectedEntries, selectedStats],
   );
 
   const readyForComparison =
-    selectedEntries.length >= 2 && selectedStats.length >= 1;
+    selectedEntries.length >= 1 && selectedStats.length >= 1;
   const shouldRenderBarChart =
     readyForComparison && selectedStats.length <= 2;
   const shouldRenderRadarChart =
@@ -133,7 +155,7 @@ export default function CustomComparisonTab({
       <div className="space-y-6">
         <SearchableCheckboxPanel
           title="Team + Season Entries"
-          subtitle="Select at least two entries"
+          subtitle="Select one or more entries"
           items={entryOptions}
           selectedValues={selectedEntryIds}
           onToggle={toggleEntry}
@@ -163,8 +185,9 @@ export default function CustomComparisonTab({
               Custom Comparison
             </h3>
             <p className="text-xs font-black uppercase tracking-widest text-slate-500 mt-3">
-              Relative Score (0–100) is calculated across all loaded team-season
-              entries, while raw values remain the real football statistics.
+              Relative Score (0–100) is calculated against teams from the same
+              season and tournament, while raw values remain the real football
+              statistics.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -177,7 +200,7 @@ export default function CustomComparisonTab({
         </div>
 
         {!readyForComparison ? (
-          <EmptyState message="Select at least two team-season entries and one statistic to generate a comparison." />
+          <EmptyState message="Select at least one team-season entry and one statistic to generate a comparison." />
         ) : shouldRenderBarChart ? (
           <div className="h-[520px]">
             <ResponsiveContainer width="100%" height="100%">

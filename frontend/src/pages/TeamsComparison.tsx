@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { BrainCircuit, GitCompareArrows, Loader2 } from "lucide-react";
 import {
   getTeamSeasons,
@@ -7,7 +7,6 @@ import {
 } from "../api/api";
 import {
   TEAM_COMPARISON_STAT_KEYS,
-  buildStatRanges,
   sanitizeTeamStats,
   sortEntriesByLabel,
   toSeasonLabel,
@@ -76,6 +75,8 @@ export default function TeamsComparison() {
           teamName: team.name,
           seasonId: season.season_id,
           seasonName: toSeasonLabel(season),
+          tournamentId: season.tournament_id ?? null,
+          tournamentName: season.tournament_name?.trim() || null,
           label: `${team.name} - ${toSeasonLabel(season)}`,
         }));
       });
@@ -141,8 +142,6 @@ export default function TeamsComparison() {
     };
   }, []);
 
-  const statRanges = useMemo(() => buildStatRanges(entries), [entries]);
-
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center text-blue-500 font-black gap-3 uppercase tracking-widest">
@@ -203,7 +202,6 @@ export default function TeamsComparison() {
         ) : activeTab === "custom" ? (
           <CustomComparisonTab
             entries={entries}
-            statRanges={statRanges}
             statKeys={TEAM_COMPARISON_STAT_KEYS}
           />
         ) : (

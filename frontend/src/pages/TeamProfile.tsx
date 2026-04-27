@@ -77,6 +77,109 @@ function getTeamStadium(team: TeamProfileData | null) {
   return null;
 }
 
+function normalizeStageKey(value: unknown) {
+  if (value == null) {
+    return null;
+  }
+
+  const trimmed = String(value).trim();
+  return trimmed ? trimmed.toLocaleLowerCase() : null;
+}
+
+function getStandingGroupKey(row: any) {
+  return [
+    row.stage_tournament_id ?? "stage:none",
+    row.standing_group_id ?? "group:none",
+    normalizeStageKey(row.stage_label) ?? "label:none",
+  ].join("::");
+}
+
+function getTeamProfileStagePriority(row: any) {
+  const label = normalizeStageKey(row.stage_label);
+
+  if (!label) {
+    return 50;
+  }
+
+  if (label.includes("championship")) return 0;
+  if (label.includes("playoff") || label.includes("play-off")) return 1;
+  if (label.includes("playout") || label.includes("play-out")) return 2;
+  if (label.includes("relegation")) return 3;
+  if (label.includes("regular")) return 10;
+
+  return 5;
+}
+
+function dedupeStandingsRowsByTeam(rows: any[]) {
+  const rowsByTeamId = new Map<string, any>();
+
+  rows.forEach((row) => {
+    const teamKey = row.team_id == null ? `row:${row.id}` : String(row.team_id);
+    const existing = rowsByTeamId.get(teamKey);
+
+    if (
+      !existing ||
+      (row.position ?? Number.MAX_SAFE_INTEGER) <
+        (existing.position ?? Number.MAX_SAFE_INTEGER)
+    ) {
+      rowsByTeamId.set(teamKey, row);
+    }
+  });
+
+  return Array.from(rowsByTeamId.values()).sort(
+    (a, b) =>
+      (a.position ?? Number.MAX_SAFE_INTEGER) -
+      (b.position ?? Number.MAX_SAFE_INTEGER),
+  );
+}
+
+function selectTeamProfileStandingsRows(rows: any[], teamId: string | number) {
+  const groups = new Map<string, any[]>();
+
+  rows.forEach((row) => {
+    const groupKey = getStandingGroupKey(row);
+    groups.set(groupKey, [...(groups.get(groupKey) ?? []), row]);
+  });
+
+  const candidateGroups = Array.from(groups.values()).filter((groupRows) =>
+    groupRows.some((row) => String(row.team_id) === String(teamId)),
+  );
+
+  if (candidateGroups.length === 0) {
+    return {
+      rows: [],
+      teamRow: null,
+      standingGroupId: null,
+      stageTournamentId: null,
+    };
+  }
+
+  const selectedGroup =
+    candidateGroups.sort((a, b) => {
+      const priorityDelta =
+        getTeamProfileStagePriority(a[0]) - getTeamProfileStagePriority(b[0]);
+
+      if (priorityDelta !== 0) {
+        return priorityDelta;
+      }
+
+      return (
+        Math.max(...b.map((row) => Number(row.id ?? 0))) -
+        Math.max(...a.map((row) => Number(row.id ?? 0)))
+      );
+    })[0] ?? [];
+
+  const dedupedRows = dedupeStandingsRowsByTeam(selectedGroup);
+
+  return {
+    rows: dedupedRows,
+    teamRow:
+      dedupedRows.find((row) => String(row.team_id) === String(teamId)) ?? null,
+    standingGroupId: selectedGroup[0]?.standing_group_id ?? null,
+    stageTournamentId: selectedGroup[0]?.stage_tournament_id ?? null,
+  };
+}
+
 export default function TeamProfile() {
   const { id } = useParams();
 
@@ -88,6 +191,10 @@ export default function TeamProfile() {
 
   const [teamStanding, setTeamStanding] = useState<any>(null);
   const [miniStandings, setMiniStandings] = useState<any[]>([]);
+  const [selectedStandingsGroup, setSelectedStandingsGroup] = useState<{
+    standingGroupId: number | string | null;
+    stageTournamentId: number | string | null;
+  } | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [seasonLoading, setSeasonLoading] = useState(false);
@@ -117,6 +224,7 @@ export default function TeamProfile() {
         setTeamSquad([]);
         setTeamStanding(null);
         setMiniStandings([]);
+        setSelectedStandingsGroup(null);
         setAvailableSeasons([]);
         setSelectedSeasonId(null);
 
@@ -166,10 +274,17 @@ export default function TeamProfile() {
         return;
       }
 
-      if (!id || !team.tournament_id || !selectedSeasonId) {
+      const selectedSeasonContext = availableSeasons.find(
+        (season: any) => season.season_id === selectedSeasonId,
+      );
+      const standingsTournamentId =
+        selectedSeasonContext?.tournament_id ?? team.tournament_id;
+
+      if (!id || !standingsTournamentId || !selectedSeasonId) {
         setStats(null);
         setTeamStanding(null);
         setMiniStandings([]);
+        setSelectedStandingsGroup(null);
         setSeasonLoading(false);
         setSeasonError(null);
         setLoading(false);
@@ -182,7 +297,7 @@ export default function TeamProfile() {
 
         const [fetchedStats, standings] = await Promise.all([
           getTeamStats(id, selectedSeasonId),
-          getStandings(team.tournament_id, selectedSeasonId),
+          getStandings(standingsTournamentId, selectedSeasonId),
         ]);
 
         if (cancelled) {
@@ -191,7 +306,11 @@ export default function TeamProfile() {
 
         setStats(fetchedStats || null);
 
-        const standingsRows = standings || [];
+        const selectedStandings = selectTeamProfileStandingsRows(
+          standings || [],
+          id,
+        );
+        const standingsRows = selectedStandings.rows;
         const teamIndex = standingsRows.findIndex(
           (row: any) => String(row.team_id) === String(id),
         );
@@ -199,10 +318,10 @@ export default function TeamProfile() {
         if (teamIndex === -1) {
           setTeamStanding(null);
           setMiniStandings([]);
+          setSelectedStandingsGroup(null);
           return;
         }
 
-        const teamPos = standingsRows[teamIndex];
         let startIdx = Math.max(0, teamIndex - 1);
         let endIdx = Math.min(standingsRows.length, startIdx + 4);
 
@@ -210,8 +329,12 @@ export default function TeamProfile() {
           startIdx = Math.max(0, endIdx - 4);
         }
 
-        setTeamStanding(teamPos);
+        setTeamStanding(selectedStandings.teamRow);
         setMiniStandings(standingsRows.slice(startIdx, endIdx));
+        setSelectedStandingsGroup({
+          standingGroupId: selectedStandings.standingGroupId,
+          stageTournamentId: selectedStandings.stageTournamentId,
+        });
       } catch (err) {
         console.error("Σφάλμα κατά τη φόρτωση δεδομένων σεζόν:", err);
 
@@ -219,6 +342,7 @@ export default function TeamProfile() {
           setStats(null);
           setTeamStanding(null);
           setMiniStandings([]);
+          setSelectedStandingsGroup(null);
           setSeasonError("Αδυναμία φόρτωσης δεδομένων για τη σεζόν.");
         }
       } finally {
@@ -234,7 +358,7 @@ export default function TeamProfile() {
     return () => {
       cancelled = true;
     };
-  }, [id, selectedSeasonId, team?.tournament_id]);
+  }, [availableSeasons, id, selectedSeasonId, team]);
 
   const selectedSeason = useMemo(
     () =>
@@ -244,15 +368,19 @@ export default function TeamProfile() {
     [availableSeasons, selectedSeasonId],
   );
 
+  const selectedCompetitionId =
+    selectedSeason?.tournament_id ?? team?.tournament_id ?? null;
+  const selectedCompetitionName =
+    selectedSeason?.tournament_name ?? team?.tournament_name ?? null;
   const headerSubtitle =
-    [team?.tournament_name, selectedSeason?.season_name]
+    [selectedCompetitionName, selectedSeason?.season_name]
       .filter(Boolean)
       .join(" - ") ||
     team?.city ||
     "Professional Club";
 
   const standingsLabel =
-    [team?.tournament_name, selectedSeason?.season_name]
+    [selectedCompetitionName, selectedSeason?.season_name]
       .filter(Boolean)
       .join(" - ") || "League Position";
 
@@ -264,6 +392,44 @@ export default function TeamProfile() {
   const handleSeasonChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedSeasonId(Number(event.target.value));
   };
+
+  const fullStandingsPath = useMemo(() => {
+    const params = new URLSearchParams();
+
+    if (selectedCompetitionId) {
+      params.set("tournamentId", String(selectedCompetitionId));
+    }
+
+    if (selectedSeasonId) {
+      params.set("seasonId", String(selectedSeasonId));
+    }
+
+    if (selectedStandingsGroup?.standingGroupId != null) {
+      params.set(
+        "standingGroupId",
+        String(selectedStandingsGroup.standingGroupId),
+      );
+    }
+
+    if (selectedStandingsGroup?.stageTournamentId != null) {
+      params.set(
+        "stageTournamentId",
+        String(selectedStandingsGroup.stageTournamentId),
+      );
+    }
+
+    if (selectedCompetitionName) {
+      params.set("tournamentName", selectedCompetitionName);
+    }
+
+    const query = params.toString();
+    return query ? `/standings?${query}` : "/standings";
+  }, [
+    selectedSeasonId,
+    selectedStandingsGroup,
+    selectedCompetitionId,
+    selectedCompetitionName,
+  ]);
 
   const getAge = (dobString: string) => {
     if (!dobString) return "-";
@@ -450,7 +616,7 @@ export default function TeamProfile() {
                   </table>
                   <div className="bg-slate-900/80 border-t border-slate-800 p-4 text-center">
                     <Link
-                      to="/standings"
+                      to={fullStandingsPath}
                       className="text-[10px] font-black uppercase text-blue-500 tracking-widest hover:text-blue-400 transition-colors"
                     >
                       View Full Standings

@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   getCurrentTournaments,
   getStandings,
@@ -41,7 +41,72 @@ function normalizeStageKey(value: unknown) {
   return trimmed.toLocaleLowerCase();
 }
 
+function parseOptionalNumber(value: string | null) {
+  if (value == null) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getStandingsGroupKey(row: any) {
+  const stageTournamentKey =
+    row.stage_tournament_id == null
+      ? `stage-name:${normalizeStageKey(row.stage_tournament_name) ?? "none"}`
+      : `stage:${row.stage_tournament_id}`;
+  const standingGroupKey =
+    row.standing_group_id == null
+      ? `group-name:${normalizeStageKey(row.standing_group_name) ?? "none"}`
+      : `group:${row.standing_group_id}`;
+
+  return `${stageTournamentKey}::${standingGroupKey}`;
+}
+
+function getStandingsGroupLabel(row: any) {
+  const stageName = row.stage_tournament_name?.trim();
+  const groupName = row.standing_group_name?.trim();
+
+  if (stageName && groupName && stageName !== groupName) {
+    return `${stageName} - ${groupName}`;
+  }
+
+  return row.stage_label || stageName || groupName || "Standings";
+}
+
+function dedupeStandingsRowsByTeam(rows: any[]) {
+  const rowsByTeamId = new Map<string, any>();
+
+  rows.forEach((row) => {
+    const teamKey = row.team_id == null ? `row:${row.id}` : String(row.team_id);
+    const existing = rowsByTeamId.get(teamKey);
+
+    if (
+      !existing ||
+      (row.position ?? Number.MAX_SAFE_INTEGER) <
+        (existing.position ?? Number.MAX_SAFE_INTEGER)
+    ) {
+      rowsByTeamId.set(teamKey, row);
+    }
+  });
+
+  return Array.from(rowsByTeamId.values()).sort(
+    (a, b) =>
+      (a.position ?? Number.MAX_SAFE_INTEGER) -
+      (b.position ?? Number.MAX_SAFE_INTEGER),
+  );
+}
+
 export default function Standings() {
+  const [searchParams] = useSearchParams();
+  const initialSelectionRef = useRef({
+    tournamentId: parseOptionalNumber(searchParams.get("tournamentId")),
+    seasonId: parseOptionalNumber(searchParams.get("seasonId")),
+    standingGroupId: parseOptionalNumber(searchParams.get("standingGroupId")),
+    stageTournamentId: parseOptionalNumber(searchParams.get("stageTournamentId")),
+    tournamentName: searchParams.get("tournamentName")?.trim() || null,
+  });
+
   const [tournaments, setTournaments] = useState<any[]>([]);
   const [availableSeasons, setAvailableSeasons] = useState<any[]>([]);
   const [standings, setStandings] = useState<any[]>([]);
@@ -50,7 +115,7 @@ export default function Standings() {
 
   const [selectedLeagueId, setSelectedLeagueId] = useState<number | null>(null);
   const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null);
-  const [selectedStageKey, setSelectedStageKey] = useState<string | null>(null);
+  const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null);
 
   // 1. Φόρτωση Λίστας Πρωταθλημάτων & Σεζόν από το Backend
   useEffect(() => {
@@ -60,7 +125,9 @@ export default function Standings() {
 
         if (data && data.length > 0) {
           setTournaments(data);
-          setSelectedLeagueId(data[0].tournament_id);
+          setSelectedLeagueId(
+            initialSelectionRef.current.tournamentId ?? data[0].tournament_id,
+          );
           setError(null);
         } else {
           setTournaments([]);
@@ -102,7 +169,15 @@ export default function Standings() {
         }
 
         const nextSeasons = seasons || [];
+        const requestedSeason =
+          selectedLeagueId === initialSelectionRef.current.tournamentId
+            ? nextSeasons.find(
+                (season: any) =>
+                  season.season_id === initialSelectionRef.current.seasonId,
+              )
+            : null;
         const defaultSeason =
+          requestedSeason ??
           nextSeasons.find((season: any) => season.is_current) ??
           nextSeasons[0] ??
           null;
@@ -189,64 +264,113 @@ export default function Standings() {
       }
     });
 
+    if (
+      initialSelectionRef.current.tournamentId &&
+      !leagueMap.has(initialSelectionRef.current.tournamentId)
+    ) {
+      leagueMap.set(initialSelectionRef.current.tournamentId, {
+        id: initialSelectionRef.current.tournamentId,
+        name:
+          initialSelectionRef.current.tournamentName ||
+          `Tournament ${initialSelectionRef.current.tournamentId}`,
+      });
+    }
+
     return Array.from(leagueMap.values());
   }, [tournaments]);
 
-  const availableStages = useMemo(() => {
-    const stageMap = new Map<string, { key: string; label: string }>();
+  const availableGroups = useMemo(() => {
+    const groupMap = new Map<
+      string,
+      {
+        key: string;
+        label: string;
+        rows: any[];
+        stageLabelKey: string | null;
+        standingGroupId: number | null;
+        stageTournamentId: number | null;
+      }
+    >();
 
     standings.forEach((row) => {
-      const stageKey = normalizeStageKey(row.stage_label);
+      const groupKey = getStandingsGroupKey(row);
+      const existing = groupMap.get(groupKey);
 
-      if (!stageKey || stageMap.has(stageKey)) {
+      if (existing) {
+        existing.rows.push(row);
         return;
       }
 
-      stageMap.set(stageKey, {
-        key: stageKey,
-        label: String(row.stage_label).trim(),
+      groupMap.set(groupKey, {
+        key: groupKey,
+        label: String(getStandingsGroupLabel(row)).trim(),
+        rows: [row],
+        stageLabelKey: normalizeStageKey(row.stage_label),
+        standingGroupId: row.standing_group_id ?? null,
+        stageTournamentId: row.stage_tournament_id ?? null,
       });
     });
 
-    return Array.from(stageMap.values()).sort((a, b) => {
-      const aPriority = STAGE_PRIORITY.get(a.key);
-      const bPriority = STAGE_PRIORITY.get(b.key);
+    return Array.from(groupMap.values())
+      .filter((group) => group.rows.length > 0)
+      .sort((a, b) => {
+        const aPriority = a.stageLabelKey
+          ? STAGE_PRIORITY.get(a.stageLabelKey)
+          : undefined;
+        const bPriority = b.stageLabelKey
+          ? STAGE_PRIORITY.get(b.stageLabelKey)
+          : undefined;
 
-      if (aPriority != null || bPriority != null) {
-        if (aPriority == null) return 1;
-        if (bPriority == null) return -1;
-        if (aPriority !== bPriority) return aPriority - bPriority;
-      }
+        if (aPriority != null || bPriority != null) {
+          if (aPriority == null) return 1;
+          if (bPriority == null) return -1;
+          if (aPriority !== bPriority) return aPriority - bPriority;
+        }
 
-      return a.label.localeCompare(b.label);
-    });
+        return a.label.localeCompare(b.label);
+      });
   }, [standings]);
 
-  const showStageTabs = availableStages.length > 1;
+  const showStageTabs = availableGroups.length > 1;
 
   useEffect(() => {
     if (!showStageTabs) {
-      setSelectedStageKey(null);
+      setSelectedGroupKey(availableGroups[0]?.key ?? null);
       return;
     }
 
-    const preferredStage =
-      availableStages.find(
-        (stage) => stage.key === normalizeStageKey("Regular Season"),
-      ) ?? availableStages[0];
+    const hasRequestedGroup =
+      initialSelectionRef.current.standingGroupId != null ||
+      initialSelectionRef.current.stageTournamentId != null;
+    const requestedGroup =
+      hasRequestedGroup &&
+      selectedLeagueId === initialSelectionRef.current.tournamentId &&
+      selectedSeasonId === initialSelectionRef.current.seasonId
+        ? availableGroups.find(
+            (group) =>
+              group.standingGroupId ===
+                initialSelectionRef.current.standingGroupId &&
+              group.stageTournamentId ===
+                initialSelectionRef.current.stageTournamentId,
+          )
+        : null;
+    const preferredGroup =
+      requestedGroup ??
+      availableGroups.find(
+        (group) => group.stageLabelKey === normalizeStageKey("Regular Season"),
+      ) ??
+      availableGroups[0];
 
-    setSelectedStageKey(preferredStage?.key ?? null);
-  }, [selectedLeagueId, selectedSeasonId, availableStages, showStageTabs]);
+    setSelectedGroupKey(preferredGroup?.key ?? null);
+  }, [selectedLeagueId, selectedSeasonId, availableGroups, showStageTabs]);
 
   const filteredStandings = useMemo(() => {
-    if (!showStageTabs || !selectedStageKey) {
-      return standings;
-    }
+    const selectedGroup =
+      availableGroups.find((group) => group.key === selectedGroupKey) ??
+      availableGroups[0];
 
-    return standings.filter(
-      (row) => normalizeStageKey(row.stage_label) === selectedStageKey,
-    );
-  }, [standings, selectedStageKey, showStageTabs]);
+    return dedupeStandingsRowsByTeam(selectedGroup?.rows ?? standings);
+  }, [availableGroups, selectedGroupKey, standings]);
 
   // Handle αλλαγής Πρωταθλήματος
   const handleLeagueChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -352,12 +476,12 @@ export default function Standings() {
             {showStageTabs && (
               <div className="px-6 pt-6 md:px-8 md:pt-8">
                 <div className="flex gap-2 bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800 w-full md:w-max overflow-x-auto">
-                  {availableStages.map((stage) => (
+                  {availableGroups.map((stage) => (
                     <StageTabButton
                       key={stage.key}
                       label={stage.label}
-                      isActive={selectedStageKey === stage.key}
-                      onClick={() => setSelectedStageKey(stage.key)}
+                      isActive={selectedGroupKey === stage.key}
+                      onClick={() => setSelectedGroupKey(stage.key)}
                     />
                   ))}
                 </div>
