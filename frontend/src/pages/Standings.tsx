@@ -1,19 +1,25 @@
-import { useEffect, useState, useMemo, useRef } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Award, Loader2 } from "lucide-react";
 import {
   getCurrentTournaments,
   getStandings,
   getTournamentSeasons,
   type StandingsGroup,
+  type TeamStandingRow,
 } from "../api/api";
-import {
-  Trophy,
-  ChevronRight,
-  Loader2,
-  Award,
-  Calendar,
-  Shield,
-} from "lucide-react";
+import StandingsFilters from "../components/standings/StandingsFilters";
+import StageTabs from "../components/standings/StageTabs";
+import StandingsTable from "../components/standings/StandingsTable";
+import type {
+  SeasonOption,
+  TournamentOption,
+} from "../components/standings/types";
+
+type TournamentSeasonRecord = {
+  tournament_id: number;
+  tournament_name?: string | null;
+};
 
 function parseOptionalNumber(value: string | null) {
   if (value == null) {
@@ -34,8 +40,8 @@ export default function Standings() {
     tournamentName: searchParams.get("tournamentName")?.trim() || null,
   });
 
-  const [tournaments, setTournaments] = useState<any[]>([]);
-  const [availableSeasons, setAvailableSeasons] = useState<any[]>([]);
+  const [tournaments, setTournaments] = useState<TournamentSeasonRecord[]>([]);
+  const [availableSeasons, setAvailableSeasons] = useState<SeasonOption[]>([]);
   const [standingsGroups, setStandingsGroups] = useState<StandingsGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +50,6 @@ export default function Standings() {
   const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null);
   const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null);
 
-  // 1. Φόρτωση Λίστας Πρωταθλημάτων & Σεζόν από το Backend
   useEffect(() => {
     const fetchTournaments = async () => {
       try {
@@ -96,17 +101,17 @@ export default function Standings() {
           return;
         }
 
-        const nextSeasons = seasons || [];
+        const nextSeasons: SeasonOption[] = seasons || [];
         const requestedSeason =
           selectedLeagueId === initialSelectionRef.current.tournamentId
             ? nextSeasons.find(
-                (season: any) =>
+                (season) =>
                   season.season_id === initialSelectionRef.current.seasonId,
               )
             : null;
         const defaultSeason =
           requestedSeason ??
-          nextSeasons.find((season: any) => season.is_current) ??
+          nextSeasons.find((season) => season.is_current) ??
           nextSeasons[0] ??
           null;
 
@@ -137,7 +142,6 @@ export default function Standings() {
     };
   }, [selectedLeagueId]);
 
-  // 2. Φόρτωση Βαθμολογίας όταν αλλάζει η Λίγκα ή η Σεζόν
   useEffect(() => {
     if (!selectedLeagueId || !selectedSeasonId) {
       setStandingsGroups([]);
@@ -191,18 +195,19 @@ export default function Standings() {
     };
   }, [selectedLeagueId, selectedSeasonId]);
 
-  // 3. Δυναμικά Φίλτρα (Dropdowns) με βάση τα δεδομένα
-  const uniqueLeagues = useMemo(() => {
+  const uniqueLeagues = useMemo<TournamentOption[]>(() => {
     if (!tournaments || tournaments.length === 0) {
       return [];
     }
 
-    const leagueMap = new Map();
-    tournaments.forEach((t) => {
-      if (!leagueMap.has(t.tournament_id)) {
-        leagueMap.set(t.tournament_id, {
-          id: t.tournament_id,
-          name: t.tournament_name || `Tournament ${t.tournament_id}`,
+    const leagueMap = new Map<number, TournamentOption>();
+    tournaments.forEach((tournament) => {
+      if (!leagueMap.has(tournament.tournament_id)) {
+        leagueMap.set(tournament.tournament_id, {
+          id: tournament.tournament_id,
+          name:
+            tournament.tournament_name ||
+            `Tournament ${tournament.tournament_id}`,
         });
       }
     });
@@ -222,27 +227,21 @@ export default function Standings() {
     return Array.from(leagueMap.values());
   }, [tournaments]);
 
-  const availableGroups = standingsGroups;
-  const showStageTabs = availableGroups.length > 1;
-
-  const filteredStandings = useMemo(() => {
+  const selectedStandingsRows = useMemo<TeamStandingRow[]>(() => {
     const selectedGroup =
-      availableGroups.find((group) => group.key === selectedGroupKey) ??
-      availableGroups[0];
+      standingsGroups.find((group) => group.key === selectedGroupKey) ??
+      standingsGroups[0];
 
     return selectedGroup?.rows ?? [];
-  }, [availableGroups, selectedGroupKey]);
+  }, [standingsGroups, selectedGroupKey]);
 
-  // Handle αλλαγής Πρωταθλήματος
-  const handleLeagueChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newLeagueId = Number(e.target.value);
+  const handleLeagueChange = (newLeagueId: number | null) => {
     setSelectedLeagueId(newLeagueId);
     setSelectedSeasonId(null);
   };
 
-  // Handle αλλαγής Σεζόν
-  const handleSeasonChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedSeasonId(Number(e.target.value));
+  const handleSeasonChange = (newSeasonId: number | null) => {
+    setSelectedSeasonId(newSeasonId);
   };
 
   if (!selectedLeagueId || (!selectedSeasonId && loading)) {
@@ -263,7 +262,6 @@ export default function Standings() {
   return (
     <div className="min-h-screen bg-slate-950 p-6 md:p-12 text-white font-sans selection:bg-blue-500/30">
       <div className="max-w-6xl mx-auto">
-        {/* HEADER & ΤΑ 2 DROPDOWNS */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-12 gap-8">
           <div>
             <h1 className="text-6xl font-black italic uppercase tracking-tighter bg-gradient-to-r from-white via-blue-400 to-blue-600 bg-clip-text text-transparent leading-none">
@@ -275,54 +273,16 @@ export default function Standings() {
             </p>
           </div>
 
-          {/* ΤΑ ΦΙΛΤΡΑ (DROPDOWNS) */}
-          <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto animate-in fade-in slide-in-from-right-8 duration-700">
-            {/* 🟢 DROPDOWN 1: LEAGUE */}
-            <div className="relative w-full sm:w-auto group">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500 pointer-events-none group-hover:text-white transition-colors">
-                <Shield size={18} />
-              </div>
-              <select
-                className="w-full sm:w-[240px] appearance-none bg-slate-900 border-2 border-slate-800 text-white pl-12 pr-10 py-4 rounded-[2rem] font-black uppercase text-xs tracking-widest focus:outline-none focus:border-blue-500 transition-all cursor-pointer hover:bg-slate-800 shadow-xl truncate"
-                value={selectedLeagueId}
-                onChange={handleLeagueChange}
-              >
-                {uniqueLeagues.map((league) => (
-                  <option key={league.id} value={league.id}>
-                    {league.name}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none group-hover:text-blue-400 transition-colors">
-                <ChevronRight size={16} className="rotate-90" />
-              </div>
-            </div>
-
-            {/* 🟢 DROPDOWN 2: SEASON */}
-            <div className="relative w-full sm:w-auto group">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500 pointer-events-none group-hover:text-white transition-colors">
-                <Calendar size={18} />
-              </div>
-              <select
-                className="w-full sm:w-[200px] appearance-none bg-slate-900 border-2 border-slate-800 text-white pl-12 pr-10 py-4 rounded-[2rem] font-black uppercase text-xs tracking-widest focus:outline-none focus:border-emerald-500 transition-all cursor-pointer hover:bg-slate-800 shadow-xl disabled:opacity-50 truncate"
-                value={selectedSeasonId ?? ""}
-                onChange={handleSeasonChange}
-                disabled={availableSeasons.length === 0}
-              >
-                {availableSeasons.map((season) => (
-                  <option key={season.season_id} value={season.season_id}>
-                    {season.season_name || `Season ${season.season_id}`}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none group-hover:text-emerald-400 transition-colors">
-                <ChevronRight size={16} className="rotate-90" />
-              </div>
-            </div>
-          </div>
+          <StandingsFilters
+            tournaments={uniqueLeagues}
+            seasons={availableSeasons}
+            selectedTournamentId={selectedLeagueId}
+            selectedSeasonId={selectedSeasonId}
+            onTournamentChange={handleLeagueChange}
+            onSeasonChange={handleSeasonChange}
+          />
         </div>
 
-        {/* TABLE SECTION */}
         {loading ? (
           <div className="text-center p-32 bg-slate-900/20 border-2 border-dashed border-slate-800 rounded-[3rem] italic animate-pulse font-black uppercase tracking-widest text-blue-500 flex flex-col items-center gap-4">
             <Loader2 className="animate-spin" size={40} />
@@ -334,149 +294,15 @@ export default function Standings() {
           </div>
         ) : (
           <div className="bg-slate-900/40 border border-slate-800/60 rounded-[3rem] overflow-hidden shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {showStageTabs && (
-              <div className="px-6 pt-6 md:px-8 md:pt-8">
-                <div className="flex gap-2 bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800 w-full md:w-max overflow-x-auto">
-                  {availableGroups.map((stage) => (
-                    <StageTabButton
-                      key={stage.key}
-                      label={stage.label}
-                      isActive={selectedGroupKey === stage.key}
-                      onClick={() => setSelectedGroupKey(stage.key)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="overflow-x-auto">
-              <table className="min-w-[980px] w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-900/90 border-b border-slate-800 text-slate-500 uppercase text-[10px] font-black tracking-[0.25em]">
-                    <th className="px-6 py-6 text-center">#</th>
-                    <th className="px-8 py-6">CLUB</th>
-                    <th className="px-3 py-6 text-center">MP</th>
-                    <th className="px-3 py-6 text-center">W</th>
-                    <th className="px-3 py-6 text-center">D</th>
-                    <th className="px-3 py-6 text-center">L</th>
-                    <th className="px-3 py-6 text-center">GF</th>
-                    <th className="px-3 py-6 text-center">GA</th>
-                    <th className="px-3 py-6 text-center">GD</th>
-                    <th className="px-6 py-6 text-center text-blue-400 font-bold italic">
-                      PTS
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/30">
-                  {filteredStandings.map((row, index) => (
-                    <tr
-                      key={row.id || row.team_id}
-                      className="hover:bg-blue-500/[0.03] transition-all group"
-                    >
-                      <td className="px-6 py-5 text-center">
-                        <span
-                          className={`inline-flex items-center justify-center w-10 h-10 rounded-2xl font-black text-sm transition-colors ${index === 0 ? "bg-yellow-500/20 text-yellow-500 border border-yellow-500/20" : index < 3 ? "bg-slate-800 text-slate-300" : "text-slate-600"}`}
-                        >
-                          {row.position}
-                        </span>
-                      </td>
-                      <td className="px-8 py-5">
-                        {row.team_id ? (
-                          <Link
-                            to={`/team/${row.team_id}`}
-                            className="flex items-center gap-4 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/70"
-                          >
-                            <span className="font-black text-xl tracking-tighter uppercase italic group-hover:text-blue-400 transition-colors">
-                              {row.team_name || "Unknown Team"}
-                            </span>
-                            {index === 0 && (
-                              <Trophy
-                                size={18}
-                                className="text-yellow-500 animate-pulse"
-                              />
-                            )}
-                          </Link>
-                        ) : (
-                          <div className="flex items-center gap-4">
-                            <span className="font-black text-xl tracking-tighter uppercase italic group-hover:text-blue-400 transition-colors">
-                              {row.team_name || "Unknown Team"}
-                            </span>
-                            {index === 0 && (
-                              <Trophy
-                                size={18}
-                                className="text-yellow-500 animate-pulse"
-                              />
-                            )}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-3 py-5 text-center font-bold text-slate-400 tabular-nums">
-                        {row.matches ?? 0}
-                      </td>
-                      <td className="px-3 py-5 text-center font-bold text-slate-400 tabular-nums">
-                        {row.wins ?? 0}
-                      </td>
-                      <td className="px-3 py-5 text-center font-bold text-slate-400 tabular-nums">
-                        {row.draws ?? 0}
-                      </td>
-                      <td className="px-3 py-5 text-center font-bold text-slate-400 tabular-nums">
-                        {row.losses ?? 0}
-                      </td>
-                      <td className="px-3 py-5 text-center font-bold text-slate-400 tabular-nums">
-                        {row.goals_for ?? 0}
-                      </td>
-                      <td className="px-3 py-5 text-center font-bold text-slate-400 tabular-nums">
-                        {row.goals_against ?? 0}
-                      </td>
-                      <td className="px-3 py-5 text-center font-bold text-slate-300 tabular-nums">
-                        {row.goal_diff ?? 0}
-                      </td>
-                      <td className="px-6 py-5 text-center">
-                        <span className="text-2xl font-black text-blue-400 drop-shadow-[0_0_10px_rgba(59,130,246,0.3)] tabular-nums">
-                          {row.points ?? 0}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {filteredStandings.length === 0 && (
-                <div className="p-32 text-center flex flex-col items-center gap-4">
-                  <Shield size={48} className="text-slate-800 mb-4" />
-                  <span className="text-slate-500 font-bold italic uppercase tracking-widest text-lg">
-                    Δεν υπαρχουν δεδομενα βαθμολογιας.
-                  </span>
-                  <span className="text-slate-600 text-sm">
-                    Επίλεξε διαφορετικό Πρωτάθλημα ή Σεζόν από το μενού.
-                  </span>
-                </div>
-              )}
-            </div>
+            <StageTabs
+              groups={standingsGroups}
+              selectedGroupKey={selectedGroupKey}
+              onSelectGroup={setSelectedGroupKey}
+            />
+            <StandingsTable rows={selectedStandingsRows} />
           </div>
         )}
       </div>
     </div>
-  );
-}
-
-function StageTabButton({
-  label,
-  isActive,
-  onClick,
-}: {
-  label: string;
-  isActive: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
-        isActive
-          ? "bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] border-b-2 border-blue-400"
-          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-b-2 border-transparent"
-      }`}
-    >
-      {label}
-    </button>
   );
 }
