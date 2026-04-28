@@ -10,6 +10,7 @@ import {
   listTournamentSeasonsController,
 } from "../controllers/standingsController.js";
 import {
+  calculateTeamClusterElbowController,
   createTeamsComparisonDatasetController,
   getTeamController,
   getTeamProfileController,
@@ -17,6 +18,7 @@ import {
   listTeamSeasonsController,
   getTeamStatsController,
   listTeamsController,
+  runTeamClustersController,
 } from "../controllers/teamController.js";
 import { searchController } from "../controllers/searchController.js";
 
@@ -32,6 +34,14 @@ router.get(
 router.post(
   "/teams/comparison-dataset",
   asyncHandler(createTeamsComparisonDatasetController),
+);
+router.post(
+  "/teams/clustering/elbow",
+  asyncHandler(calculateTeamClusterElbowController),
+);
+router.post(
+  "/teams/clustering/run",
+  asyncHandler(runTeamClustersController),
 );
 router.get("/teams/:id/profile", asyncHandler(getTeamProfileController));
 router.get("/teams/:id", asyncHandler(getTeamController));

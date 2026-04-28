@@ -175,6 +175,81 @@ export type TeamComparisonMatrixRequest = {
   statKeys: TeamStatKey[];
 };
 
+export type TeamClusterRequest = {
+  tournamentId: number;
+  seasonId: number;
+  teamIds: number[];
+  statKeys: TeamStatKey[];
+};
+
+export type TeamClusterElbowRequest = TeamClusterRequest & {
+  maxK?: number;
+};
+
+export type TeamClusterRunRequest = TeamClusterRequest & {
+  k: number;
+};
+
+export type TeamClusterStat = {
+  key: TeamStatKey;
+  label: string;
+  category: string | null;
+  direction: "positive" | "negative";
+  min: number;
+  max: number;
+  isConstant: boolean;
+};
+
+export type TeamClusterMatrixRow = {
+  teamId: number;
+  teamName: string;
+  rawStats: Partial<Record<TeamStatKey, number | null>>;
+  normalizedStats: Partial<Record<TeamStatKey, number>>;
+};
+
+export type TeamClusterElbowPoint = {
+  k: number;
+  inertia: number;
+  iterations: number;
+};
+
+export type TeamClusterElbowPayload = {
+  context: {
+    tournamentId: number;
+    seasonId: number;
+  };
+  rows: TeamClusterMatrixRow[];
+  stats: TeamClusterStat[];
+  elbow: TeamClusterElbowPoint[];
+  suggestedK: number | null;
+  maxK: number;
+  warnings: string[];
+};
+
+export type TeamClusterAssignment = TeamClusterMatrixRow & {
+  clusterId: number;
+  distanceToCentroid: number;
+};
+
+export type TeamClusterCentroid = {
+  clusterId: number;
+  values: Partial<Record<TeamStatKey, number>>;
+};
+
+export type TeamClusterRunPayload = {
+  context: {
+    tournamentId: number;
+    seasonId: number;
+  };
+  k: number;
+  iterations: number;
+  inertia: number;
+  stats: TeamClusterStat[];
+  assignments: TeamClusterAssignment[];
+  centroids: TeamClusterCentroid[];
+  warnings: string[];
+};
+
 export type SearchTeamResult = {
   id: number;
   name: string;
@@ -317,6 +392,30 @@ export const getTeamComparisonMatrix = async (
   payload: TeamComparisonMatrixRequest,
 ): Promise<TeamComparisonPayload> => {
   return request("/api/teams/comparison-dataset", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+};
+
+export const calculateTeamClusterElbow = async (
+  payload: TeamClusterElbowRequest,
+): Promise<TeamClusterElbowPayload> => {
+  return request("/api/teams/clustering/elbow", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+};
+
+export const runTeamClusters = async (
+  payload: TeamClusterRunRequest,
+): Promise<TeamClusterRunPayload> => {
+  return request("/api/teams/clustering/run", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

@@ -1,5 +1,9 @@
 import { parseInteger } from "../lib/http.js";
 import {
+  calculateTeamClusterElbow,
+  runTeamClusters,
+} from "../services/teamClusteringService.js";
+import {
   getTeam,
   getTeamComparisonMatrix,
   getTeamProfile,
@@ -21,6 +25,16 @@ export async function getTeamsComparisonDatasetController(req, res) {
 
 export async function createTeamsComparisonDatasetController(req, res) {
   const dataset = await getTeamComparisonMatrix(req.body);
+  res.status(200).json({ data: dataset });
+}
+
+export async function calculateTeamClusterElbowController(req, res) {
+  const dataset = await calculateTeamClusterElbow(req.body);
+  res.status(200).json({ data: dataset });
+}
+
+export async function runTeamClustersController(req, res) {
+  const dataset = await runTeamClusters(req.body);
   res.status(200).json({ data: dataset });
 }
 
