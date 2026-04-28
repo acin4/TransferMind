@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { getTeams, type TeamListItem } from "../api/api";
 import { Users, ChevronRight, Trophy, Building2, MapPin } from "lucide-react";
+import { useTeams } from "../hooks/useTeams";
 import {
   getTeamLocation,
   getTeamStadium,
@@ -12,25 +12,8 @@ const ALL_TAB = "ALL";
 const OTHER_TAB = "Other";
 
 export default function Teams() {
-  const [teams, setTeams] = useState<TeamListItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { teams, isLoading } = useTeams();
   const [activeCountry, setActiveCountry] = useState(ALL_TAB);
-
-  useEffect(() => {
-    const fetchTeams = async () => {
-      try {
-        const fetchedTeams = await getTeams();
-
-        setTeams(fetchedTeams || []);
-      } catch (error) {
-        console.error("Σφάλμα κατά τη φόρτωση λίστας ομάδων:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTeams();
-  }, []);
 
   const countryTabs = useMemo(() => {
     const countries = new Set<string>();
@@ -77,7 +60,7 @@ export default function Teams() {
     );
   }, [activeCountry, teams]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center text-blue-500 font-bold tracking-widest animate-pulse">
         ΦΟΡΤΩΣΗ ΟΜΑΔΩΝ...

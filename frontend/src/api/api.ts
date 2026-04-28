@@ -21,6 +21,21 @@ export type TeamListItem = {
   badge_is_current?: boolean;
 };
 
+export type PlayerListStat = {
+  goals?: number | null;
+  assists?: number | null;
+  [key: string]: unknown;
+};
+
+export type PlayerListItem = {
+  id: number | string;
+  name: string;
+  team_id?: number | string | null;
+  height?: number | string | null;
+  player_stats?: PlayerListStat[] | null;
+  [key: string]: unknown;
+};
+
 export type TeamProfileData = TeamListItem & {
   tournament_id?: number | null;
   tournament_name?: string | null;
@@ -196,11 +211,13 @@ async function request(path: string, options?: RequestInit) {
 // ==========================================
 // 1. HOME & ΓΕΝΙΚΕΣ ΛΙΣΤΕΣ (Teams / Players)
 // ==========================================
-export const getTeams = async () => {
+export const getTeams = async (): Promise<TeamListItem[]> => {
   return request("/api/teams");
 };
 
-export const getPlayers = async (teamId?: number | string) => {
+export const getPlayers = async (
+  teamId?: number | string,
+): Promise<PlayerListItem[]> => {
   const params = new URLSearchParams();
 
   if (teamId !== undefined) {

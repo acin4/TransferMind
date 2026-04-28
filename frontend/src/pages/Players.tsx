@@ -1,31 +1,10 @@
-import { useEffect, useState } from "react";
-import { getPlayers } from "../api/api";
 import { Link } from "react-router-dom";
+import { usePlayers } from "../hooks/usePlayers";
 
 export default function Players() {
-  const [players, setPlayers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { players, isLoading, error } = usePlayers();
 
-  useEffect(() => {
-    const fetchPlayers = async () => {
-      try {
-        const data = await getPlayers();
-        setPlayers(data);
-        setError(null);
-      } catch (err) {
-        console.error(err);
-        setPlayers([]);
-        setError("Failed to load players.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPlayers();
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return <div className="p-6">Loading players...</div>;
   }
 
