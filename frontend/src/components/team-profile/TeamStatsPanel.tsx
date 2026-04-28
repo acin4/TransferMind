@@ -1,4 +1,12 @@
-import { useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MutableRefObject,
+} from "react";
+import { createPortal } from "react-dom";
+import { ArrowUp } from "lucide-react";
 import {
   TEAM_STATS_CATEGORIES,
   formatTeamStatValue,
@@ -12,6 +20,7 @@ import {
   computeCategoryScore,
   computeStatPerformance,
   getStatColor,
+  toNumericStatValue,
   type TeamStatPerformance,
   type TeamStatPerformanceColor,
 } from "../../utils/teamStatsPerformance";
@@ -24,6 +33,9 @@ type TeamStatsPanelProps = {
   onStatsCategoryChange: (category: TeamStatsCategoryId) => void;
   statsPool: TeamSeasonStatEntry[];
   statsPoolLoading?: boolean;
+  selectedTeamId?: number | string | null;
+  selectedSeasonName?: string | null;
+  selectedTournamentName?: string | null;
 };
 
 export default function TeamStatsPanel({
@@ -33,7 +45,15 @@ export default function TeamStatsPanel({
   onStatsCategoryChange,
   statsPool,
   statsPoolLoading = false,
+  selectedTeamId = null,
+  selectedSeasonName = null,
+  selectedTournamentName = null,
 }: TeamStatsPanelProps) {
+  const [selectedStat, setSelectedStat] = useState<TeamStatKey | null>(null);
+  const [showBackToStatsButton, setShowBackToStatsButton] = useState(false);
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  const statsTopRef = useRef<HTMLDivElement | null>(null);
+  const rankingChartRef = useRef<HTMLDivElement | null>(null);
   const selectedStatsCategory =
     TEAM_STATS_CATEGORIES.find(
       (category) => category.id === activeStatsCategory,
@@ -55,11 +75,106 @@ export default function TeamStatsPanel({
       (statKey) => statPerformances.get(statKey)?.score,
     ),
   );
+  const selectedStatMeta = selectedStat ? getTeamStatMeta(selectedStat) : null;
+  const rankingRows = useMemo(() => {
+    if (!selectedStat) {
+      return [];
+    }
+
+    return statsPool
+      .map((entry) => {
+        const rawValue = toNumericStatValue(entry.stats[selectedStat]);
+
+        return {
+          id: entry.id,
+          teamId: entry.teamId,
+          teamName: entry.teamName || `Team ${entry.teamId}`,
+          teamLogo: entry.teamLogo ?? null,
+          rawValue,
+          formattedValue:
+            rawValue == null
+              ? null
+              : formatTeamStatValue(rawValue, selectedStatMeta?.format),
+          isSelectedTeam:
+            selectedTeamId != null &&
+            String(entry.teamId) === String(selectedTeamId),
+        };
+      })
+      .sort((a, b) => {
+        const aValue = a.rawValue ?? 0;
+        const bValue = b.rawValue ?? 0;
+
+        if (aValue !== bValue) {
+          return aValue - bValue;
+        }
+
+        return a.teamName.localeCompare(b.teamName);
+      });
+  }, [selectedStat, selectedStatMeta?.format, selectedTeamId, statsPool]);
+  const rankingScale = useMemo(() => getRankingScale(rankingRows), [rankingRows]);
+
+  useEffect(() => {
+    setPortalTarget(document.body);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedStat) {
+      setShowBackToStatsButton(false);
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      rankingChartRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [selectedStat]);
+
+  useEffect(() => {
+    const chartElement = rankingChartRef.current;
+
+    if (!selectedStat || !chartElement || typeof IntersectionObserver === "undefined") {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setShowBackToStatsButton(Boolean(entry?.isIntersecting));
+      },
+      {
+        root: null,
+        threshold: 0.15,
+      },
+    );
+
+    observer.observe(chartElement);
+
+    return () => observer.disconnect();
+  }, [selectedStat]);
+
+  const handleSelectStat = (statKey: TeamStatKey) => {
+    setSelectedStat(statKey);
+  };
+
+  const scrollToStatsTop = () => {
+    if (!selectedStat) {
+      return;
+    }
+
+    document.getElementById(`stat-${selectedStat}`)?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  };
 
   return (
     <div
       className="animate-in fade-in duration-300"
       data-category-score={categoryScore ?? ""}
+      ref={statsTopRef}
     >
       <div className="mb-6">
         <h3 className="text-slate-400 font-bold uppercase tracking-widest text-xs">
@@ -97,6 +212,7 @@ export default function TeamStatsPanel({
               return (
                 <StatLine
                   key={statKey}
+                  statKey={statKey}
                   label={statMeta.label}
                   value={
                     performance?.rawValue == null
@@ -113,10 +229,43 @@ export default function TeamStatsPanel({
                         )
                   }
                   isCard={getStatCardColor(statKey)}
+                  isSelected={selectedStat === statKey}
+                  onSelect={handleSelectStat}
                 />
               );
             })}
           </div>
+          {selectedStat && selectedStatMeta ? (
+            <StatRankingChart
+              refNode={rankingChartRef}
+              statLabel={selectedStatMeta.label}
+              tournamentName={selectedTournamentName}
+              seasonName={selectedSeasonName}
+              rows={rankingRows}
+              scale={rankingScale}
+              statsPoolLoading={statsPoolLoading}
+            />
+          ) : null}
+          {selectedStat && showBackToStatsButton && portalTarget
+            ? createPortal(
+                <button
+                  type="button"
+                  onClick={scrollToStatsTop}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-700 bg-slate-950/90 text-slate-300 shadow-2xl backdrop-blur transition-colors hover:border-blue-500 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  style={{
+                    position: "fixed",
+                    left: 8,
+                    bottom: 24,
+                    zIndex: 9999,
+                  }}
+                  aria-label="Back to selected stat"
+                  title="Back to selected stat"
+                >
+                  <ArrowUp size={18} />
+                </button>,
+                portalTarget,
+              )
+            : null}
         </>
       ) : (
         <p className="text-slate-500 italic bg-slate-900/50 p-8 rounded-2xl border border-slate-800 text-center font-bold">
@@ -128,22 +277,44 @@ export default function TeamStatsPanel({
 }
 
 function StatLine({
+  statKey,
   label,
   value,
   performance,
   bestValue,
   isCard,
+  isSelected,
+  onSelect,
 }: {
+  statKey: TeamStatKey;
   label: string;
   value: string | number | null;
   performance?: TeamStatPerformance;
   bestValue: string | number | null;
   isCard?: "yellow" | "red";
+  isSelected: boolean;
+  onSelect: (statKey: TeamStatKey) => void;
 }) {
   const score = performance?.score ?? null;
 
   return (
-    <div className="grid gap-4 py-5 px-5 sm:grid-cols-[minmax(0,1fr)_minmax(180px,260px)] sm:items-center sm:px-8 border-b border-slate-800/80 last:border-0 hover:bg-white/[0.02] transition-colors group">
+    <div
+      id={`stat-${statKey}`}
+      role="button"
+      tabIndex={0}
+      onClick={() => onSelect(statKey)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect(statKey);
+        }
+      }}
+      className={`grid cursor-pointer gap-4 border-b border-slate-800/80 px-5 py-5 transition-colors last:border-0 sm:grid-cols-[minmax(0,1fr)_minmax(180px,260px)] sm:items-center sm:px-8 group focus:outline-none focus-visible:bg-blue-500/10 ${
+        isSelected
+          ? "bg-blue-500/[0.08] ring-1 ring-inset ring-blue-500/30"
+          : "hover:bg-white/[0.02]"
+      }`}
+    >
       <div className="min-w-0">
         <div className="flex items-center gap-3">
           {isCard === "yellow" && (
@@ -168,6 +339,212 @@ function StatLine({
       />
     </div>
   );
+}
+
+function StatRankingChart({
+  refNode,
+  statLabel,
+  tournamentName,
+  seasonName,
+  rows,
+  scale,
+  statsPoolLoading,
+}: {
+  refNode: MutableRefObject<HTMLDivElement | null>;
+  statLabel: string;
+  tournamentName?: string | null;
+  seasonName?: string | null;
+  rows: Array<{
+    id: string;
+    teamId: number;
+    teamName: string;
+    teamLogo: string | null;
+    rawValue: number | null;
+    formattedValue: string | null;
+    isSelectedTeam: boolean;
+  }>;
+  scale: RankingScale;
+  statsPoolLoading: boolean;
+}) {
+  const contextLabel = [tournamentName, seasonName].filter(Boolean).join(" ");
+
+  return (
+    <section
+      ref={refNode}
+      className="mt-8 rounded-[2rem] border border-slate-800 bg-slate-900/50 p-5 shadow-inner md:p-6"
+    >
+      <div className="mb-6">
+        <h4 className="text-lg font-black uppercase tracking-tight text-white">
+          {statLabel} ranking — {contextLabel || "Selected context"}
+        </h4>
+        <p className="mt-2 text-[11px] font-black uppercase tracking-widest text-slate-500">
+          Compared with all teams from the same season and tournament
+        </p>
+      </div>
+
+      {statsPoolLoading ? (
+        <p className="rounded-2xl border border-slate-800 bg-slate-950/50 px-5 py-5 text-center text-xs font-black uppercase tracking-widest text-slate-500">
+          Loading ranking data...
+        </p>
+      ) : rows.length === 0 ? (
+        <p className="rounded-2xl border border-slate-800 bg-slate-950/50 px-5 py-5 text-center text-xs font-black uppercase tracking-widest text-slate-500">
+          No ranking data available.
+        </p>
+      ) : (
+        <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/40 px-4 pb-5 pt-4">
+          <div className="flex min-w-max items-end gap-3">
+            {rows.map((row) => (
+              <RankingColumn key={row.id} row={row} scale={scale} />
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+type RankingScale = {
+  min: number;
+  max: number;
+  range: number;
+  baselinePercent: number;
+};
+
+function RankingColumn({
+  row,
+  scale,
+}: {
+  row: {
+    teamId: number;
+    teamName: string;
+    teamLogo: string | null;
+    rawValue: number | null;
+    formattedValue: string | null;
+    isSelectedTeam: boolean;
+  };
+  scale: RankingScale;
+}) {
+  const hasValue = row.rawValue != null;
+  const rawValue = row.rawValue ?? 0;
+  const valuePercent = ((rawValue - scale.min) / scale.range) * 100;
+  const barStart = Math.min(valuePercent, scale.baselinePercent);
+  const barHeight = Math.max(3, Math.abs(valuePercent - scale.baselinePercent));
+  const initials = getTeamInitials(row.teamName);
+
+  return (
+    <div
+      className={`flex w-[96px] shrink-0 flex-col items-center rounded-2xl border px-3 py-4 ${
+        row.isSelectedTeam
+          ? "border-blue-500/60 bg-blue-500/10 shadow-[0_0_24px_rgba(59,130,246,0.16)]"
+          : "border-slate-800 bg-slate-950/40"
+      }`}
+    >
+      <TeamLogo logoUrl={row.teamLogo} teamName={row.teamName} />
+      <div className="mt-2 h-9 w-full">
+        <p
+          className="line-clamp-2 text-center text-[10px] font-black uppercase leading-tight tracking-wider text-slate-300"
+          title={row.teamName}
+        >
+          {row.teamName.length > 16 ? initials : row.teamName}
+        </p>
+      </div>
+
+      <div className="mt-3 h-[220px] w-full">
+        <div className="relative mx-auto h-full w-12 rounded-2xl bg-slate-900/80 ring-1 ring-slate-800">
+          <div
+            className="absolute left-[-8px] right-[-8px] h-px bg-slate-600/80"
+            style={{ bottom: `${scale.baselinePercent}%` }}
+          />
+          {hasValue ? (
+            <div
+              className={`absolute left-2 right-2 rounded-t-xl rounded-b-xl ${
+                row.isSelectedTeam ? "bg-blue-400" : "bg-slate-400"
+              }`}
+              style={{
+                bottom: `${barStart}%`,
+                height: `${barHeight}%`,
+              }}
+            />
+          ) : (
+            <div className="absolute bottom-0 left-1/2 h-3 w-8 -translate-x-1/2 rounded-full bg-red-500" />
+          )}
+        </div>
+      </div>
+
+      <div className="mt-3 h-6 text-center text-sm font-black tabular-nums text-white">
+        {hasValue ? (
+          row.formattedValue
+        ) : (
+          <span className="inline-flex h-2.5 w-8 rounded-full bg-red-500 align-middle" />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TeamLogo({
+  logoUrl,
+  teamName,
+}: {
+  logoUrl: string | null;
+  teamName: string;
+}) {
+  if (logoUrl) {
+    return (
+      <img
+        src={logoUrl}
+        alt=""
+        className="h-10 w-10 rounded-xl object-contain bg-white/5 p-1"
+        loading="lazy"
+      />
+    );
+  }
+
+  return (
+    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-xs font-black text-slate-300">
+      {getTeamInitials(teamName)}
+    </div>
+  );
+}
+
+function getRankingScale(
+  rows: Array<{ rawValue: number | null }>,
+): RankingScale {
+  const values = rows
+    .map((row) => row.rawValue)
+    .filter((value): value is number => value != null);
+
+  if (values.length === 0) {
+    return {
+      min: 0,
+      max: 1,
+      range: 1,
+      baselinePercent: 0,
+    };
+  }
+
+  const minValue = Math.min(...values);
+  const maxValue = Math.max(...values);
+  const min = minValue < 0 ? minValue : 0;
+  const max = maxValue > 0 ? maxValue : 0;
+  const range = max === min ? 1 : max - min;
+
+  return {
+    min,
+    max,
+    range,
+    baselinePercent: ((0 - min) / range) * 100,
+  };
+}
+
+function getTeamInitials(teamName: string) {
+  return teamName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
 }
 
 function StatPerformanceBar({

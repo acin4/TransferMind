@@ -342,6 +342,9 @@ export default function TeamProfile() {
               onStatsCategoryChange={setActiveStatsCategory}
               statsPool={selectedStatsPool}
               statsPoolLoading={comparisonDatasetLoading}
+              selectedTeamId={team.id}
+              selectedSeasonName={selectedSeason?.season_name ?? null}
+              selectedTournamentName={selectedCompetitionName}
             />
           )}
 

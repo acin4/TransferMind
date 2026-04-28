@@ -24,6 +24,7 @@ export type TeamSeasonStatEntry = {
   id: string;
   teamId: number;
   teamName: string;
+  teamLogo?: string | null;
   seasonId: number;
   seasonName: string;
   tournamentId: number | null;
