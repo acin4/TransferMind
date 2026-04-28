@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -14,10 +14,6 @@ import {
   YAxis,
 } from "recharts";
 import {
-  getTeamComparisonMatrix,
-  type TeamComparisonPayload,
-} from "../../api/api";
-import {
   formatRawStatValue,
   formatRelativeScoreValue,
   getRelativeScoreBand,
@@ -26,6 +22,7 @@ import {
 } from "../../utils/teamsComparison";
 import {
   getTeamStatMeta,
+  isNegativeTeamStat,
   type TeamStatKey,
 } from "../../teamStatsConfig";
 import SearchableCheckboxPanel from "./SearchableCheckboxPanel";
@@ -52,16 +49,34 @@ type ComparisonDisplayEntry = {
   teamId: number;
 };
 
+type ComparisonValue = {
+  rawValue: number | null;
+  adjustedScore: number | null;
+};
+
+type ComparisonEntry = {
+  id: string;
+  teamId: number;
+  teamName: string;
+  values: Partial<Record<TeamStatKey, ComparisonValue>>;
+};
+
+type ComparisonStat = {
+  key: TeamStatKey;
+  label: string;
+};
+
+type ComparisonPayload = {
+  stats: ComparisonStat[];
+  entries: ComparisonEntry[];
+};
+
 export default function CustomComparisonTab({
   entries,
   statKeys,
 }: CustomComparisonTabProps) {
   const [selectedEntryIds, setSelectedEntryIds] = useState<string[]>([]);
   const [selectedStatKeys, setSelectedStatKeys] = useState<TeamStatKey[]>([]);
-  const [comparisonPayload, setComparisonPayload] =
-    useState<TeamComparisonPayload | null>(null);
-  const [comparisonLoading, setComparisonLoading] = useState(false);
-  const [comparisonError, setComparisonError] = useState<string | null>(null);
 
   const entryOptions = useMemo(
     () =>
@@ -97,89 +112,57 @@ export default function CustomComparisonTab({
     [selectedStatKeys, statKeys],
   );
 
-  const contextError = useMemo(() => {
-    if (selectedEntries.length === 0) {
+  const comparisonPayload = useMemo<ComparisonPayload | null>(() => {
+    if (selectedEntries.length === 0 || selectedStats.length === 0) {
       return null;
     }
 
-    const [firstEntry] = selectedEntries;
+    const contextPools = buildContextPools(entries);
+    const stats = selectedStats.map((statKey) => ({
+      key: statKey,
+      label: getTeamStatMeta(statKey).label,
+    }));
 
-    if (!firstEntry.tournamentId || !firstEntry.seasonId) {
-      return "The selected entry is missing tournament or season context.";
-    }
+    return {
+      stats,
+      entries: selectedEntries.map((entry) => {
+        const contextPool = contextPools.get(getEntryContextKey(entry)) ?? [];
 
-    const hasMixedContext = selectedEntries.some(
-      (entry) =>
-        entry.tournamentId !== firstEntry.tournamentId ||
-        entry.seasonId !== firstEntry.seasonId,
-    );
+        return {
+          id: entry.id,
+          teamId: entry.teamId,
+          teamName: entry.teamName,
+          values: Object.fromEntries(
+            selectedStats.map((statKey) => {
+              const rawValue = toNumericStatValue(entry.stats[statKey]);
 
-    return hasMixedContext
-      ? "Select teams from one tournament and one season to generate a backend-normalized comparison."
-      : null;
-  }, [selectedEntries]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const [firstEntry] = selectedEntries;
-
-    setComparisonPayload(null);
-    setComparisonError(null);
-
-    if (
-      selectedEntries.length === 0 ||
-      selectedStats.length === 0 ||
-      contextError ||
-      !firstEntry?.tournamentId ||
-      !firstEntry?.seasonId
-    ) {
-      setComparisonLoading(false);
-      return;
-    }
-
-    setComparisonLoading(true);
-
-    getTeamComparisonMatrix({
-      tournamentId: firstEntry.tournamentId,
-      seasonId: firstEntry.seasonId,
-      teamIds: selectedEntries.map((entry) => entry.teamId),
-      statKeys: selectedStats,
-    })
-      .then((payload) => {
-        if (!cancelled) {
-          setComparisonPayload(payload);
-        }
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          console.error("Failed to load team comparison matrix:", error);
-          setComparisonError(
-            error instanceof Error
-              ? error.message
-              : "Failed to load comparison data.",
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setComparisonLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
+              return [
+                statKey,
+                {
+                  rawValue,
+                  adjustedScore: calculateContextRelativeScore(
+                    rawValue,
+                    contextPool,
+                    statKey,
+                  ),
+                },
+              ];
+            }),
+          ),
+        };
+      }),
     };
-  }, [contextError, selectedEntries, selectedStats]);
+  }, [entries, selectedEntries, selectedStats]);
 
   const displayEntries = useMemo<ComparisonDisplayEntry[]>(
     () =>
       (comparisonPayload?.entries ?? []).map((entry) => {
         const sourceEntry = selectedEntries.find(
-          (candidate) => candidate.teamId === entry.teamId,
+          (candidate) => candidate.id === entry.id,
         );
 
         return {
-          id: String(entry.teamId),
+          id: entry.id,
           label: sourceEntry?.label ?? entry.teamName,
           teamId: entry.teamId,
         };
@@ -197,11 +180,11 @@ export default function CustomComparisonTab({
 
         comparisonPayload?.entries.forEach((entry) => {
           const value = entry.values[stat.key];
-          row[String(entry.teamId)] =
+          row[entry.id] =
             value?.adjustedScore == null
               ? null
-              : Number((value.adjustedScore * 100).toFixed(2));
-          row[`${entry.teamId}__raw`] = value?.rawValue ?? null;
+              : Number(value.adjustedScore.toFixed(2));
+          row[`${entry.id}__raw`] = value?.rawValue ?? null;
         });
 
         return row;
@@ -210,7 +193,7 @@ export default function CustomComparisonTab({
   );
 
   const readyForComparison =
-    selectedEntries.length >= 1 && selectedStats.length >= 1 && !contextError;
+    selectedEntries.length >= 1 && selectedStats.length >= 1;
   const shouldRenderBarChart =
     readyForComparison && Boolean(comparisonPayload) && selectedStats.length <= 2;
   const shouldRenderRadarChart =
@@ -269,9 +252,8 @@ export default function CustomComparisonTab({
               Custom Comparison
             </h3>
             <p className="text-xs font-black uppercase tracking-widest text-slate-500 mt-3">
-              Relative Score (0–100) is calculated against teams from the same
-              season and tournament, while raw values remain the real football
-              statistics.
+              Each team-season is scored against teams from the same tournament
+              and season it played in.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -283,14 +265,8 @@ export default function CustomComparisonTab({
           </div>
         </div>
 
-        {contextError ? (
-          <EmptyState message={contextError} />
-        ) : !readyForComparison ? (
+        {!readyForComparison ? (
           <EmptyState message="Select at least one team-season entry and one statistic to generate a comparison." />
-        ) : comparisonLoading ? (
-          <EmptyState message="Loading backend-normalized comparison data..." />
-        ) : comparisonError ? (
-          <EmptyState message={comparisonError} />
         ) : shouldRenderBarChart ? (
           <div className="h-[520px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -371,6 +347,80 @@ export default function CustomComparisonTab({
       </section>
     </div>
   );
+}
+
+function buildContextPools(entries: TeamSeasonStatEntry[]) {
+  const pools = new Map<string, TeamSeasonStatEntry[]>();
+
+  entries.forEach((entry) => {
+    const key = getEntryContextKey(entry);
+    pools.set(key, [...(pools.get(key) ?? []), entry]);
+  });
+
+  return pools;
+}
+
+function getEntryContextKey(entry: TeamSeasonStatEntry) {
+  const stageKey = getEntryStageKey(entry);
+
+  return [
+    entry.tournamentId ?? "tournament:none",
+    entry.seasonId ?? "season:none",
+    stageKey ?? "stage:any",
+  ].join("::");
+}
+
+function getEntryStageKey(entry: TeamSeasonStatEntry) {
+  const entryWithStage = entry as TeamSeasonStatEntry & Record<string, unknown>;
+  const stageParts = [
+    entryWithStage.stageTournamentId,
+    entryWithStage.standingGroupId,
+    entryWithStage.stageLabel,
+    entryWithStage.stageName,
+    entryWithStage.groupName,
+  ]
+    .map((value) => (value == null ? "" : String(value).trim().toLowerCase()))
+    .filter(Boolean);
+
+  return stageParts.length > 0 ? stageParts.join("::") : null;
+}
+
+function toNumericStatValue(value: number | null | undefined) {
+  return Number.isFinite(value) ? value : null;
+}
+
+function calculateContextRelativeScore(
+  rawValue: number | null,
+  contextPool: TeamSeasonStatEntry[],
+  statKey: TeamStatKey,
+) {
+  if (rawValue == null) {
+    return null;
+  }
+
+  const contextValues = contextPool
+    .map((entry) => toNumericStatValue(entry.stats[statKey]))
+    .filter((value): value is number => value != null);
+
+  if (contextValues.length === 0) {
+    return null;
+  }
+
+  if (contextValues.length === 1) {
+    return 50;
+  }
+
+  const minValue = Math.min(...contextValues);
+  const maxValue = Math.max(...contextValues);
+
+  if (minValue === maxValue) {
+    return 50;
+  }
+
+  const normalizedValue = ((rawValue - minValue) / (maxValue - minValue)) * 100;
+  const boundedValue = Math.max(0, Math.min(100, normalizedValue));
+
+  return isNegativeTeamStat(statKey) ? 100 - boundedValue : boundedValue;
 }
 
 function StatusPill({ label }: { label: string }) {

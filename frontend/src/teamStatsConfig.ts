@@ -1,8 +1,10 @@
 export type TeamStatDisplayFormat = "number" | "percent" | "ratio";
+export type TeamStatDirection = "positive" | "negative";
 
 export type TeamStatMeta = {
   label: string;
   format?: TeamStatDisplayFormat;
+  direction?: TeamStatDirection;
 };
 
 function defineTeamStatMeta<T extends Record<string, TeamStatMeta>>(meta: T) {
@@ -169,6 +171,21 @@ const TEAM_STAT_META = defineTeamStatMeta({
 } as const);
 
 export type TeamStatKey = keyof typeof TEAM_STAT_META;
+
+const NEGATIVE_TEAM_STATS = new Set<TeamStatKey>([
+  "goals_conceded",
+  "own_goals",
+  "errors_to_goals",
+  "errors_to_shot",
+  "penalty_commited",
+  "penalty_conceded",
+  "fouls",
+  "yellowcards",
+  "yellowcards_second",
+  "redcards",
+  "offsides",
+  "possession_lost",
+]);
 
 type TeamStatsCategoryDefinition = {
   id: string;
@@ -338,6 +355,24 @@ export type TeamStats = Partial<Record<TeamStatKey, number | string | null>> &
 
 export function getTeamStatMeta(statKey: TeamStatKey): TeamStatMeta {
   return TEAM_STAT_META[statKey];
+}
+
+export function getTeamStatCategory(statKey: TeamStatKey) {
+  return (
+    TEAM_STATS_CATEGORIES.find((category) =>
+      category.statKeys.includes(statKey),
+    )?.label ?? null
+  );
+}
+
+export function getTeamStatDirection(statKey: TeamStatKey): TeamStatDirection {
+  return NEGATIVE_TEAM_STATS.has(statKey) || statKey.includes("against")
+    ? "negative"
+    : "positive";
+}
+
+export function isNegativeTeamStat(statKey: TeamStatKey) {
+  return getTeamStatDirection(statKey) === "negative";
 }
 
 export function formatTeamStatValue(

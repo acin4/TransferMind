@@ -172,15 +172,16 @@ async function listParticipationRowsByTeamId(teamId) {
   return data ?? [];
 }
 
-function buildTeamComparisonSeasons(rows, preferredTournamentDbId) {
-  const seasonsById = new Map();
+function buildTeamComparisonSeasons(rows) {
+  const seasonsByContext = new Map();
 
   for (const row of dedupeParticipationRows(rows)) {
-    if (row.tournament_db_id !== preferredTournamentDbId || !row.season_db_id) {
+    if (!row.tournament_db_id || !row.season_db_id) {
       continue;
     }
 
     const nextSeason = {
+      key: buildParticipationKey(row),
       season_id: row.season_db_id,
       season_api_id: row.season_id ?? null,
       season_name: getSeasonLabel(row),
@@ -189,18 +190,27 @@ function buildTeamComparisonSeasons(rows, preferredTournamentDbId) {
       tournament_name: row.tournament_name?.trim() || null,
       is_current: Boolean(row.is_current),
     };
-    const existingSeason = seasonsById.get(nextSeason.season_id);
+    const existingSeason = seasonsByContext.get(nextSeason.key);
 
     if (
       !existingSeason ||
       (nextSeason.is_current && !existingSeason.is_current) ||
-      (!existingSeason.season_name && nextSeason.season_name)
+      (!existingSeason.season_name && nextSeason.season_name) ||
+      (!existingSeason.tournament_name && nextSeason.tournament_name)
     ) {
-      seasonsById.set(nextSeason.season_id, nextSeason);
+      seasonsByContext.set(nextSeason.key, nextSeason);
     }
   }
 
-  return [...seasonsById.values()].sort((a, b) => {
+  return [...seasonsByContext.values()].sort((a, b) => {
+    const tournamentDelta = String(a.tournament_name ?? "").localeCompare(
+      String(b.tournament_name ?? ""),
+    );
+
+    if (tournamentDelta !== 0) {
+      return tournamentDelta;
+    }
+
     const aEndYear = getSeasonEndYear(a);
     const bEndYear = getSeasonEndYear(b);
 
@@ -561,19 +571,7 @@ export async function listTeamsComparisonDatasetRows() {
 
   for (const team of teams ?? []) {
     const teamParticipationRows = participationRowsByTeamId.get(team.id) ?? [];
-    const preferredParticipation = getPreferredParticipationRow(
-      teamParticipationRows,
-      team.tournament_id ?? null,
-    );
-
-    if (!preferredParticipation?.tournament_db_id) {
-      continue;
-    }
-
-    const seasons = buildTeamComparisonSeasons(
-      teamParticipationRows,
-      preferredParticipation.tournament_db_id,
-    );
+    const seasons = buildTeamComparisonSeasons(teamParticipationRows);
 
     for (const season of seasons) {
       const entry = {

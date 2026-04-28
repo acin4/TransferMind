@@ -5,6 +5,7 @@ import {
   TEAM_COMPARISON_STAT_KEYS,
   type TeamSeasonStatEntry,
 } from "../utils/teamsComparison";
+import SegmentedTabs from "../components/ui/SegmentedTabs";
 import CustomComparisonTab from "../components/teams-comparison/CustomComparisonTab";
 import ClusterAnalysisTab from "../components/teams-comparison/ClusterAnalysisTab";
 
@@ -89,20 +90,32 @@ export default function TeamsComparison() {
           </div>
         </div>
 
-        <div className="flex gap-2 mb-8 bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800 w-full md:w-max overflow-x-auto">
-          <TabButton
-            label="Custom Comparison"
-            icon={<GitCompareArrows size={16} />}
-            isActive={activeTab === "custom"}
-            onClick={() => setActiveTab("custom")}
-          />
-          <TabButton
-            label="Cluster Analysis"
-            icon={<BrainCircuit size={16} />}
-            isActive={activeTab === "cluster"}
-            onClick={() => setActiveTab("cluster")}
-          />
-        </div>
+        <SegmentedTabs
+          items={[
+            {
+              value: "custom",
+              label: (
+                <>
+                  <GitCompareArrows size={16} />
+                  Custom Comparison
+                </>
+              ),
+            },
+            {
+              value: "cluster",
+              label: (
+                <>
+                  <BrainCircuit size={16} />
+                  Cluster Analysis
+                </>
+              ),
+            },
+          ]}
+          value={activeTab}
+          onChange={setActiveTab}
+          className="flex gap-2 mb-8 bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800 w-full md:w-max overflow-x-auto"
+          buttonClassName="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap"
+        />
 
         {entries.length === 0 ? (
           <div className="rounded-[3rem] border-2 border-dashed border-slate-800 p-16 text-center text-sm font-black uppercase tracking-widest text-slate-500">
@@ -126,31 +139,5 @@ function SummaryPill({ label }: { label: string }) {
     <span className="px-4 py-3 rounded-2xl bg-slate-900/70 border border-slate-800 text-[11px] font-black uppercase tracking-widest text-slate-300">
       {label}
     </span>
-  );
-}
-
-function TabButton({
-  label,
-  icon,
-  isActive,
-  onClick,
-}: {
-  label: string;
-  icon: React.ReactNode;
-  isActive: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
-        isActive
-          ? "bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] border-b-2 border-blue-400"
-          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-b-2 border-transparent"
-      }`}
-    >
-      {icon}
-      {label}
-    </button>
   );
 }

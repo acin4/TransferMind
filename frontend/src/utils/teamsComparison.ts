@@ -1,5 +1,8 @@
 import {
   TEAM_STATS_CATEGORIES,
+  formatTeamStatValue,
+  getTeamStatMeta,
+  isNegativeTeamStat,
   type TeamStatKey,
   type TeamStats,
 } from "../teamStatsConfig";
@@ -25,6 +28,11 @@ export type TeamSeasonStatEntry = {
   seasonName: string;
   tournamentId: number | null;
   tournamentName: string | null;
+  stageTournamentId?: number | string | null;
+  standingGroupId?: number | string | null;
+  stageLabel?: string | null;
+  stageName?: string | null;
+  groupName?: string | null;
   label: string;
   stats: Partial<Record<TeamStatKey, number | null>>;
 };
@@ -37,21 +45,6 @@ export type StatRange = {
 export const TEAM_COMPARISON_STAT_KEYS = Array.from(
   new Set(TEAM_STATS_CATEGORIES.flatMap((category) => category.statKeys)),
 ) as TeamStatKey[];
-
-const NEGATIVE_TEAM_STATS = new Set<TeamStatKey>([
-  "goals_conceded",
-  "own_goals",
-  "errors_to_goals",
-  "errors_to_shot",
-  "penalty_commited",
-  "penalty_conceded",
-  "fouls",
-  "yellowcards",
-  "yellowcards_second",
-  "redcards",
-  "offsides",
-  "possession_lost",
-]);
 
 export function toTeamSeasonEntryId(teamId: number, seasonId: number) {
   return `${teamId}-${seasonId}`;
@@ -84,10 +77,6 @@ export function sanitizeTeamStats(stats: TeamStats | null | undefined) {
   });
 
   return sanitized;
-}
-
-export function isNegativeTeamStat(statKey: TeamStatKey) {
-  return NEGATIVE_TEAM_STATS.has(statKey) || statKey.includes("against");
 }
 
 export function buildStatRanges(entries: TeamSeasonStatEntry[]) {
@@ -148,13 +137,9 @@ export function formatRelativeScoreValue(value: number) {
 
 export function formatRawStatValue(
   rawValue: number | null | undefined,
-  _statKey: TeamStatKey,
+  statKey: TeamStatKey,
 ) {
-  if (!Number.isFinite(rawValue)) {
-    return "â€”";
-  }
-
-  return String(rawValue);
+  return formatTeamStatValue(rawValue, getTeamStatMeta(statKey).format);
 }
 
 export function getRelativeScoreBand(value: number) {

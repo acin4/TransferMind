@@ -7,6 +7,7 @@ import {
   getTeamStadium,
   normalizeCountry,
 } from "../utils/teamDisplay";
+import SegmentedTabs from "../components/ui/SegmentedTabs";
 
 const ALL_TAB = "ALL";
 const OTHER_TAB = "Other";
@@ -76,16 +77,16 @@ export default function Teams() {
         </h1>
 
         <div className="mb-8">
-          <div className="flex gap-2 bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800 w-full md:w-max overflow-x-auto">
-            {countryTabs.map((country) => (
-              <CountryTabButton
-                key={country}
-                label={country}
-                isActive={activeCountry === country}
-                onClick={() => setActiveCountry(country)}
-              />
-            ))}
-          </div>
+          <SegmentedTabs
+            items={countryTabs.map((country) => ({
+              value: country,
+              label: country,
+            }))}
+            value={activeCountry}
+            onChange={setActiveCountry}
+            className="flex gap-2 bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800 w-full md:w-max overflow-x-auto"
+            buttonClassName="px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap"
+          />
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -168,28 +169,5 @@ function TeamMetaLine({
         {value}
       </span>
     </div>
-  );
-}
-
-function CountryTabButton({
-  label,
-  isActive,
-  onClick,
-}: {
-  label: string;
-  isActive: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
-        isActive
-          ? "bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] border-b-2 border-blue-400"
-          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-b-2 border-transparent"
-      }`}
-    >
-      {label}
-    </button>
   );
 }

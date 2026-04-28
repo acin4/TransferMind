@@ -201,16 +201,19 @@ function toSeasonLabel(season) {
 
 function toComparisonEntry(row) {
   const seasonName = toSeasonLabel(row);
+  const tournamentName = row.tournament_name?.trim() || null;
 
   return {
-    id: `${row.team_id}-${row.season_id}`,
+    id: `${row.team_id}-${row.tournament_id}-${row.season_id}`,
     teamId: row.team_id,
     teamName: row.team_name,
     seasonId: row.season_id,
     seasonName,
     tournamentId: row.tournament_id ?? null,
-    tournamentName: row.tournament_name?.trim() || null,
-    label: `${row.team_name} - ${seasonName}`,
+    tournamentName,
+    label: [row.team_name, tournamentName, seasonName]
+      .filter(Boolean)
+      .join(" - "),
     stats: sanitizeComparisonStats(row.stats),
   };
 }

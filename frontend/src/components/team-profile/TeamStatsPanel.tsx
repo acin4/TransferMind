@@ -6,6 +6,7 @@ import {
   type TeamStatsCategoryId,
   type TeamStatKey,
 } from "../../teamStatsConfig";
+import SegmentedTabs from "../ui/SegmentedTabs";
 
 type TeamStatsPanelProps = {
   stats: TeamStats | null;
@@ -36,16 +37,16 @@ export default function TeamStatsPanel({
         </p>
       ) : stats ? (
         <>
-          <div className="flex gap-2 mb-6 bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800 overflow-x-auto">
-            {TEAM_STATS_CATEGORIES.map((category) => (
-              <StatsCategoryTabButton
-                key={category.id}
-                label={`${category.label} (${category.statKeys.length})`}
-                isActive={activeStatsCategory === category.id}
-                onClick={() => onStatsCategoryChange(category.id)}
-              />
-            ))}
-          </div>
+          <SegmentedTabs
+            items={TEAM_STATS_CATEGORIES.map((category) => ({
+              value: category.id,
+              label: `${category.label} (${category.statKeys.length})`,
+            }))}
+            value={activeStatsCategory}
+            onChange={onStatsCategoryChange}
+            className="flex gap-2 mb-6 bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800 overflow-x-auto"
+            buttonClassName="px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap"
+          />
           <div className="bg-slate-900/50 rounded-3xl border border-slate-800 overflow-hidden shadow-inner">
             {selectedStatsCategory.statKeys.map((statKey) => {
               const statMeta = getTeamStatMeta(statKey);
@@ -66,29 +67,6 @@ export default function TeamStatsPanel({
         </p>
       )}
     </div>
-  );
-}
-
-function StatsCategoryTabButton({
-  label,
-  isActive,
-  onClick,
-}: {
-  label: string;
-  isActive: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
-        isActive
-          ? "bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] border-b-2 border-blue-400"
-          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border-b-2 border-transparent"
-      }`}
-    >
-      {label}
-    </button>
   );
 }
 
