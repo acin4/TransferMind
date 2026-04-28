@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   TEAM_STATS_CATEGORIES,
   formatTeamStatValue,
@@ -185,33 +185,54 @@ function StatPerformanceBar({
   const scorePercent = hasScore ? Math.round(score * 1000) / 10 : 6;
   const bestPercent =
     bestScore == null ? null : Math.round(bestScore * 1000) / 10;
-  const tooltip =
-    bestValue == null
-      ? undefined
-      : `Best in same season/tournament: ${bestValue}`;
+  const [isExpanded, setIsExpanded] = useState(false);
+  const canShowBest = hasScore && bestPercent != null && bestValue != null;
 
   return (
     <div className="min-w-0">
-      <div
-        className="relative h-3 overflow-hidden rounded-full bg-slate-950 ring-1 ring-slate-800"
-        title={tooltip}
+      <button
+        type="button"
+        className="group/bar relative h-8 w-full overflow-hidden rounded-full bg-slate-950 text-left ring-1 ring-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/70"
+        onBlur={() => setIsExpanded(false)}
+        onClick={() => setIsExpanded((expanded) => !expanded)}
+        onFocus={() => setIsExpanded(true)}
+        onMouseEnter={() => setIsExpanded(true)}
+        onMouseLeave={() => setIsExpanded(false)}
       >
         <div
-          className={`h-full rounded-full transition-[width] duration-300 ${getBarFillClass(
+          className={`absolute inset-y-0 left-0 rounded-full transition-[width] duration-300 ${getBarFillClass(
             hasScore ? color : "red",
           )}`}
           style={{ width: `${scorePercent}%` }}
         />
-        {hasScore && bestPercent != null ? (
-          <div
-            className="absolute inset-y-[-2px] w-0 border-l-2 border-dashed border-white/70 shadow-[0_0_10px_rgba(255,255,255,0.35)]"
-            style={{
-              left: `${bestPercent}%`,
-              transform: "translateX(-1px)",
-            }}
-          />
+        {canShowBest ? (
+          <>
+            <div
+              className={`absolute inset-y-0 left-0 rounded-full border border-white/20 bg-white/10 shadow-[inset_0_0_18px_rgba(255,255,255,0.08)] transition-all duration-200 ${
+                isExpanded ? "opacity-100" : "opacity-0"
+              }`}
+              style={{ width: `${bestPercent}%` }}
+            >
+              <span
+                className={`absolute inset-y-0 right-3 flex max-w-[calc(100%-0.75rem)] items-center truncate text-[10px] font-black uppercase tracking-widest text-white transition-opacity duration-200 ${
+                  isExpanded ? "opacity-100" : "opacity-0"
+                }`}
+              >
+                Best: {bestValue}
+              </span>
+            </div>
+            <div
+              className={`absolute inset-y-1 w-0 border-l-2 border-dashed border-white/70 shadow-[0_0_10px_rgba(255,255,255,0.35)] transition-opacity duration-200 ${
+                isExpanded ? "opacity-0" : "opacity-80"
+              }`}
+              style={{
+                left: `${bestPercent}%`,
+                transform: "translateX(-1px)",
+              }}
+            />
+          </>
         ) : null}
-      </div>
+      </button>
     </div>
   );
 }
