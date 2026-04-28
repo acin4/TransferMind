@@ -1,5 +1,6 @@
 import { HttpError } from "../lib/http.js";
 import { getPlayers } from "./playerService.js";
+import { dedupeStandingsRowsByTeam } from "./standingsGrouping.js";
 import { getStandingsRows } from "./standingsService.js";
 import {
   getLatestTeamStatsByApiId,
@@ -245,29 +246,6 @@ function getTeamProfileStagePriority(row) {
   if (label.includes("regular")) return 10;
 
   return 5;
-}
-
-function dedupeStandingsRowsByTeam(rows) {
-  const rowsByTeamId = new Map();
-
-  rows.forEach((row) => {
-    const teamKey = row.team_id == null ? `row:${row.id}` : String(row.team_id);
-    const existing = rowsByTeamId.get(teamKey);
-
-    if (
-      !existing ||
-      (row.position ?? Number.MAX_SAFE_INTEGER) <
-        (existing.position ?? Number.MAX_SAFE_INTEGER)
-    ) {
-      rowsByTeamId.set(teamKey, row);
-    }
-  });
-
-  return Array.from(rowsByTeamId.values()).sort(
-    (a, b) =>
-      (a.position ?? Number.MAX_SAFE_INTEGER) -
-      (b.position ?? Number.MAX_SAFE_INTEGER),
-  );
 }
 
 function buildStandingsGroups(rows) {
