@@ -88,6 +88,8 @@ export type StandingsGroup = {
   stage: string | null;
   standingGroupId: number | null;
   stageTournamentId: number | null;
+  tournamentId: number;
+  seasonId: number;
   priority: number;
   rows: TeamStandingRow[];
 };

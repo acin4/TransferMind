@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   TEAM_STATS_CATEGORIES,
   formatTeamStatValue,
@@ -6,6 +7,14 @@ import {
   type TeamStatsCategoryId,
   type TeamStatKey,
 } from "../../teamStatsConfig";
+import type { TeamSeasonStatEntry } from "../../utils/teamsComparison";
+import {
+  computeCategoryScore,
+  computeStatPerformance,
+  getStatColor,
+  type TeamStatPerformance,
+  type TeamStatPerformanceColor,
+} from "../../utils/teamStatsPerformance";
 import SegmentedTabs from "../ui/SegmentedTabs";
 
 type TeamStatsPanelProps = {
@@ -13,6 +22,8 @@ type TeamStatsPanelProps = {
   seasonLoading: boolean;
   activeStatsCategory: TeamStatsCategoryId;
   onStatsCategoryChange: (category: TeamStatsCategoryId) => void;
+  statsPool: TeamSeasonStatEntry[];
+  statsPoolLoading?: boolean;
 };
 
 export default function TeamStatsPanel({
@@ -20,17 +31,44 @@ export default function TeamStatsPanel({
   seasonLoading,
   activeStatsCategory,
   onStatsCategoryChange,
+  statsPool,
+  statsPoolLoading = false,
 }: TeamStatsPanelProps) {
   const selectedStatsCategory =
     TEAM_STATS_CATEGORIES.find(
       (category) => category.id === activeStatsCategory,
     ) ?? TEAM_STATS_CATEGORIES[0];
+  const statPerformances = useMemo(() => {
+    if (!stats) {
+      return new Map<TeamStatKey, TeamStatPerformance>();
+    }
+
+    return new Map(
+      selectedStatsCategory.statKeys.map((statKey) => [
+        statKey,
+        computeStatPerformance(stats, statsPool, statKey),
+      ]),
+    );
+  }, [selectedStatsCategory.statKeys, stats, statsPool]);
+  const categoryScore = computeCategoryScore(
+    selectedStatsCategory.statKeys.map(
+      (statKey) => statPerformances.get(statKey)?.score,
+    ),
+  );
 
   return (
-    <div className="animate-in fade-in duration-300">
-      <h3 className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-6">
-        Season Statistics
-      </h3>
+    <div
+      className="animate-in fade-in duration-300"
+      data-category-score={categoryScore ?? ""}
+    >
+      <div className="mb-6">
+        <h3 className="text-slate-400 font-bold uppercase tracking-widest text-xs">
+          Season Statistics
+        </h3>
+        <p className="mt-2 text-[11px] font-bold uppercase tracking-widest text-slate-500">
+          Relative to teams from the same season and tournament
+        </p>
+      </div>
       {seasonLoading ? (
         <p className="text-slate-500 italic bg-slate-900/50 p-8 rounded-2xl border border-slate-800 text-center font-bold">
           Loading season statistics...
@@ -47,14 +85,33 @@ export default function TeamStatsPanel({
             className="flex gap-2 mb-6 bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800 overflow-x-auto"
             buttonClassName="px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap"
           />
+          {statsPoolLoading ? (
+            <p className="mb-4 rounded-2xl border border-slate-800 bg-slate-950/50 px-5 py-3 text-[11px] font-black uppercase tracking-widest text-slate-500">
+              Loading season/tournament comparison pool...
+            </p>
+          ) : null}
           <div className="bg-slate-900/50 rounded-3xl border border-slate-800 overflow-hidden shadow-inner">
             {selectedStatsCategory.statKeys.map((statKey) => {
               const statMeta = getTeamStatMeta(statKey);
+              const performance = statPerformances.get(statKey);
               return (
                 <StatLine
                   key={statKey}
                   label={statMeta.label}
-                  value={formatTeamStatValue(stats[statKey], statMeta.format)}
+                  value={
+                    performance?.rawValue == null
+                      ? null
+                      : formatTeamStatValue(stats[statKey], statMeta.format)
+                  }
+                  performance={performance}
+                  bestValue={
+                    performance?.bestValue == null
+                      ? null
+                      : formatTeamStatValue(
+                          performance.bestValue,
+                          statMeta.format,
+                        )
+                  }
                   isCard={getStatCardColor(statKey)}
                 />
               );
@@ -73,28 +130,106 @@ export default function TeamStatsPanel({
 function StatLine({
   label,
   value,
+  performance,
+  bestValue,
   isCard,
 }: {
   label: string;
-  value: string | number;
+  value: string | number | null;
+  performance?: TeamStatPerformance;
+  bestValue: string | number | null;
   isCard?: "yellow" | "red";
 }) {
+  const score = performance?.score ?? null;
+
   return (
-    <div className="flex justify-between items-center py-5 px-8 border-b border-slate-800/80 last:border-0 hover:bg-white/[0.02] transition-colors group">
-      <div className="flex items-center gap-3">
-        {isCard === "yellow" && (
-          <div className="w-3 h-4 bg-yellow-500 rounded-sm shadow-sm" />
-        )}
-        {isCard === "red" && (
-          <div className="w-3 h-4 bg-red-500 rounded-sm shadow-sm" />
-        )}
-        <span className="text-slate-400 text-sm font-bold uppercase tracking-wider group-hover:text-slate-300 transition-colors">
-          {label}
-        </span>
+    <div className="grid gap-4 py-5 px-5 sm:grid-cols-[minmax(0,1fr)_minmax(180px,260px)] sm:items-center sm:px-8 border-b border-slate-800/80 last:border-0 hover:bg-white/[0.02] transition-colors group">
+      <div className="min-w-0">
+        <div className="flex items-center gap-3">
+          {isCard === "yellow" && (
+            <div className="h-4 w-3 rounded-sm bg-yellow-500 shadow-sm" />
+          )}
+          {isCard === "red" && (
+            <div className="h-4 w-3 rounded-sm bg-red-500 shadow-sm" />
+          )}
+          <span className="min-w-0 text-sm font-bold uppercase tracking-wider text-slate-400 transition-colors group-hover:text-slate-300">
+            {label}
+          </span>
+        </div>
+        {value != null ? (
+          <div className="mt-2 text-lg font-black text-white">{value}</div>
+        ) : null}
       </div>
-      <span className="text-white font-black text-lg">{value}</span>
+      <StatPerformanceBar
+        score={score}
+        bestScore={performance?.bestScore ?? null}
+        color={getStatColor(score)}
+        bestValue={bestValue}
+      />
     </div>
   );
+}
+
+function StatPerformanceBar({
+  score,
+  bestScore,
+  color,
+  bestValue,
+}: {
+  score: number | null;
+  bestScore: number | null;
+  color: TeamStatPerformanceColor;
+  bestValue: string | number | null;
+}) {
+  const hasScore = score != null;
+  const scorePercent = hasScore ? Math.round(score * 1000) / 10 : 6;
+  const bestPercent =
+    bestScore == null ? null : Math.round(bestScore * 1000) / 10;
+  const tooltip =
+    bestValue == null
+      ? undefined
+      : `Best in same season/tournament: ${bestValue}`;
+
+  return (
+    <div className="min-w-0">
+      <div
+        className="relative h-3 overflow-hidden rounded-full bg-slate-950 ring-1 ring-slate-800"
+        title={tooltip}
+      >
+        <div
+          className={`h-full rounded-full transition-[width] duration-300 ${getBarFillClass(
+            hasScore ? color : "red",
+          )}`}
+          style={{ width: `${scorePercent}%` }}
+        />
+        {hasScore && bestPercent != null ? (
+          <div
+            className="absolute inset-y-[-2px] w-0 border-l-2 border-dashed border-white/70 shadow-[0_0_10px_rgba(255,255,255,0.35)]"
+            style={{
+              left: `${bestPercent}%`,
+              transform: "translateX(-1px)",
+            }}
+          />
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function getBarFillClass(color: TeamStatPerformanceColor) {
+  if (color === "red") {
+    return "bg-red-500";
+  }
+
+  if (color === "yellow") {
+    return "bg-yellow-400";
+  }
+
+  if (color === "green") {
+    return "bg-emerald-500";
+  }
+
+  return "bg-slate-700";
 }
 
 function getStatCardColor(statKey: TeamStatKey) {

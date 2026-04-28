@@ -10,12 +10,29 @@ import { listTeamMappings } from "../repositories/teamRepository.js";
 
 const STAGE_ORDER = [
   "Regular Season",
+  "Stoiximan Super League",
+  "League",
+  "Main Round",
   "Championship Round",
   "Playoffs",
   "Playout",
   "Relegation Round",
   "Qualifying",
 ];
+
+const DEFAULT_GROUP_LABELS = [
+  "Stoiximan Super League",
+  "Regular Season",
+  "League",
+  "Main Round",
+].map(normalizeStageKey);
+
+const DEFERRED_GROUP_LABELS = [
+  "Championship Round",
+  "Relegation Round",
+  "Playoffs",
+  "Playout",
+].map(normalizeStageKey);
 
 const STAGE_PRIORITY = new Map(
   STAGE_ORDER.map((label, index) => [normalizeStageKey(label), index]),
@@ -150,23 +167,44 @@ function selectDefaultGroupKey(groups, selection = {}) {
             group.stageTournamentId === selection.stageTournamentId),
       )
     : null;
+  const preferredMainGroup = groups.find(isPreferredMainGroup);
   const preferredGroup =
     requestedGroup ??
-    groups.find(
-      (group) => group.stageLabelKey === normalizeStageKey("Regular Season"),
-    ) ??
+    preferredMainGroup ??
     groups[0];
 
   return preferredGroup?.key ?? null;
 }
 
-function toPublicStandingsGroup(group) {
+function isPreferredMainGroup(group) {
+  const searchableLabel = normalizeStageKey(
+    [group.label, group.stage].filter(Boolean).join(" "),
+  );
+
+  if (!searchableLabel) {
+    return false;
+  }
+
+  const isDeferredGroup = DEFERRED_GROUP_LABELS.some((label) =>
+    searchableLabel.includes(label),
+  );
+
+  if (isDeferredGroup) {
+    return false;
+  }
+
+  return DEFAULT_GROUP_LABELS.some((label) => searchableLabel.includes(label));
+}
+
+function toPublicStandingsGroup(group, tournamentId, seasonId) {
   return {
     key: group.key,
     label: group.label,
     stage: group.stage,
     standingGroupId: group.standingGroupId,
     stageTournamentId: group.stageTournamentId,
+    tournamentId,
+    seasonId,
     priority: group.priority,
     rows: group.rows,
   };
@@ -238,7 +276,9 @@ export async function getStandings(tournamentId, seasonId, selection = {}) {
   const selectedGroupKey = selectDefaultGroupKey(groups, selection);
 
   return {
-    groups: groups.map(toPublicStandingsGroup),
+    groups: groups.map((group) =>
+      toPublicStandingsGroup(group, tournamentId, seasonId),
+    ),
     selectedGroupKey,
   };
 }

@@ -21,11 +21,18 @@ export default function StageTabs({
       <SegmentedTabs
         items={groups.map((stage) => ({
           value: stage.key,
-          label: stage.label,
+          label: (
+            <span
+              title={stage.label}
+              className="block max-w-[14rem] truncate"
+            >
+              {stage.label}
+            </span>
+          ),
         }))}
         value={selectedGroupKey}
         onChange={onSelectGroup}
-        className="flex gap-2 bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800 w-full md:w-max overflow-x-auto"
+        className="flex w-full gap-2 overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/50 p-1.5 md:w-max"
         buttonClassName="px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap"
       />
     </div>

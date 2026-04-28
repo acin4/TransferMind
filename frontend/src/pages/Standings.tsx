@@ -31,7 +31,7 @@ function parseOptionalNumber(value: string | null) {
 }
 
 export default function Standings() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const initialSelectionRef = useRef({
     tournamentId: parseOptionalNumber(searchParams.get("tournamentId")),
     seasonId: parseOptionalNumber(searchParams.get("seasonId")),
@@ -39,6 +39,7 @@ export default function Standings() {
     stageTournamentId: parseOptionalNumber(searchParams.get("stageTournamentId")),
     tournamentName: searchParams.get("tournamentName")?.trim() || null,
   });
+  const initialGroupSelectionConsumedRef = useRef(false);
 
   const [tournaments, setTournaments] = useState<TournamentSeasonRecord[]>([]);
   const [availableSeasons, setAvailableSeasons] = useState<SeasonOption[]>([]);
@@ -150,7 +151,12 @@ export default function Standings() {
     }
 
     let cancelled = false;
+    const hasInitialGroupSelection =
+      initialSelectionRef.current.standingGroupId != null ||
+      initialSelectionRef.current.stageTournamentId != null;
     const shouldUseLegacyGroupSelection =
+      hasInitialGroupSelection &&
+      !initialGroupSelectionConsumedRef.current &&
       selectedLeagueId === initialSelectionRef.current.tournamentId &&
       selectedSeasonId === initialSelectionRef.current.seasonId;
 
@@ -170,8 +176,16 @@ export default function Standings() {
           return;
         }
 
-        setStandingsGroups(data?.groups ?? []);
+        const nextGroups = data?.groups ?? [];
+        if (import.meta.env.DEV) {
+          console.debug("[Standings] API groups", nextGroups);
+        }
+
+        setStandingsGroups(nextGroups);
         setSelectedGroupKey(data?.selectedGroupKey ?? null);
+        initialGroupSelectionConsumedRef.current =
+          initialGroupSelectionConsumedRef.current ||
+          shouldUseLegacyGroupSelection;
         setError(null);
       })
       .catch((err) => {
@@ -235,13 +249,86 @@ export default function Standings() {
     return selectedGroup?.rows ?? [];
   }, [standingsGroups, selectedGroupKey]);
 
+  const updateStandingsUrl = (
+    tournamentId: number | null,
+    seasonId: number | null,
+    group?: StandingsGroup | null,
+  ) => {
+    const nextParams = new URLSearchParams();
+
+    if (tournamentId != null) {
+      nextParams.set("tournamentId", String(tournamentId));
+    }
+
+    if (seasonId != null) {
+      nextParams.set("seasonId", String(seasonId));
+    }
+
+    const tournamentName =
+      uniqueLeagues.find((league) => league.id === tournamentId)?.name ??
+      initialSelectionRef.current.tournamentName;
+
+    if (tournamentName) {
+      nextParams.set("tournamentName", tournamentName);
+    }
+
+    if (group?.standingGroupId != null) {
+      nextParams.set("standingGroupId", String(group.standingGroupId));
+    }
+
+    if (group?.stageTournamentId != null) {
+      nextParams.set("stageTournamentId", String(group.stageTournamentId));
+    }
+
+    setSearchParams(nextParams, { replace: false });
+  };
+
   const handleLeagueChange = (newLeagueId: number | null) => {
     setSelectedLeagueId(newLeagueId);
     setSelectedSeasonId(null);
+    updateStandingsUrl(newLeagueId, null, null);
   };
 
   const handleSeasonChange = (newSeasonId: number | null) => {
     setSelectedSeasonId(newSeasonId);
+    updateStandingsUrl(selectedLeagueId, newSeasonId, null);
+  };
+
+  const handleGroupSelect = async (groupKey: string) => {
+    const selectedGroup = standingsGroups.find(
+      (group) => group.key === groupKey,
+    );
+
+    if (!selectedGroup || !selectedLeagueId || !selectedSeasonId) {
+      setSelectedGroupKey(groupKey);
+      return;
+    }
+
+    setSelectedGroupKey(groupKey);
+    updateStandingsUrl(selectedLeagueId, selectedSeasonId, selectedGroup);
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const data = await getStandings(selectedLeagueId, selectedSeasonId, {
+        standingGroupId: selectedGroup.standingGroupId,
+        stageTournamentId: selectedGroup.stageTournamentId,
+      });
+      const nextGroups = data?.groups ?? [];
+
+      if (import.meta.env.DEV) {
+        console.debug("[Standings] API groups", nextGroups);
+      }
+
+      setStandingsGroups(nextGroups);
+      setSelectedGroupKey(data?.selectedGroupKey ?? groupKey);
+    } catch (err) {
+      console.error("Î£Ï†Î¬Î»Î¼Î± Ï†ÏŒÏÏ„Ï‰ÏƒÎ·Ï‚ Î¿Î¼Î¬Î´Î±Ï‚ Î²Î±Î¸Î¼Î¿Î»Î¿Î³Î¯Î±Ï‚:", err);
+      setError("Î‘Î´Ï…Î½Î±Î¼Î¯Î± Ï†ÏŒÏÏ„Ï‰ÏƒÎ·Ï‚ Ï„Î·Ï‚ ÎµÏ€Î¹Î»ÎµÎ³Î¼Î­Î½Î·Ï‚ Î²Î±Î¸Î¼Î¿Î»Î¿Î³Î¯Î±Ï‚.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!selectedLeagueId || (!selectedSeasonId && loading)) {
@@ -297,7 +384,7 @@ export default function Standings() {
             <StageTabs
               groups={standingsGroups}
               selectedGroupKey={selectedGroupKey}
-              onSelectGroup={setSelectedGroupKey}
+              onSelectGroup={handleGroupSelect}
             />
             <StandingsTable rows={selectedStandingsRows} />
           </div>

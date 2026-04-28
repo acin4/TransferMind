@@ -8,6 +8,7 @@ import {
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import {
+  getTeamsComparisonDataset,
   getTeamProfile,
   type TeamProfileData,
   type TeamProfilePayload,
@@ -27,6 +28,8 @@ import TeamStandingsPreview from "../components/team-profile/TeamStandingsPrevie
 import TeamStatsPanel from "../components/team-profile/TeamStatsPanel";
 import TeamSquadTable from "../components/team-profile/TeamSquadTable";
 import type { TeamProfileTabId } from "../components/team-profile/types";
+import type { TeamSeasonStatEntry } from "../utils/teamsComparison";
+import { getTeamsBySeasonTournament } from "../utils/teamStatsPerformance";
 
 export default function TeamProfile() {
   const { id } = useParams();
@@ -34,6 +37,9 @@ export default function TeamProfile() {
   const [team, setTeam] = useState<TeamProfileData | null>(null);
   const [stats, setStats] = useState<TeamStats | null>(null);
   const [teamSquad, setTeamSquad] = useState<TeamProfilePlayer[]>([]);
+  const [comparisonEntries, setComparisonEntries] = useState<
+    TeamSeasonStatEntry[]
+  >([]);
   const [availableSeasons, setAvailableSeasons] = useState<
     TeamProfileSeason[]
   >([]);
@@ -49,6 +55,8 @@ export default function TeamProfile() {
 
   const [loading, setLoading] = useState(true);
   const [seasonLoading, setSeasonLoading] = useState(false);
+  const [comparisonDatasetLoading, setComparisonDatasetLoading] =
+    useState(false);
   const [error, setError] = useState<string | null>(null);
   const [seasonError, setSeasonError] = useState<string | null>(null);
   const [activeTab, setActiveTab] =
@@ -64,6 +72,37 @@ export default function TeamProfile() {
     setTeamStanding(profile.miniTable?.teamRow ?? null);
     setMiniStandings(profile.miniTable?.rows ?? []);
     setSelectedStandingsGroup(profile.selectedStandingsGroup ?? null);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchComparisonDataset = async () => {
+      try {
+        setComparisonDatasetLoading(true);
+        const dataset = await getTeamsComparisonDataset();
+
+        if (!cancelled) {
+          setComparisonEntries(dataset.entries);
+        }
+      } catch (err) {
+        console.error("Unable to load team statistics comparison pool:", err);
+
+        if (!cancelled) {
+          setComparisonEntries([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setComparisonDatasetLoading(false);
+        }
+      }
+    };
+
+    fetchComparisonDataset();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -178,6 +217,15 @@ export default function TeamProfile() {
     selectedSeason?.tournament_id ?? team?.tournament_id ?? null;
   const selectedCompetitionName =
     selectedSeason?.tournament_name ?? team?.tournament_name ?? null;
+  const selectedStatsPool = useMemo(
+    () =>
+      getTeamsBySeasonTournament(
+        comparisonEntries,
+        selectedSeasonId,
+        selectedCompetitionId,
+      ),
+    [comparisonEntries, selectedCompetitionId, selectedSeasonId],
+  );
   const headerSubtitle =
     [selectedCompetitionName, selectedSeason?.season_name]
       .filter(Boolean)
@@ -292,6 +340,8 @@ export default function TeamProfile() {
               seasonLoading={seasonLoading}
               activeStatsCategory={activeStatsCategory}
               onStatsCategoryChange={setActiveStatsCategory}
+              statsPool={selectedStatsPool}
+              statsPoolLoading={comparisonDatasetLoading}
             />
           )}
 

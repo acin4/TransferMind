@@ -1,4 +1,5 @@
 export type TeamStatDisplayFormat = "number" | "percent" | "ratio";
+export type TeamStatValueType = "number" | "percentage" | "ratio";
 export type TeamStatDirection = "positive" | "negative";
 
 export type TeamStatMeta = {
@@ -371,6 +372,24 @@ export function getTeamStatDirection(statKey: TeamStatKey): TeamStatDirection {
     : "positive";
 }
 
+export function getTeamStatValueType(statKey: TeamStatKey): TeamStatValueType {
+  const format = getTeamStatMeta(statKey).format;
+
+  if (format === "percent") {
+    return "percentage";
+  }
+
+  if (format === "ratio") {
+    return "ratio";
+  }
+
+  return "number";
+}
+
+export function isHigherBetterTeamStat(statKey: TeamStatKey) {
+  return getTeamStatDirection(statKey) === "positive";
+}
+
 export function isNegativeTeamStat(statKey: TeamStatKey) {
   return getTeamStatDirection(statKey) === "negative";
 }
@@ -394,14 +413,22 @@ export function formatTeamStatValue(
     return "—";
   }
 
-  const formattedValue = numericValue.toLocaleString(undefined, {
+  const displayValue =
+    format === "percent" || format === "ratio"
+      ? toDisplayPercentageValue(numericValue)
+      : numericValue;
+  const formattedValue = displayValue.toLocaleString(undefined, {
     maximumFractionDigits: 2,
     minimumFractionDigits: 0,
   });
 
-  if (format === "percent") {
+  if (format === "percent" || format === "ratio") {
     return `${formattedValue}%`;
   }
 
   return formattedValue;
+}
+
+function toDisplayPercentageValue(value: number) {
+  return Math.abs(value) <= 1 ? value * 100 : value;
 }
