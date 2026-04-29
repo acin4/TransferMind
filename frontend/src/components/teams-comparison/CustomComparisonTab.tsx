@@ -82,12 +82,16 @@ export default function CustomComparisonTab({
     () =>
       entries.map((entry) => ({
         value: entry.id,
-        label: entry.label,
+        label: entry.teamName || entry.label,
         helperText: [
-          `Team ${entry.teamId}`,
-          `Season ${entry.seasonId}`,
+          entry.seasonName || `Season ${entry.seasonId}`,
           entry.tournamentName ?? `Tournament ${entry.tournamentId ?? "Unknown"}`,
         ].join(" • "),
+        kind: "team-season" as const,
+        logoUrl: entry.teamLogo,
+        seasonLabel: entry.seasonName,
+        tagLabel: entry.teamName || entry.label,
+        tagHelperText: entry.seasonName,
       })),
     [entries],
   );
@@ -98,6 +102,8 @@ export default function CustomComparisonTab({
         value: statKey,
         label: getTeamStatMeta(statKey).label,
         helperText: statKey,
+        kind: "stat" as const,
+        statKey,
       })),
     [statKeys],
   );

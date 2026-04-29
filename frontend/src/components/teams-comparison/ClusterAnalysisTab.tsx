@@ -127,6 +127,9 @@ export default function ClusterAnalysisTab({
           value: String(entry.teamId),
           label: entry.teamName || `Team ${entry.teamId}`,
           helperText: entry.label || `Team ${entry.teamId}`,
+          kind: "team" as const,
+          logoUrl: entry.teamLogo,
+          tagLabel: entry.teamName || `Team ${entry.teamId}`,
         }))
         .filter(
           (option) =>
@@ -164,6 +167,8 @@ export default function ClusterAnalysisTab({
           value: statKey,
           label: getSafeStatLabel(statKey),
           helperText: statKey,
+          kind: "stat" as const,
+          statKey,
         }))
         .filter(
           (option) =>
