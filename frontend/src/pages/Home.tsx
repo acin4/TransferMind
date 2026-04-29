@@ -84,7 +84,7 @@ export default function Home() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Αναζήτηση ομάδας ή παίκτη..."
-              className="w-full py-6 px-10 text-center text-xl md:text-2xl font-bold bg-transparent border-none focus:ring-0 outline-none text-slate-900 placeholder-slate-400"
+              className="w-full py-6 px-10 text-center text-xl md:text-2xl font-bold bg-transparent border-none focus:ring-0 outline-none text-slate-900 placeholder-slate-400 focus:placeholder-transparent"
             />
             <div className="absolute right-4 p-4 bg-blue-600 rounded-full text-white shadow-lg">
                <Search size={28} />

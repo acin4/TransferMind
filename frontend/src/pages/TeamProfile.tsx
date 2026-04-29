@@ -316,14 +316,28 @@ export default function TeamProfile() {
           onTabChange={setActiveTab}
         />
 
-        <div className="bg-slate-900/40 rounded-[2.5rem] border border-slate-800/60 p-6 md:p-10 shadow-2xl backdrop-blur-sm">
-          {seasonError ? (
-            <div className="mb-6 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-5 py-4 text-xs font-black uppercase tracking-widest text-rose-400">
-              {seasonError}
-            </div>
-          ) : null}
+        {activeTab === "statistics" ? (
+          <TeamStatsPanel
+            stats={stats}
+            seasonLoading={seasonLoading}
+            activeStatsCategory={activeStatsCategory}
+            onStatsCategoryChange={setActiveStatsCategory}
+            statsPool={selectedStatsPool}
+            statsPoolLoading={comparisonDatasetLoading}
+            seasonError={seasonError}
+            selectedTeamId={team.id}
+            selectedSeasonName={selectedSeason?.season_name ?? null}
+            selectedTournamentName={selectedCompetitionName}
+          />
+        ) : (
+          <div className="bg-slate-900/40 rounded-[2.5rem] border border-slate-800/60 p-6 md:p-10 shadow-2xl backdrop-blur-sm">
+            {seasonError ? (
+              <div className="mb-6 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-5 py-4 text-xs font-black uppercase tracking-widest text-rose-400">
+                {seasonError}
+              </div>
+            ) : null}
 
-          {activeTab === "standings" && (
+            {activeTab === "standings" && (
             <TeamStandingsPreview
               seasonLoading={seasonLoading}
               standingsLabel={standingsLabel}
@@ -332,24 +346,11 @@ export default function TeamProfile() {
               miniStandings={miniStandings}
               fullStandingsPath={fullStandingsPath}
             />
-          )}
+            )}
 
-          {activeTab === "statistics" && (
-            <TeamStatsPanel
-              stats={stats}
-              seasonLoading={seasonLoading}
-              activeStatsCategory={activeStatsCategory}
-              onStatsCategoryChange={setActiveStatsCategory}
-              statsPool={selectedStatsPool}
-              statsPoolLoading={comparisonDatasetLoading}
-              selectedTeamId={team.id}
-              selectedSeasonName={selectedSeason?.season_name ?? null}
-              selectedTournamentName={selectedCompetitionName}
-            />
-          )}
-
-          {activeTab === "squad" && <TeamSquadTable squad={teamSquad} />}
-        </div>
+            {activeTab === "squad" && <TeamSquadTable squad={teamSquad} />}
+          </div>
+        )}
       </div>
     </div>
   );

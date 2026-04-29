@@ -36,6 +36,7 @@ type TeamStatsPanelProps = {
   onStatsCategoryChange: (category: TeamStatsCategoryId) => void;
   statsPool: TeamSeasonStatEntry[];
   statsPoolLoading?: boolean;
+  seasonError?: string | null;
   selectedTeamId?: number | string | null;
   selectedSeasonName?: string | null;
   selectedTournamentName?: string | null;
@@ -48,6 +49,7 @@ export default function TeamStatsPanel({
   onStatsCategoryChange,
   statsPool,
   statsPoolLoading = false,
+  seasonError = null,
   selectedTeamId = null,
   selectedSeasonName = null,
   selectedTournamentName = null,
@@ -184,6 +186,13 @@ export default function TeamStatsPanel({
       data-category-score={categoryScore ?? ""}
       ref={statsTopRef}
     >
+      <div className="bg-slate-900/40 rounded-[2.5rem] border border-slate-800/60 p-6 md:p-10 shadow-2xl backdrop-blur-sm">
+        {seasonError ? (
+          <div className="mb-6 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-5 py-4 text-xs font-black uppercase tracking-widest text-rose-400">
+            {seasonError}
+          </div>
+        ) : null}
+
       <div className="mb-6">
         <h3 className="text-slate-400 font-bold uppercase tracking-widest text-xs">
           Season Statistics
@@ -205,8 +214,8 @@ export default function TeamStatsPanel({
             }))}
             value={activeStatsCategory}
             onChange={onStatsCategoryChange}
-            className="flex gap-2 mb-6 bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800 overflow-x-auto"
-            buttonClassName="px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap"
+            className="mb-6 grid grid-cols-5 gap-1 rounded-2xl border border-slate-800 bg-slate-900/50 p-1.5"
+            buttonClassName="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap rounded-xl px-1.5 py-2.5 text-[8px] font-black uppercase tracking-wide transition-all sm:px-2 sm:text-[9px] md:text-[10px]"
           />
           {statsPoolLoading ? (
             <p className="mb-4 rounded-2xl border border-slate-800 bg-slate-950/50 px-5 py-3 text-[11px] font-black uppercase tracking-widest text-slate-500">
@@ -243,43 +252,45 @@ export default function TeamStatsPanel({
               );
             })}
           </div>
-          {selectedStat && selectedStatMeta ? (
-            <StatRankingChart
-              refNode={rankingChartRef}
-              statLabel={selectedStatMeta.label}
-              tournamentName={selectedTournamentName}
-              seasonName={selectedSeasonName}
-              rows={rankingRows}
-              scale={rankingScale}
-              statsPoolLoading={statsPoolLoading}
-            />
-          ) : null}
-          {selectedStat && showBackToStatsButton && portalTarget
-            ? createPortal(
-                <button
-                  type="button"
-                  onClick={scrollToStatsTop}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-700 bg-slate-950/90 text-slate-300 shadow-2xl backdrop-blur transition-colors hover:border-blue-500 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                  style={{
-                    position: "fixed",
-                    left: 8,
-                    bottom: 24,
-                    zIndex: 9999,
-                  }}
-                  aria-label="Back to selected stat"
-                  title="Back to selected stat"
-                >
-                  <ArrowUp size={18} />
-                </button>,
-                portalTarget,
-              )
-            : null}
         </>
       ) : (
         <p className="text-slate-500 italic bg-slate-900/50 p-8 rounded-2xl border border-slate-800 text-center font-bold">
           Δεν βρέθηκαν στατιστικά για αυτή την ομάδα.
         </p>
       )}
+      </div>
+
+      {stats && selectedStat && selectedStatMeta ? (
+        <StatRankingChart
+          refNode={rankingChartRef}
+          statLabel={selectedStatMeta.label}
+          tournamentName={selectedTournamentName}
+          seasonName={selectedSeasonName}
+          rows={rankingRows}
+          scale={rankingScale}
+          statsPoolLoading={statsPoolLoading}
+        />
+      ) : null}
+      {selectedStat && showBackToStatsButton && portalTarget
+        ? createPortal(
+            <button
+              type="button"
+              onClick={scrollToStatsTop}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-700 bg-slate-950/90 text-slate-300 shadow-2xl backdrop-blur transition-colors hover:border-blue-500 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              style={{
+                position: "fixed",
+                left: 8,
+                bottom: 24,
+                zIndex: 9999,
+              }}
+              aria-label="Back to selected stat"
+              title="Back to selected stat"
+            >
+              <ArrowUp size={18} />
+            </button>,
+            portalTarget,
+          )
+        : null}
     </div>
   );
 }
@@ -380,29 +391,29 @@ function StatRankingChart({
   return (
     <section
       ref={refNode}
-      className="relative left-1/2 mt-8 w-[calc(100vw-3rem)] max-w-7xl -translate-x-1/2 rounded-[2rem] border border-slate-800 bg-slate-900/50 p-4 shadow-inner sm:w-[calc(100vw-4rem)] md:w-[calc(100vw-6rem)] md:p-6"
+      className="relative left-1/2 mt-10 w-[calc(100vw-3rem)] max-w-7xl -translate-x-1/2 rounded-[2rem] border border-slate-700/70 bg-slate-900/90 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.5),0_0_32px_rgba(59,130,246,0.08)] sm:w-[calc(100vw-4rem)] sm:p-6 md:w-[calc(100vw-6rem)] md:p-8"
     >
-      <div className="mb-6">
-        <h4 className="text-lg font-black uppercase tracking-tight text-white">
+      <div className="mx-auto mb-8 max-w-3xl text-center">
+        <h4 className="text-xl font-black uppercase tracking-tight text-white md:text-2xl">
           {statLabel} ranking — {contextLabel || "Selected context"}
         </h4>
-        <p className="mt-2 text-[11px] font-black uppercase tracking-widest text-slate-500">
+        <p className="mt-3 text-[11px] font-black uppercase tracking-widest text-slate-400">
           Compared with all teams from the same season and tournament
         </p>
       </div>
 
       {statsPoolLoading ? (
-        <p className="rounded-2xl border border-slate-800 bg-slate-950/50 px-5 py-5 text-center text-xs font-black uppercase tracking-widest text-slate-500">
+        <p className="rounded-2xl border border-slate-800 bg-slate-950/70 px-5 py-6 text-center text-xs font-black uppercase tracking-widest text-slate-500 shadow-inner">
           Loading ranking data...
         </p>
       ) : rows.length === 0 ? (
-        <p className="rounded-2xl border border-slate-800 bg-slate-950/50 px-5 py-5 text-center text-xs font-black uppercase tracking-widest text-slate-500">
+        <p className="rounded-2xl border border-slate-800 bg-slate-950/70 px-5 py-6 text-center text-xs font-black uppercase tracking-widest text-slate-500 shadow-inner">
           No ranking data available.
         </p>
       ) : (
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/40 px-2 pb-4 pt-4 sm:px-3 md:px-5 md:pb-6">
+        <div className="rounded-[1.5rem] border border-slate-800/90 bg-slate-950/70 px-3 pb-5 pt-6 shadow-inner sm:px-4 md:px-6 md:pb-7 md:pt-7">
           <div
-            className="grid items-end gap-1 sm:gap-2 md:gap-3"
+            className="grid items-end gap-1.5 sm:gap-2.5 md:gap-4"
             style={{
               gridTemplateColumns: `repeat(${rows.length}, minmax(0, 1fr))`,
             }}
@@ -474,7 +485,7 @@ function RankingColumn({
           {hasValue ? (
             <>
               <div
-                className="absolute left-1/2 z-10 max-w-full -translate-x-1/2 overflow-hidden text-ellipsis whitespace-nowrap rounded-full bg-slate-950/90 px-1 py-0.5 text-center text-[8px] font-black tabular-nums text-white ring-1 ring-slate-700 sm:px-1.5 sm:text-[10px] md:text-xs"
+                className="absolute left-1/2 z-10 w-max min-w-[2rem] -translate-x-1/2 whitespace-nowrap rounded-full bg-slate-950/90 px-1 py-0.5 text-center text-[8px] font-black tabular-nums text-white ring-1 ring-slate-700 sm:min-w-[2.35rem] sm:px-1.5 sm:text-[10px] md:min-w-[2.75rem] md:text-xs"
                 style={{
                   bottom: `calc(${labelBottom}% + 0.45rem)`,
                 }}
