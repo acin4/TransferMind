@@ -19,7 +19,10 @@ import type { TeamSeasonStatEntry } from "../../utils/teamsComparison";
 import {
   computeCategoryScore,
   computeStatPerformance,
+  adjustStatScore,
   getStatColor,
+  getStatMinMax,
+  normalizeStat,
   toNumericStatValue,
   type TeamStatPerformance,
   type TeamStatPerformanceColor,
@@ -81,9 +84,13 @@ export default function TeamStatsPanel({
       return [];
     }
 
+    const { minValue, maxValue } = getStatMinMax(statsPool, selectedStat);
+
     return statsPool
       .map((entry) => {
         const rawValue = toNumericStatValue(entry.stats[selectedStat]);
+        const normalized = normalizeStat(rawValue, minValue, maxValue);
+        const rankScore = adjustStatScore(normalized, selectedStat);
 
         return {
           id: entry.id,
@@ -91,6 +98,7 @@ export default function TeamStatsPanel({
           teamName: entry.teamName || `Team ${entry.teamId}`,
           teamLogo: entry.teamLogo ?? null,
           rawValue,
+          rankScore,
           formattedValue:
             rawValue == null
               ? null
@@ -101,11 +109,11 @@ export default function TeamStatsPanel({
         };
       })
       .sort((a, b) => {
-        const aValue = a.rawValue ?? 0;
-        const bValue = b.rawValue ?? 0;
+        const aScore = a.rankScore ?? -1;
+        const bScore = b.rankScore ?? -1;
 
-        if (aValue !== bValue) {
-          return aValue - bValue;
+        if (aScore !== bScore) {
+          return aScore - bScore;
         }
 
         return a.teamName.localeCompare(b.teamName);
@@ -360,6 +368,7 @@ function StatRankingChart({
     teamName: string;
     teamLogo: string | null;
     rawValue: number | null;
+    rankScore: number | null;
     formattedValue: string | null;
     isSelectedTeam: boolean;
   }>;
@@ -371,7 +380,7 @@ function StatRankingChart({
   return (
     <section
       ref={refNode}
-      className="mt-8 rounded-[2rem] border border-slate-800 bg-slate-900/50 p-5 shadow-inner md:p-6"
+      className="relative left-1/2 mt-8 w-[calc(100vw-3rem)] max-w-7xl -translate-x-1/2 rounded-[2rem] border border-slate-800 bg-slate-900/50 p-4 shadow-inner sm:w-[calc(100vw-4rem)] md:w-[calc(100vw-6rem)] md:p-6"
     >
       <div className="mb-6">
         <h4 className="text-lg font-black uppercase tracking-tight text-white">
@@ -391,8 +400,13 @@ function StatRankingChart({
           No ranking data available.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/40 px-4 pb-5 pt-4">
-          <div className="flex min-w-max items-end gap-3">
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/40 px-2 pb-4 pt-4 sm:px-3 md:px-5 md:pb-6">
+          <div
+            className="grid items-end gap-1 sm:gap-2 md:gap-3"
+            style={{
+              gridTemplateColumns: `repeat(${rows.length}, minmax(0, 1fr))`,
+            }}
+          >
             {rows.map((row) => (
               <RankingColumn key={row.id} row={row} scale={scale} />
             ))}
@@ -419,6 +433,7 @@ function RankingColumn({
     teamName: string;
     teamLogo: string | null;
     rawValue: number | null;
+    rankScore: number | null;
     formattedValue: string | null;
     isSelectedTeam: boolean;
   };
@@ -429,54 +444,59 @@ function RankingColumn({
   const valuePercent = ((rawValue - scale.min) / scale.range) * 100;
   const barStart = Math.min(valuePercent, scale.baselinePercent);
   const barHeight = Math.max(3, Math.abs(valuePercent - scale.baselinePercent));
+  const labelBottom = Math.min(96, Math.max(4, barStart + barHeight));
   const initials = getTeamInitials(row.teamName);
 
   return (
     <div
-      className={`flex w-[96px] shrink-0 flex-col items-center rounded-2xl border px-3 py-4 ${
+      className={`group flex min-w-0 flex-col items-center rounded-2xl border px-1.5 py-3 transition-colors sm:px-2 md:px-3 md:py-4 ${
         row.isSelectedTeam
           ? "border-blue-500/60 bg-blue-500/10 shadow-[0_0_24px_rgba(59,130,246,0.16)]"
-          : "border-slate-800 bg-slate-950/40"
+          : "border-transparent bg-transparent hover:border-slate-800/80 hover:bg-slate-950/30"
       }`}
     >
-      <TeamLogo logoUrl={row.teamLogo} teamName={row.teamName} />
-      <div className="mt-2 h-9 w-full">
+      <TeamLogo logoUrl={row.teamLogo} teamName={row.teamName} compact />
+      <div className="mt-2 h-10 w-full min-w-0">
         <p
-          className="line-clamp-2 text-center text-[10px] font-black uppercase leading-tight tracking-wider text-slate-300"
+          className="line-clamp-2 break-words text-center text-[8px] font-black uppercase leading-tight text-slate-300 sm:text-[9px] md:text-[10px]"
           title={row.teamName}
         >
-          {row.teamName.length > 16 ? initials : row.teamName}
+          {row.teamName.length > 18 ? initials : row.teamName}
         </p>
       </div>
 
-      <div className="mt-3 h-[220px] w-full">
-        <div className="relative mx-auto h-full w-12 rounded-2xl bg-slate-900/80 ring-1 ring-slate-800">
+      <div className="mt-3 h-[300px] w-full md:h-[380px]">
+        <div className="relative mx-auto h-full w-full max-w-16">
           <div
-            className="absolute left-[-8px] right-[-8px] h-px bg-slate-600/80"
+            className="absolute left-0 right-0 z-0 h-px bg-slate-600/70"
             style={{ bottom: `${scale.baselinePercent}%` }}
           />
           {hasValue ? (
-            <div
-              className={`absolute left-2 right-2 rounded-t-xl rounded-b-xl ${
-                row.isSelectedTeam ? "bg-blue-400" : "bg-slate-400"
-              }`}
-              style={{
-                bottom: `${barStart}%`,
-                height: `${barHeight}%`,
-              }}
-            />
+            <>
+              <div
+                className="absolute left-1/2 z-10 max-w-full -translate-x-1/2 overflow-hidden text-ellipsis whitespace-nowrap rounded-full bg-slate-950/90 px-1 py-0.5 text-center text-[8px] font-black tabular-nums text-white ring-1 ring-slate-700 sm:px-1.5 sm:text-[10px] md:text-xs"
+                style={{
+                  bottom: `calc(${labelBottom}% + 0.45rem)`,
+                }}
+              >
+                {row.formattedValue}
+              </div>
+              <div
+                className={`absolute left-1/2 z-0 w-3.5 -translate-x-1/2 rounded-t-full rounded-b-full shadow-[0_10px_28px_rgba(15,23,42,0.3)] sm:w-5 md:w-7 ${
+                  row.isSelectedTeam
+                    ? "bg-blue-400 ring-2 ring-blue-200/50"
+                    : "bg-gradient-to-t from-slate-500 to-slate-200 group-hover:from-blue-500 group-hover:to-blue-200"
+                }`}
+                style={{
+                  bottom: `${barStart}%`,
+                  height: `${barHeight}%`,
+                }}
+              />
+            </>
           ) : (
-            <div className="absolute bottom-0 left-1/2 h-3 w-8 -translate-x-1/2 rounded-full bg-red-500" />
+            <div className="absolute bottom-0 left-1/2 h-3 w-5 -translate-x-1/2 rounded-full bg-red-500 sm:w-7" />
           )}
         </div>
-      </div>
-
-      <div className="mt-3 h-6 text-center text-sm font-black tabular-nums text-white">
-        {hasValue ? (
-          row.formattedValue
-        ) : (
-          <span className="inline-flex h-2.5 w-8 rounded-full bg-red-500 align-middle" />
-        )}
       </div>
     </div>
   );
@@ -485,23 +505,31 @@ function RankingColumn({
 function TeamLogo({
   logoUrl,
   teamName,
+  compact = false,
 }: {
   logoUrl: string | null;
   teamName: string;
+  compact?: boolean;
 }) {
+  const sizeClass = compact
+    ? "aspect-square w-full max-w-[1.75rem] sm:max-w-[2rem] md:max-w-[2.5rem]"
+    : "h-10 w-10";
+
   if (logoUrl) {
     return (
       <img
         src={logoUrl}
         alt=""
-        className="h-10 w-10 rounded-xl object-contain bg-white/5 p-1"
+        className={`${sizeClass} rounded-xl bg-white/5 object-contain p-1`}
         loading="lazy"
       />
     );
   }
 
   return (
-    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-xs font-black text-slate-300">
+    <div
+      className={`${sizeClass} flex items-center justify-center rounded-full bg-slate-800 text-[9px] font-black text-slate-300 sm:text-[10px] md:text-xs`}
+    >
       {getTeamInitials(teamName)}
     </div>
   );
