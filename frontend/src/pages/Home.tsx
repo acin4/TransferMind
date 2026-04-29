@@ -15,6 +15,9 @@ export default function Home() {
   const [players, setPlayers] = useState<SearchPlayerResult[]>([]);
   const [teams, setTeams] = useState<SearchTeamResult[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [activePreview, setActivePreview] = useState<QuickLinkPreviewId | null>(
+    null,
+  );
   
   // 🟢 ΝΕΟ STATE ΓΙΑ ΤΟ POP-UP
   const [isAboutOpen, setIsAboutOpen] = useState(false);
@@ -151,14 +154,22 @@ export default function Home() {
       )}
 
       {/* QUICK LINKS & ΕΠΕΞΗΓΗΣΗ ΠΛΑΤΦΟΡΜΑΣ */}
-      <div className="w-full max-w-6xl mt-24 grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
+      <div className="w-full max-w-6xl mt-14 grid grid-cols-1 gap-7 md:grid-cols-3 md:items-end relative z-10">
         
         {/* CARD 1: STANDINGS */}
+        <div className="flex flex-col gap-4">
+        <QuickLinkPreview
+          previewId={activePreview === "standings" ? "standings" : null}
+        />
         <button 
           onClick={() => navigate('/standings')}
-          className="text-left bg-slate-900/40 backdrop-blur-sm border border-slate-800 p-8 rounded-[2.5rem] hover:bg-slate-800/50 hover:border-blue-500 hover:-translate-y-2 transition-all duration-300 group shadow-xl"
+          onFocus={() => setActivePreview("standings")}
+          onMouseEnter={() => setActivePreview("standings")}
+          onMouseLeave={() => setActivePreview(null)}
+          onBlur={() => setActivePreview(null)}
+          className="group relative min-h-[245px] w-full text-left bg-slate-900/40 backdrop-blur-sm border border-slate-800 p-9 rounded-[2.5rem] hover:bg-slate-800/50 hover:border-blue-500 hover:-translate-y-2 transition-all duration-300 shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/70"
         >
-          <div className="bg-blue-500/10 w-16 h-16 flex items-center justify-center rounded-2xl mb-8 group-hover:bg-blue-500 transition-colors duration-300">
+          <div className="bg-blue-500/10 w-16 h-16 flex items-center justify-center rounded-2xl mb-7 group-hover:bg-blue-500 transition-colors duration-300">
             <Table2 size={28} className="text-blue-400 group-hover:text-white transition-colors" />
           </div>
           <h2 className="text-2xl font-black italic uppercase text-slate-100 mb-4 flex items-center justify-between">
@@ -168,13 +179,22 @@ export default function Home() {
             Παρακολούθησε ζωντανά τη βαθμολογία, τους πόντους και την ακριβή κατάταξη των κορυφαίων συλλόγων.
           </p>
         </button>
+        </div>
 
         {/* CARD 2: TEAM ANALYTICS */}
+        <div className="flex flex-col gap-4">
+        <QuickLinkPreview
+          previewId={activePreview === "teams" ? "teams" : null}
+        />
         <button 
           onClick={() => navigate('/teams')}
-          className="text-left bg-slate-900/40 backdrop-blur-sm border border-slate-800 p-8 rounded-[2.5rem] hover:bg-slate-800/50 hover:border-purple-500 hover:-translate-y-2 transition-all duration-300 group shadow-xl"
+          onFocus={() => setActivePreview("teams")}
+          onMouseEnter={() => setActivePreview("teams")}
+          onMouseLeave={() => setActivePreview(null)}
+          onBlur={() => setActivePreview(null)}
+          className="group relative min-h-[245px] w-full text-left bg-slate-900/40 backdrop-blur-sm border border-slate-800 p-9 rounded-[2.5rem] hover:bg-slate-800/50 hover:border-purple-500 hover:-translate-y-2 transition-all duration-300 shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/70"
         >
-          <div className="bg-purple-500/10 w-16 h-16 flex items-center justify-center rounded-2xl mb-8 group-hover:bg-purple-500 transition-colors duration-300">
+          <div className="bg-purple-500/10 w-16 h-16 flex items-center justify-center rounded-2xl mb-7 group-hover:bg-purple-500 transition-colors duration-300">
             <Shield size={28} className="text-purple-400 group-hover:text-white transition-colors" />
           </div>
           <h2 className="text-2xl font-black italic uppercase text-slate-100 mb-4 flex items-center justify-between">
@@ -186,13 +206,22 @@ export default function Home() {
         </button>
 
         {/* CARD 3: ABOUT (Πλέον είναι κουμπί που ανοίγει το Pop-Up) */}
+        </div>
+        <div className="flex flex-col gap-4">
+        <QuickLinkPreview
+          previewId={activePreview === "platform" ? "platform" : null}
+        />
         <button 
           onClick={() => setIsAboutOpen(true)}
-          className="text-left bg-gradient-to-br from-slate-900/80 to-slate-900/20 backdrop-blur-sm border border-slate-800 p-8 rounded-[2.5rem] hover:border-emerald-500 hover:-translate-y-2 transition-all duration-300 shadow-xl relative overflow-hidden group"
+          onFocus={() => setActivePreview("platform")}
+          onMouseEnter={() => setActivePreview("platform")}
+          onMouseLeave={() => setActivePreview(null)}
+          onBlur={() => setActivePreview(null)}
+          className="group relative min-h-[245px] w-full overflow-visible text-left bg-gradient-to-br from-slate-900/80 to-slate-900/20 backdrop-blur-sm border border-slate-800 p-9 rounded-[2.5rem] hover:border-emerald-500 hover:-translate-y-2 transition-all duration-300 shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70"
         >
-          <Brain size={120} className="absolute -right-8 -bottom-8 text-white/[0.03] rotate-12 group-hover:text-emerald-500/10 transition-colors duration-500" />
+          <Brain size={120} className="absolute bottom-0 right-0 text-white/[0.03] rotate-12 group-hover:text-emerald-500/10 transition-colors duration-500" />
           
-          <div className="bg-emerald-500/10 w-16 h-16 flex items-center justify-center rounded-2xl mb-8 relative z-10 group-hover:bg-emerald-500 transition-colors duration-300">
+          <div className="bg-emerald-500/10 w-16 h-16 flex items-center justify-center rounded-2xl mb-7 relative z-10 group-hover:bg-emerald-500 transition-colors duration-300">
             <Activity size={28} className="text-emerald-400 group-hover:text-white transition-colors" />
           </div>
           <h2 className="text-2xl font-black italic uppercase text-slate-100 mb-4 flex items-center justify-between relative z-10">
@@ -202,6 +231,7 @@ export default function Home() {
             Πάτησε εδώ για να ανακαλύψεις τις δυνατότητες του TransferMind και πώς λειτουργεί η ανάλυση δεδομένων μας.
           </p>
         </button>
+        </div>
       </div>
 
       {/* 🟢 ΤΟ POP-UP (MODAL) ΤΗΣ ΠΛΑΤΦΟΡΜΑΣ */}
@@ -278,6 +308,102 @@ export default function Home() {
         </div>
       )}
 
+    </div>
+  );
+}
+
+type QuickLinkPreviewId = "standings" | "teams" | "platform";
+
+const QUICK_LINK_PREVIEWS: Record<
+  QuickLinkPreviewId,
+  {
+    title: string;
+    description: string;
+    accentClassName: string;
+    borderClassName: string;
+    shadowClassName: string;
+    primaryChipClassName: string;
+    chips: string[];
+  }
+> = {
+  standings: {
+    title: "Live League Table",
+    description:
+      "Rankings, points, wins, goal difference, and filtered standings by competition.",
+    accentClassName: "text-blue-300",
+    borderClassName: "border-blue-500/20",
+    shadowClassName: "shadow-blue-950/30",
+    primaryChipClassName: "bg-blue-500/10 text-blue-200",
+    chips: ["Rank", "Points", "Form"],
+  },
+  teams: {
+    title: "Team Profiles",
+    description:
+      "Club pages with season stats, relative bars, squad data, and ranking charts.",
+    accentClassName: "text-purple-300",
+    borderClassName: "border-purple-500/20",
+    shadowClassName: "shadow-purple-950/30",
+    primaryChipClassName: "bg-purple-500/10 text-purple-200",
+    chips: ["Stats", "Squad", "Charts"],
+  },
+  platform: {
+    title: "Platform Overview",
+    description:
+      "A compact explanation of TransferMind data, analysis flow, and thesis features.",
+    accentClassName: "text-emerald-300",
+    borderClassName: "border-emerald-500/20",
+    shadowClassName: "shadow-emerald-950/30",
+    primaryChipClassName: "bg-emerald-500/10 text-emerald-200",
+    chips: ["Data", "Model", "Scope"],
+  },
+};
+
+function QuickLinkPreview({
+  previewId,
+}: {
+  previewId: QuickLinkPreviewId | null;
+}) {
+  const preview = previewId ? QUICK_LINK_PREVIEWS[previewId] : null;
+
+  return (
+    <div className="pointer-events-none hidden h-52 w-full md:block">
+      <div
+        className={`h-full rounded-[2rem] border bg-slate-950/95 p-6 shadow-2xl backdrop-blur-xl transition-all duration-300 ${
+          preview
+            ? "translate-y-0 opacity-100"
+            : "translate-y-3 opacity-0"
+        } ${preview?.borderClassName ?? "border-slate-800"} ${
+          preview?.shadowClassName ?? "shadow-slate-950/30"
+        }`}
+      >
+        {preview ? (
+          <>
+            <p
+              className={`text-[11px] font-black uppercase tracking-[0.3em] ${preview.accentClassName}`}
+            >
+              Preview
+            </p>
+            <h3 className="mt-3 text-xl font-black uppercase italic text-white">
+              {preview.title}
+            </h3>
+            <p className="mt-3 text-sm font-semibold leading-relaxed text-slate-400">
+              {preview.description}
+            </p>
+            <div className="mt-5 grid grid-cols-3 gap-2.5 text-center text-[10px] font-black uppercase tracking-widest text-slate-300">
+              {preview.chips.map((chip, index) => (
+                <span
+                  key={chip}
+                  className={`rounded-2xl px-2.5 py-2.5 ${
+                    index === 0 ? preview.primaryChipClassName : "bg-slate-900"
+                  }`}
+                >
+                  {chip}
+                </span>
+              ))}
+            </div>
+          </>
+        ) : null}
+      </div>
     </div>
   );
 }
