@@ -6,7 +6,7 @@ import {
   type MutableRefObject,
 } from "react";
 import { createPortal } from "react-dom";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Trophy } from "lucide-react";
 import {
   TEAM_STATS_CATEGORIES,
   formatTeamStatValue,
@@ -315,6 +315,20 @@ function StatLine({
   onSelect: (statKey: TeamStatKey) => void;
 }) {
   const score = performance?.score ?? null;
+  const fillPercent = getStatBarFillPercent(
+    performance?.rawValue ?? null,
+    performance,
+    statKey,
+  );
+  const bestFillPercent = getStatBarFillPercent(
+    performance?.bestValue ?? null,
+    performance,
+    statKey,
+  );
+  const isBestStatValue = valuesMatch(
+    performance?.rawValue ?? null,
+    performance?.bestValue ?? null,
+  );
 
   return (
     <div
@@ -351,8 +365,9 @@ function StatLine({
         ) : null}
       </div>
       <StatPerformanceBar
-        score={score}
-        bestScore={performance?.bestScore ?? null}
+        fillPercent={fillPercent}
+        bestFillPercent={bestFillPercent}
+        isBestStatValue={isBestStatValue}
         color={getStatColor(score)}
         bestValue={bestValue}
       />
@@ -586,26 +601,88 @@ function getTeamInitials(teamName: string) {
     .toUpperCase();
 }
 
+function getStatBarFillPercent(
+  value: unknown,
+  performance: TeamStatPerformance | undefined,
+  statKey: TeamStatKey,
+) {
+  const numericValue = toNumericStatValue(value);
+
+  if (numericValue == null) {
+    return null;
+  }
+
+  const format = getTeamStatMeta(statKey).format;
+
+  if (format === "percent" || format === "ratio") {
+    return clampPercent(
+      Math.abs(numericValue) <= 1 ? numericValue * 100 : numericValue,
+    );
+  }
+
+  const normalized = normalizeStat(
+    numericValue,
+    performance?.minValue ?? null,
+    performance?.maxValue ?? null,
+  );
+
+  return normalized == null ? null : clampPercent(normalized * 100);
+}
+
+function roundPercent(value: number) {
+  return Math.round(clampPercent(value) * 100) / 100;
+}
+
+function valuesMatch(
+  left: number | null | undefined,
+  right: number | null | undefined,
+) {
+  if (left == null || right == null) {
+    return false;
+  }
+
+  return Math.abs(left - right) < 0.0001;
+}
+
+function clampPercent(value: number) {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(100, value));
+}
+
 function StatPerformanceBar({
-  score,
-  bestScore,
+  fillPercent,
+  bestFillPercent,
+  isBestStatValue,
   color,
   bestValue,
 }: {
-  score: number | null;
-  bestScore: number | null;
+  fillPercent: number | null;
+  bestFillPercent: number | null;
+  isBestStatValue: boolean;
   color: TeamStatPerformanceColor;
   bestValue: string | number | null;
 }) {
-  const hasScore = score != null;
-  const scorePercent = hasScore ? Math.round(score * 1000) / 10 : 6;
+  const barPercent = fillPercent == null ? 6 : roundPercent(fillPercent);
   const bestPercent =
-    bestScore == null ? null : Math.round(bestScore * 1000) / 10;
+    bestFillPercent == null ? null : roundPercent(bestFillPercent);
   const [isExpanded, setIsExpanded] = useState(false);
-  const canShowBest = hasScore && bestPercent != null && bestValue != null;
+  const canShowBest = bestPercent != null && bestValue != null;
 
   return (
-    <div className="min-w-0">
+    <div className="grid min-w-0 grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-2">
+      <div className="flex h-8 items-center justify-center">
+        {isBestStatValue ? (
+          <span
+            className="flex h-5.5 w-5.5 items-center justify-center rounded-full bg-slate-950 text-amber-300 ring-1 ring-amber-300/70 shadow-[0_0_14px_rgba(251,191,36,0.35)]"
+            title="Best in this stat"
+          >
+            <Trophy size={13} fill="currentColor" strokeWidth={2.4} />
+          </span>
+        ) : null}
+      </div>
       <button
         type="button"
         className="group/bar relative h-8 w-full overflow-hidden rounded-full bg-slate-950 text-left ring-1 ring-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/70"
@@ -617,9 +694,9 @@ function StatPerformanceBar({
       >
         <div
           className={`absolute inset-y-0 left-0 rounded-full transition-[width] duration-300 ${getBarFillClass(
-            hasScore ? color : "red",
+            fillPercent == null ? "red" : color,
           )}`}
-          style={{ width: `${scorePercent}%` }}
+          style={{ width: `${barPercent}%` }}
         />
         {canShowBest ? (
           <>
@@ -655,18 +732,18 @@ function StatPerformanceBar({
 
 function getBarFillClass(color: TeamStatPerformanceColor) {
   if (color === "red") {
-    return "bg-red-500";
+    return "bg-gradient-to-r from-rose-500 to-red-400";
   }
 
   if (color === "yellow") {
-    return "bg-yellow-400";
+    return "bg-gradient-to-r from-amber-500 to-yellow-300";
   }
 
   if (color === "green") {
-    return "bg-emerald-500";
+    return "bg-gradient-to-r from-emerald-500 to-teal-300";
   }
 
-  return "bg-slate-700";
+  return "bg-gradient-to-r from-slate-700 to-slate-500";
 }
 
 function getStatCardColor(statKey: TeamStatKey) {

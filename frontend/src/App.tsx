@@ -25,6 +25,9 @@ function App() {
             <Route path="/teams" element={<Teams />} />
           </Routes>
         </main>
+        <footer className="pointer-events-none fixed bottom-3 right-4 z-50 text-right text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500/80 sm:bottom-4 sm:right-6">
+          Designed by Konstantinos Peristerakis | Konstantinos Pantenas
+        </footer>
       </div>
     </Router>
   );
