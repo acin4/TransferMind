@@ -1,0 +1,232 @@
+{
+  "player": {
+    "name": "José María Giménez",
+    "slug": "jose-maria-gimenez",
+    "shortName": "J. M. Giménez",
+    "team": {
+      "name": "Atlético Madrid",
+      "slug": "atletico-madrid",
+      "shortName": "Atl. Madrid",
+      "gender": "M",
+      "sport": {
+        "name": "Football",
+        "slug": "football",
+        "id": 1
+      },
+      "tournament": {
+        "name": "LaLiga",
+        "slug": "laliga",
+        "category": {
+          "name": "Spain",
+          "slug": "spain",
+          "sport": {
+            "name": "Football",
+            "slug": "football",
+            "id": 1
+          },
+          "priority": 9,
+          "country": {
+            "alpha2": "ES",
+            "alpha3": "ESP",
+            "name": "Spain",
+            "slug": "spain"
+          },
+          "id": 32,
+          "flag": "spain",
+          "alpha2": "ES",
+          "fieldTranslations": {
+            "nameTranslation": {
+              "hi": "स्पेन",
+              "ar": "إسبانيا",
+              "bn": "স্পেন",
+              "ru": "Испания"
+            },
+            "shortNameTranslation": {}
+          }
+        },
+        "uniqueTournament": {
+          "name": "LaLiga",
+          "slug": "laliga",
+          "primaryColorHex": "#2f4a89",
+          "secondaryColorHex": "#f4a32e",
+          "category": {
+            "name": "Spain",
+            "slug": "spain",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "priority": 9,
+            "country": {
+              "alpha2": "ES",
+              "alpha3": "ESP",
+              "name": "Spain",
+              "slug": "spain"
+            },
+            "id": 32,
+            "flag": "spain",
+            "alpha2": "ES",
+            "fieldTranslations": {
+              "nameTranslation": {
+                "hi": "स्पेन",
+                "ar": "إسبانيا",
+                "bn": "স্পেন",
+                "ru": "Испания"
+              },
+              "shortNameTranslation": {}
+            }
+          },
+          "userCount": 844000,
+          "country": {},
+          "id": 8,
+          "displayInverseHomeAwayTeams": false,
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "الدوري الإسباني",
+              "hi": "ला लिगा",
+              "bn": "লা লীগা"
+            },
+            "shortNameTranslation": {}
+          }
+        },
+        "priority": 699,
+        "isLive": false,
+        "id": 36,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "hi": "ला लीगा",
+            "ar": "الدوري الإسباني",
+            "bn": "লা লীগা"
+          },
+          "shortNameTranslation": {}
+        }
+      },
+      "primaryUniqueTournament": {
+        "name": "LaLiga",
+        "slug": "laliga",
+        "primaryColorHex": "#2f4a89",
+        "secondaryColorHex": "#f4a32e",
+        "category": {
+          "name": "Spain",
+          "slug": "spain",
+          "sport": {
+            "name": "Football",
+            "slug": "football",
+            "id": 1
+          },
+          "priority": 9,
+          "country": {
+            "alpha2": "ES",
+            "alpha3": "ESP",
+            "name": "Spain",
+            "slug": "spain"
+          },
+          "id": 32,
+          "flag": "spain",
+          "alpha2": "ES",
+          "fieldTranslations": {
+            "nameTranslation": {
+              "hi": "स्पेन",
+              "ar": "إسبانيا",
+              "bn": "স্পেন",
+              "ru": "Испания"
+            },
+            "shortNameTranslation": {}
+          }
+        },
+        "userCount": 844000,
+        "country": {},
+        "id": 8,
+        "displayInverseHomeAwayTeams": false,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "الدوري الإسباني",
+            "hi": "ला लिगा",
+            "bn": "লা লীগা"
+          },
+          "shortNameTranslation": {}
+        }
+      },
+      "userCount": 2472527,
+      "nameCode": "ATM",
+      "disabled": false,
+      "national": false,
+      "type": 0,
+      "country": {
+        "alpha2": "ES",
+        "alpha3": "ESP",
+        "name": "Spain",
+        "slug": "spain"
+      },
+      "id": 2836,
+      "teamColors": {
+        "primary": "#ffffff",
+        "secondary": "#c40000",
+        "text": "#c40000"
+      },
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "أتلتيكو مدريد",
+          "hi": "एटलेटिको मैड्रिड",
+          "ru": "Атлетико Мадрид"
+        },
+        "shortNameTranslation": {
+          "ar": "أتل. مدريد",
+          "bn": "এটিএল. মাদ্রিদ"
+        }
+      }
+    },
+    "position": "D",
+    "positionsDetailed": [
+      "DC"
+    ],
+    "jerseyNumber": "2",
+    "height": 185,
+    "dateOfBirth": "1995-01-20T00:00:00+00:00",
+    "preferredFoot": "Right",
+    "userCount": 6282,
+    "deceased": false,
+    "gender": "M",
+    "injury": {
+      "reason": "Muscle Injury",
+      "status": "out",
+      "expectedReturn": 6,
+      "id": 20902,
+      "startDateTimestamp": 1776729600,
+      "updateDateTimestamp": 1777550428,
+      "endDateTimestamp": 1779235200,
+      "expectedReturnDateData": {
+        "month": 5,
+        "year": 2026
+      }
+    },
+    "sofascoreId": "JoseMaGimenez13",
+    "country": {
+      "alpha2": "UY",
+      "alpha3": "URY",
+      "name": "Uruguay",
+      "slug": "uruguay"
+    },
+    "id": 325355,
+    "shirtNumber": 2,
+    "dateOfBirthTimestamp": 790560000,
+    "proposedMarketValue": 11500000,
+    "proposedMarketValueRaw": {
+      "value": 11500000,
+      "currency": "EUR"
+    },
+    "fieldTranslations": {
+      "nameTranslation": {
+        "ar": "خوسيه خيمينيز",
+        "bn": "জোসে মারিয়া গিমেনেজ",
+        "hi": "जोस मारिया गिमेनेज़"
+      },
+      "shortNameTranslation": {
+        "ar": "خ. خيمينيز",
+        "bn": "জে. এম. জিমেনেজ",
+        "hi": "जे.एम. गिमेनेज़"
+      }
+    }
+  }
+}

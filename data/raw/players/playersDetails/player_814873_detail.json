@@ -1,0 +1,232 @@
+{
+  "player": {
+    "name": "Vitaly Janelt",
+    "firstName": "Vitaly",
+    "lastName": "Janelt",
+    "slug": "vitaly-janelt",
+    "shortName": "V. Janelt",
+    "team": {
+      "name": "Brentford",
+      "slug": "brentford",
+      "shortName": "Brentford",
+      "gender": "M",
+      "sport": {
+        "name": "Football",
+        "slug": "football",
+        "id": 1
+      },
+      "tournament": {
+        "name": "Premier League",
+        "slug": "premier-league",
+        "category": {
+          "name": "England",
+          "slug": "england",
+          "sport": {
+            "name": "Football",
+            "slug": "football",
+            "id": 1
+          },
+          "priority": 10,
+          "country": {
+            "alpha2": "EN",
+            "alpha3": "ENG",
+            "name": "England",
+            "slug": "england"
+          },
+          "id": 1,
+          "flag": "england",
+          "alpha2": "EN",
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "إنجلترا",
+              "hi": "इंग्लैंड",
+              "bn": "ইংল্যান্ড",
+              "ru": "Англия"
+            },
+            "shortNameTranslation": {}
+          }
+        },
+        "uniqueTournament": {
+          "name": "Premier League",
+          "slug": "premier-league",
+          "primaryColorHex": "#3c1c5a",
+          "secondaryColorHex": "#f80158",
+          "category": {
+            "name": "England",
+            "slug": "england",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "priority": 10,
+            "country": {
+              "alpha2": "EN",
+              "alpha3": "ENG",
+              "name": "England",
+              "slug": "england"
+            },
+            "id": 1,
+            "flag": "england",
+            "alpha2": "EN",
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "إنجلترا",
+                "hi": "इंग्लैंड",
+                "bn": "ইংল্যান্ড",
+                "ru": "Англия"
+              },
+              "shortNameTranslation": {}
+            }
+          },
+          "userCount": 1201112,
+          "country": {},
+          "id": 17,
+          "displayInverseHomeAwayTeams": false,
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "الدوري الإنجليزي الممتاز",
+              "hi": "प्रिमियर लीग",
+              "bn": "প্রিমিয়ার লীগ"
+            },
+            "shortNameTranslation": {}
+          }
+        },
+        "priority": 701,
+        "isLive": false,
+        "id": 1,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "hi": "प्रिमियर लीग",
+            "ar": "الدوري الإنجليزي الممتاز",
+            "bn": "প্রিমিয়ার লীগ"
+          },
+          "shortNameTranslation": {}
+        }
+      },
+      "primaryUniqueTournament": {
+        "name": "Premier League",
+        "slug": "premier-league",
+        "primaryColorHex": "#3c1c5a",
+        "secondaryColorHex": "#f80158",
+        "category": {
+          "name": "England",
+          "slug": "england",
+          "sport": {
+            "name": "Football",
+            "slug": "football",
+            "id": 1
+          },
+          "priority": 10,
+          "country": {
+            "alpha2": "EN",
+            "alpha3": "ENG",
+            "name": "England",
+            "slug": "england"
+          },
+          "id": 1,
+          "flag": "england",
+          "alpha2": "EN",
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "إنجلترا",
+              "hi": "इंग्लैंड",
+              "bn": "ইংল্যান্ড",
+              "ru": "Англия"
+            },
+            "shortNameTranslation": {}
+          }
+        },
+        "userCount": 1201112,
+        "country": {},
+        "id": 17,
+        "displayInverseHomeAwayTeams": false,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "الدوري الإنجليزي الممتاز",
+            "hi": "प्रिमियर लीग",
+            "bn": "প্রিমিয়ার লীগ"
+          },
+          "shortNameTranslation": {}
+        }
+      },
+      "userCount": 298408,
+      "nameCode": "BRE",
+      "disabled": false,
+      "national": false,
+      "type": 0,
+      "country": {
+        "alpha2": "EN",
+        "alpha3": "ENG",
+        "name": "England",
+        "slug": "england"
+      },
+      "id": 50,
+      "teamColors": {
+        "primary": "#ffffff",
+        "secondary": "#ff0000",
+        "text": "#ff0000"
+      },
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "برينتفورد",
+          "bn": "ব্রেন্টফোর্ড",
+          "hi": "ब्रेंटफोर्ड",
+          "ru": "Брентфорд"
+        },
+        "shortNameTranslation": {}
+      }
+    },
+    "position": "M",
+    "positionsDetailed": [
+      "MC",
+      "DM"
+    ],
+    "jerseyNumber": "27",
+    "height": 184,
+    "dateOfBirth": "1998-05-10T00:00:00+00:00",
+    "preferredFoot": "Left",
+    "userCount": 1208,
+    "deceased": false,
+    "gender": "M",
+    "injury": {
+      "reason": "Knock Injury",
+      "status": "out",
+      "expectedReturn": 5,
+      "id": 20212,
+      "startDateTimestamp": 1772236800,
+      "updateDateTimestamp": 1777046469,
+      "endDateTimestamp": 1778371200,
+      "expectedReturnDateData": {
+        "month": 5,
+        "year": 2026
+      }
+    },
+    "country": {
+      "alpha2": "DE",
+      "alpha3": "DEU",
+      "name": "Germany",
+      "slug": "germany"
+    },
+    "id": 814873,
+    "shirtNumber": 27,
+    "dateOfBirthTimestamp": 894758400,
+    "proposedMarketValue": 18600000,
+    "proposedMarketValueRaw": {
+      "value": 18600000,
+      "currency": "EUR"
+    },
+    "fieldTranslations": {
+      "nameTranslation": {
+        "ar": "فيتالي جانيلت",
+        "bn": "ভিটালি জেনেল্ট",
+        "hi": "विटाली जेनेल्ट"
+      },
+      "shortNameTranslation": {
+        "ar": "ف. جانيلت",
+        "bn": "ভি. জেনেল্ট",
+        "hi": "वी. जेनेल्ट"
+      }
+    }
+  }
+}

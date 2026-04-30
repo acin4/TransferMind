@@ -1,0 +1,230 @@
+{
+  "player": {
+    "name": "Nilson Angulo",
+    "firstName": "Nilson Angulo",
+    "lastName": "",
+    "slug": "nilson-angulo",
+    "shortName": "N. Angulo",
+    "team": {
+      "name": "Sunderland",
+      "slug": "sunderland",
+      "shortName": "Sunderland",
+      "gender": "M",
+      "sport": {
+        "name": "Football",
+        "slug": "football",
+        "id": 1
+      },
+      "tournament": {
+        "name": "League One",
+        "slug": "league-one",
+        "category": {
+          "name": "England",
+          "slug": "england",
+          "sport": {
+            "name": "Football",
+            "slug": "football",
+            "id": 1
+          },
+          "priority": 10,
+          "country": {
+            "alpha2": "EN",
+            "alpha3": "ENG",
+            "name": "England",
+            "slug": "england"
+          },
+          "id": 1,
+          "flag": "england",
+          "alpha2": "EN",
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "إنجلترا",
+              "hi": "इंग्लैंड",
+              "bn": "ইংল্যান্ড",
+              "ru": "Англия"
+            },
+            "shortNameTranslation": {}
+          }
+        },
+        "uniqueTournament": {
+          "name": "League One",
+          "slug": "league-one",
+          "primaryColorHex": "#20429a",
+          "secondaryColorHex": "#848888",
+          "category": {
+            "name": "England",
+            "slug": "england",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "priority": 10,
+            "country": {
+              "alpha2": "EN",
+              "alpha3": "ENG",
+              "name": "England",
+              "slug": "england"
+            },
+            "id": 1,
+            "flag": "england",
+            "alpha2": "EN",
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "إنجلترا",
+                "hi": "इंग्लैंड",
+                "bn": "ইংল্যান্ড",
+                "ru": "Англия"
+              },
+              "shortNameTranslation": {}
+            }
+          },
+          "userCount": 25973,
+          "country": {},
+          "id": 24,
+          "displayInverseHomeAwayTeams": false,
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "الدوري الأول",
+              "bn": "লিগ ওয়ান",
+              "hi": "लीग वन"
+            },
+            "shortNameTranslation": {}
+          }
+        },
+        "priority": 253,
+        "isLive": false,
+        "id": 3,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "ليغ وان",
+            "hi": "लीग वन",
+            "bn": "লীগ ওয়ান"
+          },
+          "shortNameTranslation": {}
+        }
+      },
+      "primaryUniqueTournament": {
+        "name": "Premier League",
+        "slug": "premier-league",
+        "primaryColorHex": "#3c1c5a",
+        "secondaryColorHex": "#f80158",
+        "category": {
+          "name": "England",
+          "slug": "england",
+          "sport": {
+            "name": "Football",
+            "slug": "football",
+            "id": 1
+          },
+          "priority": 10,
+          "country": {
+            "alpha2": "EN",
+            "alpha3": "ENG",
+            "name": "England",
+            "slug": "england"
+          },
+          "id": 1,
+          "flag": "england",
+          "alpha2": "EN",
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "إنجلترا",
+              "hi": "इंग्लैंड",
+              "bn": "ইংল্যান্ড",
+              "ru": "Англия"
+            },
+            "shortNameTranslation": {}
+          }
+        },
+        "userCount": 1201112,
+        "country": {},
+        "id": 17,
+        "displayInverseHomeAwayTeams": false,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "الدوري الإنجليزي الممتاز",
+            "hi": "प्रिमियर लीग",
+            "bn": "প্রিমিয়ার লীগ"
+          },
+          "shortNameTranslation": {}
+        }
+      },
+      "userCount": 219267,
+      "nameCode": "SUN",
+      "disabled": false,
+      "national": false,
+      "type": 0,
+      "country": {
+        "alpha2": "EN",
+        "alpha3": "ENG",
+        "name": "England",
+        "slug": "england"
+      },
+      "id": 41,
+      "teamColors": {
+        "primary": "#ffffff",
+        "secondary": "#ca0000",
+        "text": "#ca0000"
+      },
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "سندرلاند",
+          "ru": "АФК Сандерленд"
+        },
+        "shortNameTranslation": {}
+      }
+    },
+    "position": "M",
+    "positionsDetailed": [
+      "LW"
+    ],
+    "jerseyNumber": "10",
+    "height": 182,
+    "dateOfBirth": "2003-06-19T00:00:00+00:00",
+    "preferredFoot": "Right",
+    "userCount": 5105,
+    "deceased": false,
+    "gender": "M",
+    "injury": {
+      "reason": "Muscle Injury",
+      "status": "out",
+      "expectedReturn": 5,
+      "id": 18436,
+      "startDateTimestamp": 1773446400,
+      "updateDateTimestamp": 1777550451,
+      "endDateTimestamp": 1778371200,
+      "expectedReturnDateData": {
+        "month": 5,
+        "year": 2026
+      }
+    },
+    "country": {
+      "alpha2": "EC",
+      "alpha3": "ECU",
+      "name": "Ecuador",
+      "slug": "ecuador"
+    },
+    "id": 1116571,
+    "shirtNumber": 10,
+    "dateOfBirthTimestamp": 1055980800,
+    "contractUntilTimestamp": 1909008000,
+    "proposedMarketValue": 16500000,
+    "proposedMarketValueRaw": {
+      "value": 16500000,
+      "currency": "EUR"
+    },
+    "fieldTranslations": {
+      "nameTranslation": {
+        "ar": "نيلسون أنغولو",
+        "bn": "নিলসন অ্যাঙ্গুলো",
+        "hi": "निल्सन एंगुलो"
+      },
+      "shortNameTranslation": {
+        "ar": "ن. أنغولو",
+        "bn": "এন. অ্যাঙ্গুলো",
+        "hi": "एन. एंगुलो"
+      }
+    }
+  }
+}

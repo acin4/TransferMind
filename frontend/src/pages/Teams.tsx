@@ -3,9 +3,9 @@ import { Link } from "react-router-dom";
 import { Users, ChevronRight, Trophy, Building2, MapPin } from "lucide-react";
 import { useTeams } from "../hooks/useTeams";
 import {
+  getTeamCountry,
   getTeamLocation,
   getTeamStadium,
-  normalizeCountry,
 } from "../utils/teamDisplay";
 import SegmentedTabs from "../components/ui/SegmentedTabs";
 
@@ -21,7 +21,7 @@ export default function Teams() {
     let hasOther = false;
 
     teams.forEach((team) => {
-      const country = normalizeCountry(team.country);
+      const country = getTeamCountry(team);
 
       if (country) {
         countries.add(country);
@@ -53,11 +53,11 @@ export default function Teams() {
     }
 
     if (activeCountry === OTHER_TAB) {
-      return teams.filter((team) => !normalizeCountry(team.country));
+      return teams.filter((team) => !getTeamCountry(team));
     }
 
     return teams.filter(
-      (team) => normalizeCountry(team.country) === activeCountry,
+      (team) => getTeamCountry(team) === activeCountry,
     );
   }, [activeCountry, teams]);
 

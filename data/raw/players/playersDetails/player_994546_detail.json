@@ -1,0 +1,231 @@
+{
+  "player": {
+    "name": "Elliot Anderson",
+    "firstName": "",
+    "lastName": "",
+    "slug": "elliot-anderson",
+    "shortName": "E. Anderson",
+    "team": {
+      "name": "Nottingham Forest",
+      "slug": "nottingham-forest",
+      "shortName": "Forest",
+      "gender": "M",
+      "sport": {
+        "name": "Football",
+        "slug": "football",
+        "id": 1
+      },
+      "tournament": {
+        "name": "Championship",
+        "slug": "championship",
+        "category": {
+          "name": "England",
+          "slug": "england",
+          "sport": {
+            "name": "Football",
+            "slug": "football",
+            "id": 1
+          },
+          "priority": 10,
+          "country": {
+            "alpha2": "EN",
+            "alpha3": "ENG",
+            "name": "England",
+            "slug": "england"
+          },
+          "id": 1,
+          "flag": "england",
+          "alpha2": "EN",
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "إنجلترا",
+              "hi": "इंग्लैंड",
+              "bn": "ইংল্যান্ড",
+              "ru": "Англия"
+            },
+            "shortNameTranslation": {}
+          }
+        },
+        "uniqueTournament": {
+          "name": "Championship",
+          "slug": "championship",
+          "primaryColorHex": "#20429a",
+          "secondaryColorHex": "#ac944a",
+          "category": {
+            "name": "England",
+            "slug": "england",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "priority": 10,
+            "country": {
+              "alpha2": "EN",
+              "alpha3": "ENG",
+              "name": "England",
+              "slug": "england"
+            },
+            "id": 1,
+            "flag": "england",
+            "alpha2": "EN",
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "إنجلترا",
+                "hi": "इंग्लैंड",
+                "bn": "ইংল্যান্ড",
+                "ru": "Англия"
+              },
+              "shortNameTranslation": {}
+            }
+          },
+          "userCount": 124813,
+          "country": {},
+          "id": 18,
+          "displayInverseHomeAwayTeams": false,
+          "fieldTranslations": {
+            "nameTranslation": {
+              "bn": "চ্যাম্পিয়নশিপ",
+              "hi": "चैंपियनशिप",
+              "ar": "دوري البطولة الإنجليزية"
+            },
+            "shortNameTranslation": {}
+          }
+        },
+        "priority": 357,
+        "isLive": false,
+        "id": 2,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "تشامبيونشيب",
+            "bn": "চ্যাম্পিয়নশিপ",
+            "hi": "चैंपियनशिप"
+          },
+          "shortNameTranslation": {}
+        }
+      },
+      "primaryUniqueTournament": {
+        "name": "Premier League",
+        "slug": "premier-league",
+        "primaryColorHex": "#3c1c5a",
+        "secondaryColorHex": "#f80158",
+        "category": {
+          "name": "England",
+          "slug": "england",
+          "sport": {
+            "name": "Football",
+            "slug": "football",
+            "id": 1
+          },
+          "priority": 10,
+          "country": {
+            "alpha2": "EN",
+            "alpha3": "ENG",
+            "name": "England",
+            "slug": "england"
+          },
+          "id": 1,
+          "flag": "england",
+          "alpha2": "EN",
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "إنجلترا",
+              "hi": "इंग्लैंड",
+              "bn": "ইংল্যান্ড",
+              "ru": "Англия"
+            },
+            "shortNameTranslation": {}
+          }
+        },
+        "userCount": 1201112,
+        "country": {},
+        "id": 17,
+        "displayInverseHomeAwayTeams": false,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "الدوري الإنجليزي الممتاز",
+            "hi": "प्रिमियर लीग",
+            "bn": "প্রিমিয়ার লীগ"
+          },
+          "shortNameTranslation": {}
+        }
+      },
+      "userCount": 426244,
+      "nameCode": "NFO",
+      "disabled": false,
+      "national": false,
+      "type": 0,
+      "country": {
+        "alpha2": "EN",
+        "alpha3": "ENG",
+        "name": "England",
+        "slug": "england"
+      },
+      "id": 14,
+      "teamColors": {
+        "primary": "#cc0000",
+        "secondary": "#cc0000",
+        "text": "#cc0000"
+      },
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "نوتنجهام فوريست",
+          "hi": "नाटिंन्ग्हम फारेस्ट",
+          "ru": "Ноттингем Форест"
+        },
+        "shortNameTranslation": {
+          "ar": "فورست",
+          "bn": "ফরেস্ট",
+          "hi": "फॉरेस्ट"
+        }
+      }
+    },
+    "position": "M",
+    "positionsDetailed": [
+      "MC",
+      "DM"
+    ],
+    "jerseyNumber": "8",
+    "height": 179,
+    "dateOfBirth": "2002-11-06T00:00:00+00:00",
+    "preferredFoot": "Right",
+    "userCount": 8861,
+    "gender": "M",
+    "injury": {
+      "reason": "Unknown",
+      "status": "dayToDay",
+      "expectedReturn": 9,
+      "id": 20656,
+      "startDateTimestamp": 1776297600,
+      "updateDateTimestamp": 1776960071,
+      "endDateTimestamp": 1778256071
+    },
+    "country": {
+      "alpha2": "EN",
+      "alpha3": "ENG",
+      "name": "England",
+      "slug": "england"
+    },
+    "id": 994546,
+    "shirtNumber": 8,
+    "dateOfBirthTimestamp": 1036540800,
+    "contractUntilTimestamp": 1877472000,
+    "proposedMarketValue": 54000000,
+    "proposedMarketValueRaw": {
+      "value": 54000000,
+      "currency": "EUR"
+    },
+    "fieldTranslations": {
+      "nameTranslation": {
+        "ar": "إليوت أندرسون",
+        "bn": "এলিয়ট অ্যান্ডারসন",
+        "hi": "इलियट एंडरसन"
+      },
+      "shortNameTranslation": {
+        "ar": "إ. أندرسون",
+        "bn": "ই. অ্যান্ডারসন",
+        "hi": "ई. एंडरसन"
+      }
+    }
+  }
+}

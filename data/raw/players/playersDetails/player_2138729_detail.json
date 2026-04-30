@@ -1,0 +1,223 @@
+{
+  "player": {
+    "name": "Jocelin Ta Bi",
+    "slug": "jocelin-ta-bi",
+    "shortName": "J. T. Bi",
+    "team": {
+      "name": "Sunderland",
+      "slug": "sunderland",
+      "shortName": "Sunderland",
+      "gender": "M",
+      "sport": {
+        "name": "Football",
+        "slug": "football",
+        "id": 1
+      },
+      "tournament": {
+        "name": "League One",
+        "slug": "league-one",
+        "category": {
+          "name": "England",
+          "slug": "england",
+          "sport": {
+            "name": "Football",
+            "slug": "football",
+            "id": 1
+          },
+          "priority": 10,
+          "country": {
+            "alpha2": "EN",
+            "alpha3": "ENG",
+            "name": "England",
+            "slug": "england"
+          },
+          "id": 1,
+          "flag": "england",
+          "alpha2": "EN",
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "إنجلترا",
+              "hi": "इंग्लैंड",
+              "bn": "ইংল্যান্ড",
+              "ru": "Англия"
+            },
+            "shortNameTranslation": {}
+          }
+        },
+        "uniqueTournament": {
+          "name": "League One",
+          "slug": "league-one",
+          "primaryColorHex": "#20429a",
+          "secondaryColorHex": "#848888",
+          "category": {
+            "name": "England",
+            "slug": "england",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "priority": 10,
+            "country": {
+              "alpha2": "EN",
+              "alpha3": "ENG",
+              "name": "England",
+              "slug": "england"
+            },
+            "id": 1,
+            "flag": "england",
+            "alpha2": "EN",
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "إنجلترا",
+                "hi": "इंग्लैंड",
+                "bn": "ইংল্যান্ড",
+                "ru": "Англия"
+              },
+              "shortNameTranslation": {}
+            }
+          },
+          "userCount": 25973,
+          "country": {},
+          "id": 24,
+          "displayInverseHomeAwayTeams": false,
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "الدوري الأول",
+              "bn": "লিগ ওয়ান",
+              "hi": "लीग वन"
+            },
+            "shortNameTranslation": {}
+          }
+        },
+        "priority": 253,
+        "isLive": false,
+        "id": 3,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "ليغ وان",
+            "hi": "लीग वन",
+            "bn": "লীগ ওয়ান"
+          },
+          "shortNameTranslation": {}
+        }
+      },
+      "primaryUniqueTournament": {
+        "name": "Premier League",
+        "slug": "premier-league",
+        "primaryColorHex": "#3c1c5a",
+        "secondaryColorHex": "#f80158",
+        "category": {
+          "name": "England",
+          "slug": "england",
+          "sport": {
+            "name": "Football",
+            "slug": "football",
+            "id": 1
+          },
+          "priority": 10,
+          "country": {
+            "alpha2": "EN",
+            "alpha3": "ENG",
+            "name": "England",
+            "slug": "england"
+          },
+          "id": 1,
+          "flag": "england",
+          "alpha2": "EN",
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "إنجلترا",
+              "hi": "इंग्लैंड",
+              "bn": "ইংল্যান্ড",
+              "ru": "Англия"
+            },
+            "shortNameTranslation": {}
+          }
+        },
+        "userCount": 1201112,
+        "country": {},
+        "id": 17,
+        "displayInverseHomeAwayTeams": false,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "الدوري الإنجليزي الممتاز",
+            "hi": "प्रिमियर लीग",
+            "bn": "প্রিমিয়ার লীগ"
+          },
+          "shortNameTranslation": {}
+        }
+      },
+      "userCount": 219267,
+      "nameCode": "SUN",
+      "disabled": false,
+      "national": false,
+      "type": 0,
+      "country": {
+        "alpha2": "EN",
+        "alpha3": "ENG",
+        "name": "England",
+        "slug": "england"
+      },
+      "id": 41,
+      "teamColors": {
+        "primary": "#ffffff",
+        "secondary": "#ca0000",
+        "text": "#ca0000"
+      },
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "سندرلاند",
+          "ru": "АФК Сандерленд"
+        },
+        "shortNameTranslation": {}
+      }
+    },
+    "position": "M",
+    "positionsDetailed": [
+      "RW"
+    ],
+    "jerseyNumber": "37",
+    "height": 175,
+    "dateOfBirth": "2005-02-09T00:00:00+00:00",
+    "preferredFoot": "Left",
+    "userCount": 627,
+    "gender": "M",
+    "injury": {
+      "reason": "Ankle Injury",
+      "status": "out",
+      "expectedReturn": 5,
+      "id": 20282,
+      "startDateTimestamp": 1771718400,
+      "updateDateTimestamp": 1777060867,
+      "endDateTimestamp": 1778371200,
+      "expectedReturnDateData": {
+        "month": 5,
+        "year": 2026
+      }
+    },
+    "country": {
+      "alpha2": "CI",
+      "alpha3": "CIV",
+      "name": "Côte d'Ivoire",
+      "slug": "cote-divoire"
+    },
+    "id": 2138729,
+    "shirtNumber": 37,
+    "dateOfBirthTimestamp": 1107907200,
+    "contractUntilTimestamp": 1909008000,
+    "proposedMarketValue": 3200000,
+    "proposedMarketValueRaw": {
+      "value": 3200000,
+      "currency": "EUR"
+    },
+    "fieldTranslations": {
+      "nameTranslation": {
+        "ar": "جوسلين تا بي"
+      },
+      "shortNameTranslation": {
+        "ar": "ج. بي"
+      }
+    }
+  }
+}

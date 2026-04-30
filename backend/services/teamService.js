@@ -6,6 +6,7 @@ import {
   getLatestTeamStatsByApiId,
   getTeamById,
   getTeamProfileById,
+  getTeamStatsByApiAndInternalSeason,
   getTeamStatsByApiReferences,
   listTeamComparisonRowsByContext,
   listTeamsComparisonDatasetRows,
@@ -478,12 +479,25 @@ export async function getTeamStats(id, seasonId) {
   }
 
   if (!team.tournament_id) {
-    return null;
+    const stats = await getTeamStatsByApiAndInternalSeason(
+      team.api_id,
+      seasonId,
+    );
+    return sanitizeTeamStats(stats, team.id);
   }
 
   const tournamentSeason = await getTournamentSeason(team.tournament_id, seasonId);
 
   if (!tournamentSeason) {
+    const stats = await getTeamStatsByApiAndInternalSeason(
+      team.api_id,
+      seasonId,
+    );
+
+    if (stats) {
+      return sanitizeTeamStats(stats, team.id);
+    }
+
     throw new HttpError(404, "Team season not found.");
   }
 
