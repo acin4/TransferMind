@@ -28,7 +28,7 @@ export default function TeamHeader({
   return (
     <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-10 pb-8 border-b border-slate-800">
       <div className="flex items-center gap-7">
-        <div className="flex h-32 w-32 shrink-0 items-center justify-center overflow-hidden rounded-[2rem] border border-slate-700/80 bg-slate-950 p-4 shadow-[0_22px_48px_rgba(2,6,23,0.55),0_0_28px_rgba(59,130,246,0.14)] ring-1 ring-slate-900/80">
+        <div className="flex h-36 w-36 shrink-0 items-center justify-center overflow-hidden rounded-[2rem] border border-slate-700/80 bg-slate-950 p-3 shadow-[0_22px_48px_rgba(2,6,23,0.55),0_0_28px_rgba(59,130,246,0.14)] ring-1 ring-slate-900/80 md:h-40 md:w-40">
           {team.logo_url ? (
             <img
               src={team.logo_url}

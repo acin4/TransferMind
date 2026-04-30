@@ -97,7 +97,7 @@ export default function Teams() {
               className="flex flex-col justify-between bg-slate-900 border border-slate-800 p-6 rounded-3xl hover:border-blue-500 hover:bg-slate-800/50 transition-all group shadow-xl"
             >
               <div className="flex justify-between items-start mb-6">
-                <div className="bg-white p-2 rounded-xl border border-slate-800 w-12 h-12 flex items-center justify-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-blue-500/20 bg-slate-950/80 p-2 shadow-[0_10px_24px_rgba(2,6,23,0.35),0_0_18px_rgba(59,130,246,0.12)] ring-1 ring-slate-800/80">
                   {team.logo_url ? (
                     <img src={team.logo_url} alt={team.name} className="w-full h-full object-contain" />
                   ) : (

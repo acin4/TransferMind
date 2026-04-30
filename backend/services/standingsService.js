@@ -249,6 +249,7 @@ export async function getStandingsRows(tournamentId, seasonId) {
       teamIdByApiReference.get(String(row.team_id)) ??
       null,
     team_name: row.team_name || "Unknown Team",
+    team_logo: row.team_logo_url ?? null,
     position: row.position ?? index + 1,
     matches: row.matches ?? 0,
     wins: row.wins ?? 0,

@@ -13,6 +13,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { Shield } from "lucide-react";
 import {
   formatRawStatValue,
   formatRelativeScoreValue,
@@ -47,6 +48,7 @@ type ComparisonDisplayEntry = {
   id: string;
   label: string;
   teamId: number;
+  teamLogo: string | null;
 };
 
 type ComparisonValue = {
@@ -171,6 +173,7 @@ export default function CustomComparisonTab({
           id: entry.id,
           label: sourceEntry?.label ?? entry.teamName,
           teamId: entry.teamId,
+          teamLogo: sourceEntry?.teamLogo ?? null,
         };
       }),
     [comparisonPayload, selectedEntries],
@@ -483,12 +486,18 @@ function BarComparisonTooltip({
 
           return (
             <div key={entry.id} className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
-              <div className="text-sm font-bold text-white flex items-center gap-2">
+              <div className="flex items-center gap-3">
+                <ComparisonTooltipLogo
+                  logoUrl={entry.teamLogo}
+                  teamName={entry.label}
+                />
                 <span
-                  className="inline-block h-2.5 w-2.5 rounded-full"
+                  className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
                   style={{ backgroundColor: item.color }}
                 />
-                {entry.label}
+                <span className="min-w-0 text-sm font-bold text-white">
+                  {entry.label}
+                </span>
               </div>
               <div className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-2">
                 Stat Name
@@ -567,12 +576,18 @@ function RadarComparisonTooltip({
 
           return (
             <div key={entry.id} className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
-              <div className="text-sm font-bold text-white flex items-center gap-2">
+              <div className="flex items-center gap-3">
+                <ComparisonTooltipLogo
+                  logoUrl={entry.teamLogo}
+                  teamName={entry.label}
+                />
                 <span
-                  className="inline-block h-2.5 w-2.5 rounded-full"
+                  className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
                   style={{ backgroundColor: item.color }}
                 />
-                {entry.label}
+                <span className="min-w-0 text-sm font-bold text-white">
+                  {entry.label}
+                </span>
               </div>
               <div className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-2">
                 Stat Name
@@ -611,5 +626,28 @@ function RadarComparisonTooltip({
         })}
       </div>
     </div>
+  );
+}
+
+function ComparisonTooltipLogo({
+  logoUrl,
+  teamName,
+}: {
+  logoUrl?: string | null;
+  teamName: string;
+}) {
+  return (
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-slate-950/80 p-1.5 shadow-[0_8px_18px_rgba(2,6,23,0.35),0_0_14px_rgba(59,130,246,0.12)] ring-1 ring-slate-800/80">
+      {logoUrl ? (
+        <img
+          src={logoUrl}
+          alt={`${teamName} logo`}
+          className="h-full w-full object-contain"
+          loading="lazy"
+        />
+      ) : (
+        <Shield size={18} className="text-slate-500" />
+      )}
+    </span>
   );
 }

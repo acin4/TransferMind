@@ -65,6 +65,7 @@ export type TeamStandingRow = {
   id?: number | string | null;
   team_id: number | string | null;
   team_name?: string | null;
+  team_logo?: string | null;
   position?: number | null;
   matches?: number | null;
   wins?: number | null;

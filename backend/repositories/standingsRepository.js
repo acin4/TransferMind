@@ -136,6 +136,7 @@ export async function listStandingsRows(tournamentApiId, seasonApiId) {
         "team_id",
         "team_db_id",
         "team_name",
+        "team_logo_url",
         "position",
         "matches",
         "wins",

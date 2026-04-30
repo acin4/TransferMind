@@ -45,27 +45,19 @@ export default function StandingsTable({ rows }: StandingsTableProps) {
                     to={`/team/${row.team_id}`}
                     className="flex items-center gap-4 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/70"
                   >
-                    <span className="font-black text-xl tracking-tighter uppercase italic group-hover:text-blue-400 transition-colors">
-                      {row.team_name || "Unknown Team"}
-                    </span>
-                    {index === 0 && (
-                      <Trophy
-                        size={18}
-                        className="text-yellow-500 animate-pulse"
-                      />
-                    )}
+                    <TeamLogoMark
+                      logoUrl={row.team_logo}
+                      teamName={row.team_name}
+                    />
+                    <TeamNameWithLeaderIcon row={row} isLeader={index === 0} />
                   </Link>
                 ) : (
                   <div className="flex items-center gap-4">
-                    <span className="font-black text-xl tracking-tighter uppercase italic group-hover:text-blue-400 transition-colors">
-                      {row.team_name || "Unknown Team"}
-                    </span>
-                    {index === 0 && (
-                      <Trophy
-                        size={18}
-                        className="text-yellow-500 animate-pulse"
-                      />
-                    )}
+                    <TeamLogoMark
+                      logoUrl={row.team_logo}
+                      teamName={row.team_name}
+                    />
+                    <TeamNameWithLeaderIcon row={row} isLeader={index === 0} />
                   </div>
                 )}
               </td>
@@ -111,5 +103,47 @@ export default function StandingsTable({ rows }: StandingsTableProps) {
         </div>
       )}
     </div>
+  );
+}
+
+function TeamLogoMark({
+  logoUrl,
+  teamName,
+}: {
+  logoUrl?: string | null;
+  teamName?: string | null;
+}) {
+  return (
+    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-800 bg-slate-950/80 p-2 shadow-[0_10px_24px_rgba(2,6,23,0.35)]">
+      {logoUrl ? (
+        <img
+          src={logoUrl}
+          alt={teamName ? `${teamName} logo` : "Team logo"}
+          className="h-full w-full object-contain"
+          loading="lazy"
+        />
+      ) : (
+        <Shield size={20} className="text-slate-600" />
+      )}
+    </span>
+  );
+}
+
+function TeamNameWithLeaderIcon({
+  row,
+  isLeader,
+}: {
+  row: TeamStandingRow;
+  isLeader: boolean;
+}) {
+  return (
+    <span className="flex min-w-0 items-center gap-3">
+      <span className="truncate font-black text-xl tracking-tighter uppercase italic group-hover:text-blue-400 transition-colors">
+        {row.team_name || "Unknown Team"}
+      </span>
+      {isLeader && (
+        <Trophy size={18} className="shrink-0 text-yellow-500 animate-pulse" />
+      )}
+    </span>
   );
 }
