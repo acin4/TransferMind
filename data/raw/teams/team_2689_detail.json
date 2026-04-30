@@ -1,0 +1,316 @@
+{
+  "team": {
+    "name": "Lecce",
+    "slug": "lecce",
+    "shortName": "Lecce",
+    "gender": "M",
+    "sport": {
+      "name": "Football",
+      "slug": "football",
+      "id": 1
+    },
+    "category": {
+      "name": "Italy",
+      "slug": "italy",
+      "sport": {
+        "name": "Football",
+        "slug": "football",
+        "id": 1
+      },
+      "priority": 7,
+      "country": {
+        "alpha2": "IT",
+        "alpha3": "ITA",
+        "name": "Italy",
+        "slug": "italy"
+      },
+      "id": 31,
+      "flag": "italy",
+      "alpha2": "IT",
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "إيطاليا",
+          "bn": "ইতালি",
+          "hi": "इटली",
+          "ru": "Италия"
+        },
+        "shortNameTranslation": {}
+      },
+      "transferPeriod": [
+        {
+          "activeFrom": "06-01 00:00",
+          "activeTo": "09-18 00:00"
+        },
+        {
+          "activeFrom": "12-30 00:00",
+          "activeTo": "02-16 00:00"
+        }
+      ]
+    },
+    "tournament": {
+      "name": "Serie B",
+      "slug": "serie-b",
+      "category": {
+        "name": "Italy",
+        "slug": "italy",
+        "sport": {
+          "name": "Football",
+          "slug": "football",
+          "id": 1
+        },
+        "priority": 7,
+        "country": {
+          "alpha2": "IT",
+          "alpha3": "ITA",
+          "name": "Italy",
+          "slug": "italy"
+        },
+        "id": 31,
+        "flag": "italy",
+        "alpha2": "IT",
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "إيطاليا",
+            "bn": "ইতালি",
+            "hi": "इटली",
+            "ru": "Италия"
+          },
+          "shortNameTranslation": {}
+        },
+        "transferPeriod": [
+          {
+            "activeFrom": "06-01 00:00",
+            "activeTo": "09-18 00:00"
+          },
+          {
+            "activeFrom": "12-30 00:00",
+            "activeTo": "02-16 00:00"
+          }
+        ]
+      },
+      "uniqueTournament": {
+        "name": "Serie B",
+        "slug": "serie-b",
+        "primaryColorHex": "#027d32",
+        "secondaryColorHex": "#f18f01",
+        "category": {
+          "name": "Italy",
+          "slug": "italy",
+          "sport": {
+            "name": "Football",
+            "slug": "football",
+            "id": 1
+          },
+          "priority": 7,
+          "country": {
+            "alpha2": "IT",
+            "alpha3": "ITA",
+            "name": "Italy",
+            "slug": "italy"
+          },
+          "id": 31,
+          "flag": "italy",
+          "alpha2": "IT",
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "إيطاليا",
+              "bn": "ইতালি",
+              "hi": "इटली",
+              "ru": "Италия"
+            },
+            "shortNameTranslation": {}
+          },
+          "transferPeriod": [
+            {
+              "activeFrom": "06-01 00:00",
+              "activeTo": "09-18 00:00"
+            },
+            {
+              "activeFrom": "12-30 00:00",
+              "activeTo": "02-16 00:00"
+            }
+          ]
+        },
+        "userCount": 35861,
+        "hasPerformanceGraphFeature": true,
+        "country": {},
+        "id": 53,
+        "displayInverseHomeAwayTeams": false,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "دوري الدرجة الثانية",
+            "bn": "সেরি বি",
+            "hi": "सीरी बी"
+          },
+          "shortNameTranslation": {}
+        }
+      },
+      "priority": 346,
+      "isLive": false,
+      "id": 34,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "الدرجة الثانية",
+          "bn": "সেরি বি",
+          "hi": "सीरी बी"
+        },
+        "shortNameTranslation": {}
+      }
+    },
+    "primaryUniqueTournament": {
+      "name": "Serie A",
+      "slug": "serie-a",
+      "primaryColorHex": "#09519e",
+      "secondaryColorHex": "#008fd7",
+      "category": {
+        "name": "Italy",
+        "slug": "italy",
+        "sport": {
+          "name": "Football",
+          "slug": "football",
+          "id": 1
+        },
+        "priority": 7,
+        "country": {
+          "alpha2": "IT",
+          "alpha3": "ITA",
+          "name": "Italy",
+          "slug": "italy"
+        },
+        "id": 31,
+        "flag": "italy",
+        "alpha2": "IT",
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "إيطاليا",
+            "bn": "ইতালি",
+            "hi": "इटली",
+            "ru": "Италия"
+          },
+          "shortNameTranslation": {}
+        },
+        "transferPeriod": [
+          {
+            "activeFrom": "06-01 00:00",
+            "activeTo": "09-18 00:00"
+          },
+          {
+            "activeFrom": "12-30 00:00",
+            "activeTo": "02-16 00:00"
+          }
+        ]
+      },
+      "userCount": 644342,
+      "hasPerformanceGraphFeature": true,
+      "country": {},
+      "id": 23,
+      "displayInverseHomeAwayTeams": false,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "الدوري الإيطالي",
+          "hi": "सीरी ए",
+          "bn": "সিরি আ"
+        },
+        "shortNameTranslation": {}
+      }
+    },
+    "userCount": 113170,
+    "manager": {
+      "name": "Eusebio Di Francesco",
+      "slug": "eusebio-di-francesco",
+      "shortName": "E. D. Francesco",
+      "country": {
+        "alpha2": "IT",
+        "alpha3": "ITA",
+        "name": "Italy",
+        "slug": "italy"
+      },
+      "id": 126353,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "أوزيبيو دي فرانسيسكو",
+          "bn": "ইউসেবিও ডি ফ্রান্সেস্কো",
+          "hi": "युसेबियो डि फ्रांसेस्को"
+        },
+        "shortNameTranslation": {
+          "ar": "أ. دي فرانسيسكو",
+          "hi": "ई. डी. फ्रांसेस्को",
+          "bn": "ই. ডি. ফ্রান্সেস্কো"
+        }
+      }
+    },
+    "venue": {
+      "venueCoordinates": {
+        "latitude": 40.030132,
+        "longitude": 18.125319
+      },
+      "hidden": false,
+      "slug": "via-del-mare",
+      "name": "Via del Mare",
+      "capacity": 40800,
+      "country": {
+        "alpha2": "IT",
+        "alpha3": "ITA",
+        "name": "Italy",
+        "slug": "italy"
+      },
+      "id": 1165,
+      "city": {
+        "name": "Lecce"
+      },
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "فيا ديل مارا",
+          "hi": "वाया डेल मारे",
+          "bn": "ভায়া ডেল মেরে"
+        },
+        "shortNameTranslation": {}
+      },
+      "stadium": {
+        "name": "Via del Mare",
+        "capacity": 40800
+      }
+    },
+    "nameCode": "LEC",
+    "class": 0,
+    "disabled": false,
+    "national": false,
+    "type": 0,
+    "country": {
+      "alpha2": "IT",
+      "alpha3": "ITA",
+      "name": "Italy",
+      "slug": "italy"
+    },
+    "id": 2689,
+    "fullName": "Lecce",
+    "teamColors": {
+      "primary": "#f6ea00",
+      "secondary": "#db2d1f",
+      "text": "#db2d1f"
+    },
+    "foundationDateTimestamp": -1950134400,
+    "fieldTranslations": {
+      "nameTranslation": {
+        "ar": "ليتشي",
+        "bn": "লেচে",
+        "hi": "लेच्चे",
+        "ru": "Лечче"
+      },
+      "shortNameTranslation": {}
+    },
+    "timeActive": []
+  },
+  "pregameForm": {
+    "avgRating": "6.70",
+    "position": 17,
+    "value": "29",
+    "form": [
+      "L",
+      "L",
+      "L",
+      "D",
+      "D"
+    ]
+  }
+}

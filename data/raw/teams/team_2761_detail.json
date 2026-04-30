@@ -1,0 +1,312 @@
+{
+  "team": {
+    "name": "Cremonese",
+    "slug": "cremonese",
+    "shortName": "Cremonese",
+    "gender": "M",
+    "sport": {
+      "name": "Football",
+      "slug": "football",
+      "id": 1
+    },
+    "category": {
+      "name": "Italy",
+      "slug": "italy",
+      "sport": {
+        "name": "Football",
+        "slug": "football",
+        "id": 1
+      },
+      "priority": 7,
+      "country": {
+        "alpha2": "IT",
+        "alpha3": "ITA",
+        "name": "Italy",
+        "slug": "italy"
+      },
+      "id": 31,
+      "flag": "italy",
+      "alpha2": "IT",
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "إيطاليا",
+          "bn": "ইতালি",
+          "hi": "इटली",
+          "ru": "Италия"
+        },
+        "shortNameTranslation": {}
+      },
+      "transferPeriod": [
+        {
+          "activeFrom": "06-01 00:00",
+          "activeTo": "09-18 00:00"
+        },
+        {
+          "activeFrom": "12-30 00:00",
+          "activeTo": "02-16 00:00"
+        }
+      ]
+    },
+    "tournament": {
+      "name": "Serie B",
+      "slug": "serie-b",
+      "category": {
+        "name": "Italy",
+        "slug": "italy",
+        "sport": {
+          "name": "Football",
+          "slug": "football",
+          "id": 1
+        },
+        "priority": 7,
+        "country": {
+          "alpha2": "IT",
+          "alpha3": "ITA",
+          "name": "Italy",
+          "slug": "italy"
+        },
+        "id": 31,
+        "flag": "italy",
+        "alpha2": "IT",
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "إيطاليا",
+            "bn": "ইতালি",
+            "hi": "इटली",
+            "ru": "Италия"
+          },
+          "shortNameTranslation": {}
+        },
+        "transferPeriod": [
+          {
+            "activeFrom": "06-01 00:00",
+            "activeTo": "09-18 00:00"
+          },
+          {
+            "activeFrom": "12-30 00:00",
+            "activeTo": "02-16 00:00"
+          }
+        ]
+      },
+      "uniqueTournament": {
+        "name": "Serie B",
+        "slug": "serie-b",
+        "primaryColorHex": "#027d32",
+        "secondaryColorHex": "#f18f01",
+        "category": {
+          "name": "Italy",
+          "slug": "italy",
+          "sport": {
+            "name": "Football",
+            "slug": "football",
+            "id": 1
+          },
+          "priority": 7,
+          "country": {
+            "alpha2": "IT",
+            "alpha3": "ITA",
+            "name": "Italy",
+            "slug": "italy"
+          },
+          "id": 31,
+          "flag": "italy",
+          "alpha2": "IT",
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "إيطاليا",
+              "bn": "ইতালি",
+              "hi": "इटली",
+              "ru": "Италия"
+            },
+            "shortNameTranslation": {}
+          },
+          "transferPeriod": [
+            {
+              "activeFrom": "06-01 00:00",
+              "activeTo": "09-18 00:00"
+            },
+            {
+              "activeFrom": "12-30 00:00",
+              "activeTo": "02-16 00:00"
+            }
+          ]
+        },
+        "userCount": 35861,
+        "hasPerformanceGraphFeature": true,
+        "country": {},
+        "id": 53,
+        "displayInverseHomeAwayTeams": false,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "دوري الدرجة الثانية",
+            "bn": "সেরি বি",
+            "hi": "सीरी बी"
+          },
+          "shortNameTranslation": {}
+        }
+      },
+      "priority": 346,
+      "isLive": false,
+      "id": 34,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "الدرجة الثانية",
+          "bn": "সেরি বি",
+          "hi": "सीरी बी"
+        },
+        "shortNameTranslation": {}
+      }
+    },
+    "primaryUniqueTournament": {
+      "name": "Serie A",
+      "slug": "serie-a",
+      "primaryColorHex": "#09519e",
+      "secondaryColorHex": "#008fd7",
+      "category": {
+        "name": "Italy",
+        "slug": "italy",
+        "sport": {
+          "name": "Football",
+          "slug": "football",
+          "id": 1
+        },
+        "priority": 7,
+        "country": {
+          "alpha2": "IT",
+          "alpha3": "ITA",
+          "name": "Italy",
+          "slug": "italy"
+        },
+        "id": 31,
+        "flag": "italy",
+        "alpha2": "IT",
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "إيطاليا",
+            "bn": "ইতালি",
+            "hi": "इटली",
+            "ru": "Италия"
+          },
+          "shortNameTranslation": {}
+        },
+        "transferPeriod": [
+          {
+            "activeFrom": "06-01 00:00",
+            "activeTo": "09-18 00:00"
+          },
+          {
+            "activeFrom": "12-30 00:00",
+            "activeTo": "02-16 00:00"
+          }
+        ]
+      },
+      "userCount": 644342,
+      "hasPerformanceGraphFeature": true,
+      "country": {},
+      "id": 23,
+      "displayInverseHomeAwayTeams": false,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "الدوري الإيطالي",
+          "hi": "सीरी ए",
+          "bn": "সিরি আ"
+        },
+        "shortNameTranslation": {}
+      }
+    },
+    "userCount": 65584,
+    "manager": {
+      "name": "Marco Giampaolo",
+      "slug": "marco-giampaolo",
+      "shortName": "M. Giampaolo",
+      "country": {
+        "alpha2": "IT",
+        "alpha3": "ITA",
+        "name": "Italy",
+        "slug": "italy"
+      },
+      "id": 53577,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "ماركو جيامباولو"
+        },
+        "shortNameTranslation": {
+          "ar": "م. جيامباولو"
+        }
+      }
+    },
+    "venue": {
+      "venueCoordinates": {
+        "latitude": 45.140144,
+        "longitude": 10.034856
+      },
+      "hidden": false,
+      "slug": "stadio-giovanni-zini",
+      "name": "Stadio Giovanni Zini",
+      "capacity": 16003,
+      "country": {
+        "alpha2": "IT",
+        "alpha3": "ITA",
+        "name": "Italy",
+        "slug": "italy"
+      },
+      "id": 2214,
+      "city": {
+        "name": "Cremona"
+      },
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "ملعب جيوفاني زيني",
+          "hi": "स्टेडियो जियोवन्नी ज़िनी",
+          "bn": "স্টেডিও জিওভানি জিনি"
+        },
+        "shortNameTranslation": {}
+      },
+      "stadium": {
+        "name": "Stadio Giovanni Zini",
+        "capacity": 16003
+      }
+    },
+    "nameCode": "CRE",
+    "class": 4,
+    "disabled": false,
+    "national": false,
+    "type": 0,
+    "country": {
+      "alpha2": "IT",
+      "alpha3": "ITA",
+      "name": "Italy",
+      "slug": "italy"
+    },
+    "id": 2761,
+    "fullName": "Cremonese",
+    "teamColors": {
+      "primary": "#c8091d",
+      "secondary": "#a9a7a7",
+      "text": "#a9a7a7"
+    },
+    "foundationDateTimestamp": -2107296000,
+    "fieldTranslations": {
+      "nameTranslation": {
+        "ar": "كريمونيزي",
+        "bn": "ক্রিমোনিজ",
+        "hi": "क्रेमोनेसे",
+        "ru": "Кремонезе"
+      },
+      "shortNameTranslation": {}
+    },
+    "timeActive": []
+  },
+  "pregameForm": {
+    "avgRating": "6.72",
+    "position": 18,
+    "value": "28",
+    "form": [
+      "W",
+      "L",
+      "L",
+      "D",
+      "L"
+    ]
+  }
+}

@@ -1,0 +1,315 @@
+{
+  "team": {
+    "name": "Hamburger SV",
+    "slug": "hamburger-sv",
+    "shortName": "HSV",
+    "gender": "M",
+    "sport": {
+      "name": "Football",
+      "slug": "football",
+      "id": 1
+    },
+    "category": {
+      "name": "Germany",
+      "slug": "germany",
+      "sport": {
+        "name": "Football",
+        "slug": "football",
+        "id": 1
+      },
+      "priority": 8,
+      "country": {
+        "alpha2": "DE",
+        "alpha3": "DEU",
+        "name": "Germany",
+        "slug": "germany"
+      },
+      "id": 30,
+      "flag": "germany",
+      "alpha2": "DE",
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "ألمانيا",
+          "bn": "জার্মানি",
+          "hi": "जर्मनी",
+          "ru": "Германия"
+        },
+        "shortNameTranslation": {}
+      },
+      "transferPeriod": [
+        {
+          "activeFrom": "06-01 00:00",
+          "activeTo": "09-18 00:00"
+        },
+        {
+          "activeFrom": "12-30 00:00",
+          "activeTo": "02-16 00:00"
+        }
+      ]
+    },
+    "tournament": {
+      "name": "2. Bundesliga",
+      "slug": "2-bundesliga",
+      "category": {
+        "name": "Germany",
+        "slug": "germany",
+        "sport": {
+          "name": "Football",
+          "slug": "football",
+          "id": 1
+        },
+        "priority": 8,
+        "country": {
+          "alpha2": "DE",
+          "alpha3": "DEU",
+          "name": "Germany",
+          "slug": "germany"
+        },
+        "id": 30,
+        "flag": "germany",
+        "alpha2": "DE",
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "ألمانيا",
+            "bn": "জার্মানি",
+            "hi": "जर्मनी",
+            "ru": "Германия"
+          },
+          "shortNameTranslation": {}
+        },
+        "transferPeriod": [
+          {
+            "activeFrom": "06-01 00:00",
+            "activeTo": "09-18 00:00"
+          },
+          {
+            "activeFrom": "12-30 00:00",
+            "activeTo": "02-16 00:00"
+          }
+        ]
+      },
+      "uniqueTournament": {
+        "name": "2. Bundesliga",
+        "slug": "2-bundesliga",
+        "primaryColorHex": "#919292",
+        "secondaryColorHex": "#d20616",
+        "category": {
+          "name": "Germany",
+          "slug": "germany",
+          "sport": {
+            "name": "Football",
+            "slug": "football",
+            "id": 1
+          },
+          "priority": 8,
+          "country": {
+            "alpha2": "DE",
+            "alpha3": "DEU",
+            "name": "Germany",
+            "slug": "germany"
+          },
+          "id": 30,
+          "flag": "germany",
+          "alpha2": "DE",
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "ألمانيا",
+              "bn": "জার্মানি",
+              "hi": "जर्मनी",
+              "ru": "Германия"
+            },
+            "shortNameTranslation": {}
+          },
+          "transferPeriod": [
+            {
+              "activeFrom": "06-01 00:00",
+              "activeTo": "09-18 00:00"
+            },
+            {
+              "activeFrom": "12-30 00:00",
+              "activeTo": "02-16 00:00"
+            }
+          ]
+        },
+        "userCount": 52581,
+        "hasPerformanceGraphFeature": true,
+        "country": {},
+        "id": 44,
+        "displayInverseHomeAwayTeams": false,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "الدوري الألماني الدرجة الثانية",
+            "bn": "2. বুন্দেসলিগা",
+            "hi": "2. बुंडेसलीगा"
+          },
+          "shortNameTranslation": {}
+        }
+      },
+      "priority": 353,
+      "isLive": false,
+      "id": 41,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "الدوري الألماني الدرجة الثانية",
+          "bn": "2. বুন্দেসলিগা",
+          "hi": "2. बुंडेसलीगा"
+        },
+        "shortNameTranslation": {}
+      }
+    },
+    "primaryUniqueTournament": {
+      "name": "Bundesliga",
+      "slug": "bundesliga",
+      "primaryColorHex": "#e2080e",
+      "secondaryColorHex": "#8e0902",
+      "category": {
+        "name": "Germany",
+        "slug": "germany",
+        "sport": {
+          "name": "Football",
+          "slug": "football",
+          "id": 1
+        },
+        "priority": 8,
+        "country": {
+          "alpha2": "DE",
+          "alpha3": "DEU",
+          "name": "Germany",
+          "slug": "germany"
+        },
+        "id": 30,
+        "flag": "germany",
+        "alpha2": "DE",
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "ألمانيا",
+            "bn": "জার্মানি",
+            "hi": "जर्मनी",
+            "ru": "Германия"
+          },
+          "shortNameTranslation": {}
+        },
+        "transferPeriod": [
+          {
+            "activeFrom": "06-01 00:00",
+            "activeTo": "09-18 00:00"
+          },
+          {
+            "activeFrom": "12-30 00:00",
+            "activeTo": "02-16 00:00"
+          }
+        ]
+      },
+      "userCount": 528661,
+      "hasPerformanceGraphFeature": true,
+      "country": {},
+      "id": 35,
+      "displayInverseHomeAwayTeams": false,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "bn": "বুন্দেসলীগা",
+          "ar": "الدوري الألماني",
+          "hi": "बुंडेसलीगा"
+        },
+        "shortNameTranslation": {}
+      }
+    },
+    "userCount": 86774,
+    "manager": {
+      "name": "Merlin Polzin",
+      "slug": "merlin-polzin",
+      "shortName": "M. Polzin",
+      "country": {
+        "alpha2": "DE",
+        "alpha3": "DEU",
+        "name": "Germany",
+        "slug": "germany"
+      },
+      "id": 803993,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "ميرلين بولزين"
+        },
+        "shortNameTranslation": {
+          "ar": "م. بولزين"
+        }
+      }
+    },
+    "venue": {
+      "venueCoordinates": {
+        "latitude": 53.587153,
+        "longitude": 9.898706
+      },
+      "hidden": false,
+      "slug": "volksparkstadion",
+      "name": "Volksparkstadion",
+      "capacity": 57000,
+      "country": {
+        "alpha2": "DE",
+        "alpha3": "DEU",
+        "name": "Germany",
+        "slug": "germany"
+      },
+      "id": 582,
+      "city": {
+        "name": "Hamburg"
+      },
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "فولكسباركستاديون",
+          "hi": "वोक्सपार्कस्टेडियन",
+          "bn": "ভক্সপার্কস্টেডিয়ন"
+        },
+        "shortNameTranslation": {}
+      },
+      "stadium": {
+        "name": "Volksparkstadion",
+        "capacity": 57000
+      }
+    },
+    "nameCode": "HSV",
+    "class": 0,
+    "disabled": false,
+    "national": false,
+    "type": 0,
+    "country": {
+      "alpha2": "DE",
+      "alpha3": "DEU",
+      "name": "Germany",
+      "slug": "germany"
+    },
+    "id": 2676,
+    "fullName": "Hamburger SV",
+    "teamColors": {
+      "primary": "#ffffff",
+      "secondary": "#ffffff",
+      "text": "#ffffff"
+    },
+    "foundationDateTimestamp": -2595801600,
+    "fieldTranslations": {
+      "nameTranslation": {
+        "ar": "هامبورج",
+        "hi": "हैमबर्गर ऐसवि",
+        "ru": "Гамбург"
+      },
+      "shortNameTranslation": {
+        "ar": "أتش أس في",
+        "bn": "এইচএসভি",
+        "hi": "एचएसवी"
+      }
+    },
+    "timeActive": []
+  },
+  "pregameForm": {
+    "avgRating": "6.78",
+    "position": 15,
+    "value": "31",
+    "form": [
+      "L",
+      "D",
+      "L",
+      "L",
+      "L"
+    ]
+  }
+}

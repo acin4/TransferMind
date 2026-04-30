@@ -1,0 +1,314 @@
+{
+  "team": {
+    "name": "1. FC Union Berlin",
+    "slug": "1-fc-union-berlin",
+    "shortName": "Union Berlin",
+    "gender": "M",
+    "sport": {
+      "name": "Football",
+      "slug": "football",
+      "id": 1
+    },
+    "category": {
+      "name": "Germany",
+      "slug": "germany",
+      "sport": {
+        "name": "Football",
+        "slug": "football",
+        "id": 1
+      },
+      "priority": 8,
+      "country": {
+        "alpha2": "DE",
+        "alpha3": "DEU",
+        "name": "Germany",
+        "slug": "germany"
+      },
+      "id": 30,
+      "flag": "germany",
+      "alpha2": "DE",
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "ألمانيا",
+          "bn": "জার্মানি",
+          "hi": "जर्मनी",
+          "ru": "Германия"
+        },
+        "shortNameTranslation": {}
+      },
+      "transferPeriod": [
+        {
+          "activeFrom": "06-01 00:00",
+          "activeTo": "09-18 00:00"
+        },
+        {
+          "activeFrom": "12-30 00:00",
+          "activeTo": "02-16 00:00"
+        }
+      ]
+    },
+    "tournament": {
+      "name": "Bundesliga",
+      "slug": "bundesliga",
+      "category": {
+        "name": "Germany",
+        "slug": "germany",
+        "sport": {
+          "name": "Football",
+          "slug": "football",
+          "id": 1
+        },
+        "priority": 8,
+        "country": {
+          "alpha2": "DE",
+          "alpha3": "DEU",
+          "name": "Germany",
+          "slug": "germany"
+        },
+        "id": 30,
+        "flag": "germany",
+        "alpha2": "DE",
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "ألمانيا",
+            "bn": "জার্মানি",
+            "hi": "जर्मनी",
+            "ru": "Германия"
+          },
+          "shortNameTranslation": {}
+        },
+        "transferPeriod": [
+          {
+            "activeFrom": "06-01 00:00",
+            "activeTo": "09-18 00:00"
+          },
+          {
+            "activeFrom": "12-30 00:00",
+            "activeTo": "02-16 00:00"
+          }
+        ]
+      },
+      "uniqueTournament": {
+        "name": "Bundesliga",
+        "slug": "bundesliga",
+        "primaryColorHex": "#e2080e",
+        "secondaryColorHex": "#8e0902",
+        "category": {
+          "name": "Germany",
+          "slug": "germany",
+          "sport": {
+            "name": "Football",
+            "slug": "football",
+            "id": 1
+          },
+          "priority": 8,
+          "country": {
+            "alpha2": "DE",
+            "alpha3": "DEU",
+            "name": "Germany",
+            "slug": "germany"
+          },
+          "id": 30,
+          "flag": "germany",
+          "alpha2": "DE",
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "ألمانيا",
+              "bn": "জার্মানি",
+              "hi": "जर्मनी",
+              "ru": "Германия"
+            },
+            "shortNameTranslation": {}
+          },
+          "transferPeriod": [
+            {
+              "activeFrom": "06-01 00:00",
+              "activeTo": "09-18 00:00"
+            },
+            {
+              "activeFrom": "12-30 00:00",
+              "activeTo": "02-16 00:00"
+            }
+          ]
+        },
+        "userCount": 528661,
+        "hasPerformanceGraphFeature": true,
+        "country": {},
+        "id": 35,
+        "displayInverseHomeAwayTeams": false,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "bn": "বুন্দেসলীগা",
+            "ar": "الدوري الألماني",
+            "hi": "बुंडेसलीगा"
+          },
+          "shortNameTranslation": {}
+        }
+      },
+      "priority": 696,
+      "isLive": false,
+      "id": 42,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "hi": "बुंडेसलीगा",
+          "ar": "الدوري الألماني",
+          "bn": "বুন্দেসলীগা"
+        },
+        "shortNameTranslation": {}
+      }
+    },
+    "primaryUniqueTournament": {
+      "name": "Bundesliga",
+      "slug": "bundesliga",
+      "primaryColorHex": "#e2080e",
+      "secondaryColorHex": "#8e0902",
+      "category": {
+        "name": "Germany",
+        "slug": "germany",
+        "sport": {
+          "name": "Football",
+          "slug": "football",
+          "id": 1
+        },
+        "priority": 8,
+        "country": {
+          "alpha2": "DE",
+          "alpha3": "DEU",
+          "name": "Germany",
+          "slug": "germany"
+        },
+        "id": 30,
+        "flag": "germany",
+        "alpha2": "DE",
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "ألمانيا",
+            "bn": "জার্মানি",
+            "hi": "जर्मनी",
+            "ru": "Германия"
+          },
+          "shortNameTranslation": {}
+        },
+        "transferPeriod": [
+          {
+            "activeFrom": "06-01 00:00",
+            "activeTo": "09-18 00:00"
+          },
+          {
+            "activeFrom": "12-30 00:00",
+            "activeTo": "02-16 00:00"
+          }
+        ]
+      },
+      "userCount": 528661,
+      "hasPerformanceGraphFeature": true,
+      "country": {},
+      "id": 35,
+      "displayInverseHomeAwayTeams": false,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "bn": "বুন্দেসলীগা",
+          "ar": "الدوري الألماني",
+          "hi": "बुंडेसलीगा"
+        },
+        "shortNameTranslation": {}
+      }
+    },
+    "userCount": 129446,
+    "manager": {
+      "name": "Marie-Louise Eta",
+      "slug": "marie-louise-eta",
+      "shortName": "M. Eta",
+      "country": {
+        "alpha2": "DE",
+        "alpha3": "DEU",
+        "name": "Germany",
+        "slug": "germany"
+      },
+      "id": 803789,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "ماري-لويز إيتا"
+        },
+        "shortNameTranslation": {
+          "ar": "م. إيتا"
+        }
+      }
+    },
+    "venue": {
+      "venueCoordinates": {
+        "latitude": 52.456974,
+        "longitude": 13.568079
+      },
+      "hidden": false,
+      "slug": "an-der-alten-f-rsterei",
+      "name": "An der alten Försterei",
+      "capacity": 22012,
+      "country": {
+        "alpha2": "DE",
+        "alpha3": "DEU",
+        "name": "Germany",
+        "slug": "germany"
+      },
+      "id": 578,
+      "city": {
+        "name": "Berlin"
+      },
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "آن دير آلتن فورستيري",
+          "hi": "एक डेर अल्टेन फ़ोर्सटेरी",
+          "bn": "আন ডের আলটেন ফর্স্টেরেই"
+        },
+        "shortNameTranslation": {}
+      },
+      "stadium": {
+        "name": "An der alten Försterei",
+        "capacity": 22012
+      }
+    },
+    "nameCode": "FCU",
+    "class": 0,
+    "disabled": false,
+    "national": false,
+    "type": 0,
+    "country": {
+      "alpha2": "DE",
+      "alpha3": "DEU",
+      "name": "Germany",
+      "slug": "germany"
+    },
+    "id": 2547,
+    "fullName": "1. FC Union Berlin",
+    "teamColors": {
+      "primary": "#ff0000",
+      "secondary": "#ffffff",
+      "text": "#ffffff"
+    },
+    "foundationDateTimestamp": -124588800,
+    "fieldTranslations": {
+      "nameTranslation": {
+        "ar": "1 إف سي يونيون برلين",
+        "ru": "Унион Берлин"
+      },
+      "shortNameTranslation": {
+        "ar": "يونيون برلين",
+        "bn": "ইউনিয়ন বার্লিন",
+        "hi": "यूनियन बर्लिन"
+      }
+    },
+    "timeActive": []
+  },
+  "pregameForm": {
+    "avgRating": "6.71",
+    "position": 13,
+    "value": "32",
+    "form": [
+      "L",
+      "D",
+      "L",
+      "L",
+      "L"
+    ]
+  }
+}

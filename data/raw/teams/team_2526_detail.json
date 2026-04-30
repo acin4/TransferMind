@@ -1,0 +1,315 @@
+{
+  "team": {
+    "name": "FC St. Pauli",
+    "slug": "fc-st-pauli",
+    "shortName": "St. Pauli",
+    "gender": "M",
+    "sport": {
+      "name": "Football",
+      "slug": "football",
+      "id": 1
+    },
+    "category": {
+      "name": "Germany",
+      "slug": "germany",
+      "sport": {
+        "name": "Football",
+        "slug": "football",
+        "id": 1
+      },
+      "priority": 8,
+      "country": {
+        "alpha2": "DE",
+        "alpha3": "DEU",
+        "name": "Germany",
+        "slug": "germany"
+      },
+      "id": 30,
+      "flag": "germany",
+      "alpha2": "DE",
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "ألمانيا",
+          "bn": "জার্মানি",
+          "hi": "जर्मनी",
+          "ru": "Германия"
+        },
+        "shortNameTranslation": {}
+      },
+      "transferPeriod": [
+        {
+          "activeFrom": "06-01 00:00",
+          "activeTo": "09-18 00:00"
+        },
+        {
+          "activeFrom": "12-30 00:00",
+          "activeTo": "02-16 00:00"
+        }
+      ]
+    },
+    "tournament": {
+      "name": "2. Bundesliga",
+      "slug": "2-bundesliga",
+      "category": {
+        "name": "Germany",
+        "slug": "germany",
+        "sport": {
+          "name": "Football",
+          "slug": "football",
+          "id": 1
+        },
+        "priority": 8,
+        "country": {
+          "alpha2": "DE",
+          "alpha3": "DEU",
+          "name": "Germany",
+          "slug": "germany"
+        },
+        "id": 30,
+        "flag": "germany",
+        "alpha2": "DE",
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "ألمانيا",
+            "bn": "জার্মানি",
+            "hi": "जर्मनी",
+            "ru": "Германия"
+          },
+          "shortNameTranslation": {}
+        },
+        "transferPeriod": [
+          {
+            "activeFrom": "06-01 00:00",
+            "activeTo": "09-18 00:00"
+          },
+          {
+            "activeFrom": "12-30 00:00",
+            "activeTo": "02-16 00:00"
+          }
+        ]
+      },
+      "uniqueTournament": {
+        "name": "2. Bundesliga",
+        "slug": "2-bundesliga",
+        "primaryColorHex": "#919292",
+        "secondaryColorHex": "#d20616",
+        "category": {
+          "name": "Germany",
+          "slug": "germany",
+          "sport": {
+            "name": "Football",
+            "slug": "football",
+            "id": 1
+          },
+          "priority": 8,
+          "country": {
+            "alpha2": "DE",
+            "alpha3": "DEU",
+            "name": "Germany",
+            "slug": "germany"
+          },
+          "id": 30,
+          "flag": "germany",
+          "alpha2": "DE",
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "ألمانيا",
+              "bn": "জার্মানি",
+              "hi": "जर्मनी",
+              "ru": "Германия"
+            },
+            "shortNameTranslation": {}
+          },
+          "transferPeriod": [
+            {
+              "activeFrom": "06-01 00:00",
+              "activeTo": "09-18 00:00"
+            },
+            {
+              "activeFrom": "12-30 00:00",
+              "activeTo": "02-16 00:00"
+            }
+          ]
+        },
+        "userCount": 52581,
+        "hasPerformanceGraphFeature": true,
+        "country": {},
+        "id": 44,
+        "displayInverseHomeAwayTeams": false,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "الدوري الألماني الدرجة الثانية",
+            "bn": "2. বুন্দেসলিগা",
+            "hi": "2. बुंडेसलीगा"
+          },
+          "shortNameTranslation": {}
+        }
+      },
+      "priority": 353,
+      "isLive": false,
+      "id": 41,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "الدوري الألماني الدرجة الثانية",
+          "bn": "2. বুন্দেসলিগা",
+          "hi": "2. बुंडेसलीगा"
+        },
+        "shortNameTranslation": {}
+      }
+    },
+    "primaryUniqueTournament": {
+      "name": "Bundesliga",
+      "slug": "bundesliga",
+      "primaryColorHex": "#e2080e",
+      "secondaryColorHex": "#8e0902",
+      "category": {
+        "name": "Germany",
+        "slug": "germany",
+        "sport": {
+          "name": "Football",
+          "slug": "football",
+          "id": 1
+        },
+        "priority": 8,
+        "country": {
+          "alpha2": "DE",
+          "alpha3": "DEU",
+          "name": "Germany",
+          "slug": "germany"
+        },
+        "id": 30,
+        "flag": "germany",
+        "alpha2": "DE",
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "ألمانيا",
+            "bn": "জার্মানি",
+            "hi": "जर्मनी",
+            "ru": "Германия"
+          },
+          "shortNameTranslation": {}
+        },
+        "transferPeriod": [
+          {
+            "activeFrom": "06-01 00:00",
+            "activeTo": "09-18 00:00"
+          },
+          {
+            "activeFrom": "12-30 00:00",
+            "activeTo": "02-16 00:00"
+          }
+        ]
+      },
+      "userCount": 528661,
+      "hasPerformanceGraphFeature": true,
+      "country": {},
+      "id": 35,
+      "displayInverseHomeAwayTeams": false,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "bn": "বুন্দেসলীগা",
+          "ar": "الدوري الألماني",
+          "hi": "बुंडेसलीगा"
+        },
+        "shortNameTranslation": {}
+      }
+    },
+    "userCount": 84798,
+    "manager": {
+      "name": "Alexander Blessin",
+      "slug": "alexander-blessin",
+      "shortName": "A. Blessin",
+      "country": {
+        "alpha2": "DE",
+        "alpha3": "DEU",
+        "name": "Germany",
+        "slug": "germany"
+      },
+      "id": 792722,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "ألكسندر بليسين",
+          "bn": "আলেকজান্ডার ব্লেসিন",
+          "hi": "अलेक्जेंडर ब्लेसिन"
+        },
+        "shortNameTranslation": {
+          "ar": "أ. بليسين",
+          "hi": "ए. ब्लेसिन",
+          "bn": "এ. ব্লেসিন"
+        }
+      }
+    },
+    "venue": {
+      "venueCoordinates": {
+        "latitude": 53.554557,
+        "longitude": 9.967784
+      },
+      "hidden": false,
+      "slug": "millerntor-stadion",
+      "name": "Millerntor-Stadion",
+      "capacity": 29546,
+      "country": {
+        "alpha2": "DE",
+        "alpha3": "DEU",
+        "name": "Germany",
+        "slug": "germany"
+      },
+      "id": 791,
+      "city": {
+        "name": "Hamburg - St. Pauli"
+      },
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "ملعب-ميلينتور",
+          "hi": "मिलर्नटोर-स्टेडियन",
+          "bn": "মিলারন্টর-স্টেডিয়ন"
+        },
+        "shortNameTranslation": {}
+      },
+      "stadium": {
+        "name": "Millerntor-Stadion",
+        "capacity": 29546
+      }
+    },
+    "nameCode": "STP",
+    "class": 0,
+    "disabled": false,
+    "national": false,
+    "type": 0,
+    "country": {
+      "alpha2": "DE",
+      "alpha3": "DEU",
+      "name": "Germany",
+      "slug": "germany"
+    },
+    "id": 2526,
+    "fullName": "FC St. Pauli",
+    "teamColors": {
+      "primary": "#300202",
+      "secondary": "#fd0000",
+      "text": "#fd0000"
+    },
+    "foundationDateTimestamp": -1881878400,
+    "fieldTranslations": {
+      "nameTranslation": {
+        "ar": "إف سي سانت باولي",
+        "hi": "ऍफ़सी सैंट पॉली",
+        "ru": "Санкт-Паули"
+      },
+      "shortNameTranslation": {}
+    },
+    "timeActive": []
+  },
+  "pregameForm": {
+    "avgRating": "6.69",
+    "position": 16,
+    "value": "26",
+    "form": [
+      "L",
+      "D",
+      "L",
+      "D",
+      "L"
+    ]
+  }
+}

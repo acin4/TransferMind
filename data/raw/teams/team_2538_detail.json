@@ -1,0 +1,315 @@
+{
+  "team": {
+    "name": "SC Freiburg",
+    "slug": "sc-freiburg",
+    "shortName": "Freiburg",
+    "gender": "M",
+    "sport": {
+      "name": "Football",
+      "slug": "football",
+      "id": 1
+    },
+    "category": {
+      "name": "Germany",
+      "slug": "germany",
+      "sport": {
+        "name": "Football",
+        "slug": "football",
+        "id": 1
+      },
+      "priority": 8,
+      "country": {
+        "alpha2": "DE",
+        "alpha3": "DEU",
+        "name": "Germany",
+        "slug": "germany"
+      },
+      "id": 30,
+      "flag": "germany",
+      "alpha2": "DE",
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "ألمانيا",
+          "bn": "জার্মানি",
+          "hi": "जर्मनी",
+          "ru": "Германия"
+        },
+        "shortNameTranslation": {}
+      },
+      "transferPeriod": [
+        {
+          "activeFrom": "06-01 00:00",
+          "activeTo": "09-18 00:00"
+        },
+        {
+          "activeFrom": "12-30 00:00",
+          "activeTo": "02-16 00:00"
+        }
+      ]
+    },
+    "tournament": {
+      "name": "Bundesliga",
+      "slug": "bundesliga",
+      "category": {
+        "name": "Germany",
+        "slug": "germany",
+        "sport": {
+          "name": "Football",
+          "slug": "football",
+          "id": 1
+        },
+        "priority": 8,
+        "country": {
+          "alpha2": "DE",
+          "alpha3": "DEU",
+          "name": "Germany",
+          "slug": "germany"
+        },
+        "id": 30,
+        "flag": "germany",
+        "alpha2": "DE",
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "ألمانيا",
+            "bn": "জার্মানি",
+            "hi": "जर्मनी",
+            "ru": "Германия"
+          },
+          "shortNameTranslation": {}
+        },
+        "transferPeriod": [
+          {
+            "activeFrom": "06-01 00:00",
+            "activeTo": "09-18 00:00"
+          },
+          {
+            "activeFrom": "12-30 00:00",
+            "activeTo": "02-16 00:00"
+          }
+        ]
+      },
+      "uniqueTournament": {
+        "name": "Bundesliga",
+        "slug": "bundesliga",
+        "primaryColorHex": "#e2080e",
+        "secondaryColorHex": "#8e0902",
+        "category": {
+          "name": "Germany",
+          "slug": "germany",
+          "sport": {
+            "name": "Football",
+            "slug": "football",
+            "id": 1
+          },
+          "priority": 8,
+          "country": {
+            "alpha2": "DE",
+            "alpha3": "DEU",
+            "name": "Germany",
+            "slug": "germany"
+          },
+          "id": 30,
+          "flag": "germany",
+          "alpha2": "DE",
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "ألمانيا",
+              "bn": "জার্মানি",
+              "hi": "जर्मनी",
+              "ru": "Германия"
+            },
+            "shortNameTranslation": {}
+          },
+          "transferPeriod": [
+            {
+              "activeFrom": "06-01 00:00",
+              "activeTo": "09-18 00:00"
+            },
+            {
+              "activeFrom": "12-30 00:00",
+              "activeTo": "02-16 00:00"
+            }
+          ]
+        },
+        "userCount": 528661,
+        "hasPerformanceGraphFeature": true,
+        "country": {},
+        "id": 35,
+        "displayInverseHomeAwayTeams": false,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "bn": "বুন্দেসলীগা",
+            "ar": "الدوري الألماني",
+            "hi": "बुंडेसलीगा"
+          },
+          "shortNameTranslation": {}
+        }
+      },
+      "priority": 696,
+      "isLive": false,
+      "id": 42,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "hi": "बुंडेसलीगा",
+          "ar": "الدوري الألماني",
+          "bn": "বুন্দেসলীগা"
+        },
+        "shortNameTranslation": {}
+      }
+    },
+    "primaryUniqueTournament": {
+      "name": "Bundesliga",
+      "slug": "bundesliga",
+      "primaryColorHex": "#e2080e",
+      "secondaryColorHex": "#8e0902",
+      "category": {
+        "name": "Germany",
+        "slug": "germany",
+        "sport": {
+          "name": "Football",
+          "slug": "football",
+          "id": 1
+        },
+        "priority": 8,
+        "country": {
+          "alpha2": "DE",
+          "alpha3": "DEU",
+          "name": "Germany",
+          "slug": "germany"
+        },
+        "id": 30,
+        "flag": "germany",
+        "alpha2": "DE",
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "ألمانيا",
+            "bn": "জার্মানি",
+            "hi": "जर्मनी",
+            "ru": "Германия"
+          },
+          "shortNameTranslation": {}
+        },
+        "transferPeriod": [
+          {
+            "activeFrom": "06-01 00:00",
+            "activeTo": "09-18 00:00"
+          },
+          {
+            "activeFrom": "12-30 00:00",
+            "activeTo": "02-16 00:00"
+          }
+        ]
+      },
+      "userCount": 528661,
+      "hasPerformanceGraphFeature": true,
+      "country": {},
+      "id": 35,
+      "displayInverseHomeAwayTeams": false,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "bn": "বুন্দেসলীগা",
+          "ar": "الدوري الألماني",
+          "hi": "बुंडेसलीगा"
+        },
+        "shortNameTranslation": {}
+      }
+    },
+    "userCount": 133212,
+    "manager": {
+      "name": "Julian Schuster",
+      "slug": "julian-schuster",
+      "shortName": "J. Schuster",
+      "country": {
+        "alpha2": "DE",
+        "alpha3": "DEU",
+        "name": "Germany",
+        "slug": "germany"
+      },
+      "id": 805739,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "جوليان شوشتر"
+        },
+        "shortNameTranslation": {
+          "ar": "ج. شوشتر"
+        }
+      }
+    },
+    "venue": {
+      "venueCoordinates": {
+        "latitude": 48.021378,
+        "longitude": 7.829817
+      },
+      "hidden": false,
+      "slug": "europa-park-stadion",
+      "name": "Europa-Park-Stadion",
+      "capacity": 34700,
+      "country": {
+        "alpha2": "DE",
+        "alpha3": "DEU",
+        "name": "Germany",
+        "slug": "germany"
+      },
+      "id": 33302,
+      "city": {
+        "name": "Freiburg im Breisgau"
+      },
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "ملعب أوروبا بارك",
+          "hi": "यूरोपा-पार्क-स्टेडियन",
+          "bn": "ইউরোপা-পার্ক-স্টেডিয়ন"
+        },
+        "shortNameTranslation": {}
+      },
+      "stadium": {
+        "name": "Europa-Park-Stadion",
+        "capacity": 34700
+      }
+    },
+    "nameCode": "SCF",
+    "class": 0,
+    "disabled": false,
+    "national": false,
+    "type": 0,
+    "country": {
+      "alpha2": "DE",
+      "alpha3": "DEU",
+      "name": "Germany",
+      "slug": "germany"
+    },
+    "id": 2538,
+    "fullName": "SC Freiburg",
+    "teamColors": {
+      "primary": "#cc3333",
+      "secondary": "#000000",
+      "text": "#000000"
+    },
+    "foundationDateTimestamp": -2069884800,
+    "fieldTranslations": {
+      "nameTranslation": {
+        "ar": "نادي فرايبورغ",
+        "hi": "एससी फ्रैबर्ग",
+        "ru": "Фрайбург"
+      },
+      "shortNameTranslation": {
+        "ar": "فرايبورغ",
+        "bn": "ফ্রেইবার্গ",
+        "hi": "फ्रायबर्ग"
+      }
+    },
+    "timeActive": []
+  },
+  "pregameForm": {
+    "avgRating": "6.77",
+    "position": 8,
+    "value": "43",
+    "form": [
+      "W",
+      "L",
+      "W",
+      "W",
+      "L"
+    ]
+  }
+}

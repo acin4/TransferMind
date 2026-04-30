@@ -1,0 +1,318 @@
+{
+  "team": {
+    "name": "Venezia",
+    "slug": "venezia",
+    "shortName": "Venezia",
+    "gender": "M",
+    "sport": {
+      "name": "Football",
+      "slug": "football",
+      "id": 1
+    },
+    "category": {
+      "name": "Italy",
+      "slug": "italy",
+      "sport": {
+        "name": "Football",
+        "slug": "football",
+        "id": 1
+      },
+      "priority": 7,
+      "country": {
+        "alpha2": "IT",
+        "alpha3": "ITA",
+        "name": "Italy",
+        "slug": "italy"
+      },
+      "id": 31,
+      "flag": "italy",
+      "alpha2": "IT",
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "إيطاليا",
+          "bn": "ইতালি",
+          "hi": "इटली",
+          "ru": "Италия"
+        },
+        "shortNameTranslation": {}
+      },
+      "transferPeriod": [
+        {
+          "activeFrom": "06-01 00:00",
+          "activeTo": "09-18 00:00"
+        },
+        {
+          "activeFrom": "12-30 00:00",
+          "activeTo": "02-16 00:00"
+        }
+      ]
+    },
+    "tournament": {
+      "name": "Serie A",
+      "slug": "serie-a",
+      "category": {
+        "name": "Italy",
+        "slug": "italy",
+        "sport": {
+          "name": "Football",
+          "slug": "football",
+          "id": 1
+        },
+        "priority": 7,
+        "country": {
+          "alpha2": "IT",
+          "alpha3": "ITA",
+          "name": "Italy",
+          "slug": "italy"
+        },
+        "id": 31,
+        "flag": "italy",
+        "alpha2": "IT",
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "إيطاليا",
+            "bn": "ইতালি",
+            "hi": "इटली",
+            "ru": "Италия"
+          },
+          "shortNameTranslation": {}
+        },
+        "transferPeriod": [
+          {
+            "activeFrom": "06-01 00:00",
+            "activeTo": "09-18 00:00"
+          },
+          {
+            "activeFrom": "12-30 00:00",
+            "activeTo": "02-16 00:00"
+          }
+        ]
+      },
+      "uniqueTournament": {
+        "name": "Serie A",
+        "slug": "serie-a",
+        "primaryColorHex": "#09519e",
+        "secondaryColorHex": "#008fd7",
+        "category": {
+          "name": "Italy",
+          "slug": "italy",
+          "sport": {
+            "name": "Football",
+            "slug": "football",
+            "id": 1
+          },
+          "priority": 7,
+          "country": {
+            "alpha2": "IT",
+            "alpha3": "ITA",
+            "name": "Italy",
+            "slug": "italy"
+          },
+          "id": 31,
+          "flag": "italy",
+          "alpha2": "IT",
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "إيطاليا",
+              "bn": "ইতালি",
+              "hi": "इटली",
+              "ru": "Италия"
+            },
+            "shortNameTranslation": {}
+          },
+          "transferPeriod": [
+            {
+              "activeFrom": "06-01 00:00",
+              "activeTo": "09-18 00:00"
+            },
+            {
+              "activeFrom": "12-30 00:00",
+              "activeTo": "02-16 00:00"
+            }
+          ]
+        },
+        "userCount": 644342,
+        "hasPerformanceGraphFeature": true,
+        "country": {},
+        "id": 23,
+        "displayInverseHomeAwayTeams": false,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "الدوري الإيطالي",
+            "hi": "सीरी ए",
+            "bn": "সিরি আ"
+          },
+          "shortNameTranslation": {}
+        }
+      },
+      "priority": 700,
+      "isLive": false,
+      "id": 33,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "hi": "सीरी ए",
+          "ar": "الدوري الإيطالي",
+          "bn": "সিরি আ"
+        },
+        "shortNameTranslation": {}
+      }
+    },
+    "primaryUniqueTournament": {
+      "name": "Serie B",
+      "slug": "serie-b",
+      "primaryColorHex": "#027d32",
+      "secondaryColorHex": "#f18f01",
+      "category": {
+        "name": "Italy",
+        "slug": "italy",
+        "sport": {
+          "name": "Football",
+          "slug": "football",
+          "id": 1
+        },
+        "priority": 7,
+        "country": {
+          "alpha2": "IT",
+          "alpha3": "ITA",
+          "name": "Italy",
+          "slug": "italy"
+        },
+        "id": 31,
+        "flag": "italy",
+        "alpha2": "IT",
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "إيطاليا",
+            "bn": "ইতালি",
+            "hi": "इटली",
+            "ru": "Италия"
+          },
+          "shortNameTranslation": {}
+        },
+        "transferPeriod": [
+          {
+            "activeFrom": "06-01 00:00",
+            "activeTo": "09-18 00:00"
+          },
+          {
+            "activeFrom": "12-30 00:00",
+            "activeTo": "02-16 00:00"
+          }
+        ]
+      },
+      "userCount": 35861,
+      "hasPerformanceGraphFeature": true,
+      "country": {},
+      "id": 53,
+      "displayInverseHomeAwayTeams": false,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "دوري الدرجة الثانية",
+          "bn": "সেরি বি",
+          "hi": "सीरी बी"
+        },
+        "shortNameTranslation": {}
+      }
+    },
+    "userCount": 64670,
+    "manager": {
+      "name": "Giovanni Stroppa",
+      "slug": "giovanni-stroppa",
+      "shortName": "G. Stroppa",
+      "country": {
+        "alpha2": "IT",
+        "alpha3": "ITA",
+        "name": "Italy",
+        "slug": "italy"
+      },
+      "id": 785229,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "جيانفيتو ستروبا",
+          "bn": "জিওভান্নি স্ট্রোপ্পা",
+          "hi": "जियोवानी स्ट्रोप्पा"
+        },
+        "shortNameTranslation": {
+          "ar": "ج. ستروبا",
+          "hi": "जी. स्ट्रोप्पा",
+          "bn": "জি. স্ট্রোপ্পা"
+        }
+      }
+    },
+    "venue": {
+      "venueCoordinates": {
+        "latitude": 45.42779,
+        "longitude": 12.36394
+      },
+      "hidden": false,
+      "slug": "stadio-pierluigi-penzo",
+      "name": "Stadio Pierluigi Penzo",
+      "capacity": 11150,
+      "country": {
+        "alpha2": "IT",
+        "alpha3": "ITA",
+        "name": "Italy",
+        "slug": "italy"
+      },
+      "id": 9037,
+      "city": {
+        "name": "Venice"
+      },
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "ملعب بيرلويجي بنزو",
+          "hi": "स्टेडियो पियरलुइगी पेन्ज़ो",
+          "bn": "স্টেডিও পিয়েরলুইগি পেনজো"
+        },
+        "shortNameTranslation": {}
+      },
+      "stadium": {
+        "name": "Stadio Pierluigi Penzo",
+        "capacity": 11150
+      }
+    },
+    "nameCode": "VEN",
+    "class": 4,
+    "disabled": false,
+    "national": false,
+    "type": 0,
+    "country": {
+      "alpha2": "IT",
+      "alpha3": "ITA",
+      "name": "Italy",
+      "slug": "italy"
+    },
+    "id": 2688,
+    "fullName": "Venezia",
+    "teamColors": {
+      "primary": "#231f20",
+      "secondary": "#ed7d01",
+      "text": "#ed7d01"
+    },
+    "foundationDateTimestamp": -1988150400,
+    "fieldTranslations": {
+      "nameTranslation": {
+        "ar": "فينيسيا",
+        "bn": "ভেনেজিয়া",
+        "hi": "वेनेज़िया",
+        "ru": "Венеция"
+      },
+      "shortNameTranslation": {
+        "ar": "فينيسيا"
+      }
+    },
+    "timeActive": []
+  },
+  "pregameForm": {
+    "avgRating": "6.96",
+    "position": 1,
+    "value": "78",
+    "form": [
+      "D",
+      "W",
+      "D",
+      "W",
+      "W"
+    ]
+  }
+}

@@ -1,0 +1,319 @@
+{
+  "team": {
+    "name": "TSG Hoffenheim",
+    "slug": "tsg-hoffenheim",
+    "shortName": "Hoffenheim",
+    "gender": "M",
+    "sport": {
+      "name": "Football",
+      "slug": "football",
+      "id": 1
+    },
+    "category": {
+      "name": "Germany",
+      "slug": "germany",
+      "sport": {
+        "name": "Football",
+        "slug": "football",
+        "id": 1
+      },
+      "priority": 8,
+      "country": {
+        "alpha2": "DE",
+        "alpha3": "DEU",
+        "name": "Germany",
+        "slug": "germany"
+      },
+      "id": 30,
+      "flag": "germany",
+      "alpha2": "DE",
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "ألمانيا",
+          "bn": "জার্মানি",
+          "hi": "जर्मनी",
+          "ru": "Германия"
+        },
+        "shortNameTranslation": {}
+      },
+      "transferPeriod": [
+        {
+          "activeFrom": "06-01 00:00",
+          "activeTo": "09-18 00:00"
+        },
+        {
+          "activeFrom": "12-30 00:00",
+          "activeTo": "02-16 00:00"
+        }
+      ]
+    },
+    "tournament": {
+      "name": "Bundesliga",
+      "slug": "bundesliga",
+      "category": {
+        "name": "Germany",
+        "slug": "germany",
+        "sport": {
+          "name": "Football",
+          "slug": "football",
+          "id": 1
+        },
+        "priority": 8,
+        "country": {
+          "alpha2": "DE",
+          "alpha3": "DEU",
+          "name": "Germany",
+          "slug": "germany"
+        },
+        "id": 30,
+        "flag": "germany",
+        "alpha2": "DE",
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "ألمانيا",
+            "bn": "জার্মানি",
+            "hi": "जर्मनी",
+            "ru": "Германия"
+          },
+          "shortNameTranslation": {}
+        },
+        "transferPeriod": [
+          {
+            "activeFrom": "06-01 00:00",
+            "activeTo": "09-18 00:00"
+          },
+          {
+            "activeFrom": "12-30 00:00",
+            "activeTo": "02-16 00:00"
+          }
+        ]
+      },
+      "uniqueTournament": {
+        "name": "Bundesliga",
+        "slug": "bundesliga",
+        "primaryColorHex": "#e2080e",
+        "secondaryColorHex": "#8e0902",
+        "category": {
+          "name": "Germany",
+          "slug": "germany",
+          "sport": {
+            "name": "Football",
+            "slug": "football",
+            "id": 1
+          },
+          "priority": 8,
+          "country": {
+            "alpha2": "DE",
+            "alpha3": "DEU",
+            "name": "Germany",
+            "slug": "germany"
+          },
+          "id": 30,
+          "flag": "germany",
+          "alpha2": "DE",
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "ألمانيا",
+              "bn": "জার্মানি",
+              "hi": "जर्मनी",
+              "ru": "Германия"
+            },
+            "shortNameTranslation": {}
+          },
+          "transferPeriod": [
+            {
+              "activeFrom": "06-01 00:00",
+              "activeTo": "09-18 00:00"
+            },
+            {
+              "activeFrom": "12-30 00:00",
+              "activeTo": "02-16 00:00"
+            }
+          ]
+        },
+        "userCount": 528661,
+        "hasPerformanceGraphFeature": true,
+        "country": {},
+        "id": 35,
+        "displayInverseHomeAwayTeams": false,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "bn": "বুন্দেসলীগা",
+            "ar": "الدوري الألماني",
+            "hi": "बुंडेसलीगा"
+          },
+          "shortNameTranslation": {}
+        }
+      },
+      "priority": 696,
+      "isLive": false,
+      "id": 42,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "hi": "बुंडेसलीगा",
+          "ar": "الدوري الألماني",
+          "bn": "বুন্দেসলীগা"
+        },
+        "shortNameTranslation": {}
+      }
+    },
+    "primaryUniqueTournament": {
+      "name": "Bundesliga",
+      "slug": "bundesliga",
+      "primaryColorHex": "#e2080e",
+      "secondaryColorHex": "#8e0902",
+      "category": {
+        "name": "Germany",
+        "slug": "germany",
+        "sport": {
+          "name": "Football",
+          "slug": "football",
+          "id": 1
+        },
+        "priority": 8,
+        "country": {
+          "alpha2": "DE",
+          "alpha3": "DEU",
+          "name": "Germany",
+          "slug": "germany"
+        },
+        "id": 30,
+        "flag": "germany",
+        "alpha2": "DE",
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "ألمانيا",
+            "bn": "জার্মানি",
+            "hi": "जर्मनी",
+            "ru": "Германия"
+          },
+          "shortNameTranslation": {}
+        },
+        "transferPeriod": [
+          {
+            "activeFrom": "06-01 00:00",
+            "activeTo": "09-18 00:00"
+          },
+          {
+            "activeFrom": "12-30 00:00",
+            "activeTo": "02-16 00:00"
+          }
+        ]
+      },
+      "userCount": 528661,
+      "hasPerformanceGraphFeature": true,
+      "country": {},
+      "id": 35,
+      "displayInverseHomeAwayTeams": false,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "bn": "বুন্দেসলীগা",
+          "ar": "الدوري الألماني",
+          "hi": "बुंडेसलीगा"
+        },
+        "shortNameTranslation": {}
+      }
+    },
+    "userCount": 104140,
+    "manager": {
+      "name": "Christian Ilzer",
+      "slug": "christian-ilzer",
+      "shortName": "C. Ilzer",
+      "country": {
+        "alpha2": "AT",
+        "alpha3": "AUT",
+        "name": "Austria",
+        "slug": "austria"
+      },
+      "id": 775661,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "كريستيان إيلزر",
+          "bn": "ক্রিশ্চিয়ান ইলজার",
+          "hi": "क्रिश्चियन इल्ज़र"
+        },
+        "shortNameTranslation": {
+          "ar": "ك. إيلزر",
+          "hi": "सी. इल्ज़र",
+          "bn": "সি. ইলজার"
+        }
+      }
+    },
+    "venue": {
+      "venueCoordinates": {
+        "latitude": 49.23806,
+        "longitude": 8.887641
+      },
+      "hidden": false,
+      "slug": "prezero-arena",
+      "name": "PreZero Arena",
+      "capacity": 30150,
+      "country": {
+        "alpha2": "DE",
+        "alpha3": "DEU",
+        "name": "Germany",
+        "slug": "germany"
+      },
+      "id": 1089,
+      "city": {
+        "name": "Sinsheim"
+      },
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "بريزيرو أرينا",
+          "hi": "प्रीज़ीरो एरिना",
+          "bn": "প্রিজিরো এরিনা"
+        },
+        "shortNameTranslation": {}
+      },
+      "stadium": {
+        "name": "PreZero Arena",
+        "capacity": 30150
+      }
+    },
+    "nameCode": "TSG",
+    "class": 0,
+    "disabled": false,
+    "national": false,
+    "type": 0,
+    "country": {
+      "alpha2": "DE",
+      "alpha3": "DEU",
+      "name": "Germany",
+      "slug": "germany"
+    },
+    "id": 2569,
+    "fullName": "TSG Hoffenheim",
+    "teamColors": {
+      "primary": "#1f5da6",
+      "secondary": "#ffffff",
+      "text": "#ffffff"
+    },
+    "foundationDateTimestamp": -2224886400,
+    "fieldTranslations": {
+      "nameTranslation": {
+        "ar": "نادي هوفنهايم",
+        "hi": "TSG होफ्फेन्हेइम",
+        "ru": "Хоффенхайм"
+      },
+      "shortNameTranslation": {
+        "ar": "هوفنهايم",
+        "bn": "হফেনহাইম",
+        "hi": "हॉफेनहाइम"
+      }
+    },
+    "timeActive": []
+  },
+  "pregameForm": {
+    "avgRating": "6.84",
+    "position": 5,
+    "value": "57",
+    "form": [
+      "L",
+      "L",
+      "D",
+      "W",
+      "W"
+    ]
+  }
+}

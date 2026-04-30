@@ -1,0 +1,1897 @@
+{
+  "standings": [
+    {
+      "type": "total",
+      "descriptions": [],
+      "tieBreakingRule": {
+        "text": "In the event that two (or more) teams finish with an equal number of points, the following rules break the tie:\nRegular season: 1. Head-to-head games between the teams concerned 1a. Points total 1b. Goal difference 2. Goal difference 3. Goals scored 4. Goals received\nChampionship and Relegation Round: 1. Head-to-head games between the teams concerned 1a. Points total 1b. Goal difference 2. Higher rank during regular season of the championship",
+        "id": 16333
+      },
+      "rows": [
+        {
+          "team": {
+            "name": "AEK Athens",
+            "slug": "aek-athens",
+            "shortName": "AEK",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 140094,
+            "nameCode": "AEK",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 3250,
+            "teamColors": {
+              "primary": "#000000",
+              "secondary": "#ffff00",
+              "text": "#ffff00"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "أيه إي كي أثينا",
+                "hi": "एइके एथेंस",
+                "ru": "АЕК Афины"
+              },
+              "shortNameTranslation": {
+                "ar": "أيه إي كي",
+                "bn": "এইকে",
+                "hi": "एईके"
+              }
+            }
+          },
+          "descriptions": [],
+          "promotion": {
+            "text": "Championship round",
+            "id": 48
+          },
+          "position": 1,
+          "matches": 26,
+          "wins": 18,
+          "scoresFor": 49,
+          "scoresAgainst": 17,
+          "id": 1706389,
+          "losses": 2,
+          "draws": 6,
+          "points": 60,
+          "scoreDiffFormatted": "+32"
+        },
+        {
+          "team": {
+            "name": "Olympiacos FC",
+            "slug": "olympiacos-fc",
+            "shortName": "Olympiacos",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 280169,
+            "nameCode": "OLY",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 3245,
+            "teamColors": {
+              "primary": "#ff0000",
+              "secondary": "#ffffff",
+              "text": "#ffffff"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "أولمبياكوس",
+                "bn": "অলিম্পিয়াকোস",
+                "hi": "ओलंपियाकोस",
+                "ru": "Олимпиакос"
+              },
+              "shortNameTranslation": {}
+            }
+          },
+          "descriptions": [],
+          "promotion": {
+            "text": "Championship round",
+            "id": 48
+          },
+          "position": 2,
+          "matches": 26,
+          "wins": 17,
+          "scoresFor": 45,
+          "scoresAgainst": 11,
+          "id": 1706397,
+          "losses": 2,
+          "draws": 7,
+          "points": 58,
+          "scoreDiffFormatted": "+34"
+        },
+        {
+          "team": {
+            "name": "PAOK",
+            "slug": "paok",
+            "shortName": "PAOK",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 159436,
+            "nameCode": "PAOK",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 3251,
+            "teamColors": {
+              "primary": "#000000",
+              "secondary": "#ffffff",
+              "text": "#ffffff"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "باوك",
+                "bn": "পিএওকে",
+                "hi": "पाओक",
+                "ru": "ПАОК"
+              },
+              "shortNameTranslation": {}
+            }
+          },
+          "descriptions": [],
+          "promotion": {
+            "text": "Championship round",
+            "id": 48
+          },
+          "position": 3,
+          "matches": 26,
+          "wins": 17,
+          "scoresFor": 52,
+          "scoresAgainst": 17,
+          "id": 1706401,
+          "losses": 3,
+          "draws": 6,
+          "points": 57,
+          "scoreDiffFormatted": "+35"
+        },
+        {
+          "team": {
+            "name": "Panathinaikos FC",
+            "slug": "panathinaikos",
+            "shortName": "Panathinaikos",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 159540,
+            "nameCode": "PAN",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 3248,
+            "teamColors": {
+              "primary": "#005e00",
+              "secondary": "#ffffff",
+              "text": "#ffffff"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "باناثينايكوس",
+                "bn": "পানাথিনাইকোস",
+                "hi": "पानाथिनाइकोस",
+                "ru": "Панатинаикос Афины"
+              },
+              "shortNameTranslation": {}
+            }
+          },
+          "descriptions": [],
+          "promotion": {
+            "text": "Championship round",
+            "id": 48
+          },
+          "position": 4,
+          "matches": 26,
+          "wins": 14,
+          "scoresFor": 44,
+          "scoresAgainst": 26,
+          "id": 1706399,
+          "losses": 5,
+          "draws": 7,
+          "points": 49,
+          "scoreDiffFormatted": "+18"
+        },
+        {
+          "team": {
+            "name": "APO Levadiakos",
+            "slug": "levadiakos",
+            "shortName": "Levadiakos",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 16273,
+            "nameCode": "LEV",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 5063,
+            "teamColors": {
+              "primary": "#339900",
+              "secondary": "#339900",
+              "text": "#339900"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "إيه بي أو ليفادياكوس",
+                "ru": "Левадиакос"
+              },
+              "shortNameTranslation": {
+                "ar": "ليفادياكوس"
+              }
+            }
+          },
+          "descriptions": [],
+          "promotion": {
+            "text": "Qualifying round",
+            "id": 57
+          },
+          "position": 5,
+          "matches": 26,
+          "wins": 12,
+          "scoresFor": 51,
+          "scoresAgainst": 37,
+          "id": 1706391,
+          "losses": 8,
+          "draws": 6,
+          "points": 42,
+          "scoreDiffFormatted": "+14"
+        },
+        {
+          "team": {
+            "name": "OFI Crete",
+            "slug": "ofi-crete",
+            "shortName": "OFI",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 15590,
+            "nameCode": "OFI",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 3241,
+            "teamColors": {
+              "primary": "#000000",
+              "secondary": "#000000",
+              "text": "#000000"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "أوفي كريت",
+                "hi": "ओऍफ़आई क्रेटे",
+                "ru": "ОФИ Крит"
+              },
+              "shortNameTranslation": {
+                "ar": "أوفي",
+                "bn": "ওএফআই",
+                "hi": "ओएफआई"
+              }
+            }
+          },
+          "descriptions": [],
+          "promotion": {
+            "text": "Qualifying round",
+            "id": 57
+          },
+          "position": 6,
+          "matches": 26,
+          "wins": 10,
+          "scoresFor": 34,
+          "scoresAgainst": 45,
+          "id": 1706395,
+          "losses": 14,
+          "draws": 2,
+          "points": 32,
+          "scoreDiffFormatted": "-11"
+        },
+        {
+          "team": {
+            "name": "NPS Volos",
+            "slug": "volos-nfc",
+            "shortName": "Volos",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 10629,
+            "nameCode": "VOL",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 267459,
+            "teamColors": {
+              "primary": "#1752bd",
+              "secondary": "#ff0000",
+              "text": "#ff0000"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "إن بي إس فولوس"
+              },
+              "shortNameTranslation": {
+                "ar": "فولوس",
+                "bn": "ভোলোস",
+                "hi": "वोलोस"
+              }
+            }
+          },
+          "descriptions": [],
+          "promotion": {
+            "text": "Qualifying round",
+            "id": 57
+          },
+          "position": 7,
+          "matches": 26,
+          "wins": 9,
+          "scoresFor": 26,
+          "scoresAgainst": 38,
+          "id": 1706402,
+          "losses": 13,
+          "draws": 4,
+          "points": 31,
+          "scoreDiffFormatted": "-12"
+        },
+        {
+          "team": {
+            "name": "Aris Thessaloniki",
+            "slug": "aris-thessaloniki",
+            "shortName": "Aris",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 34508,
+            "nameCode": "ARIS",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 3252,
+            "teamColors": {
+              "primary": "#ffff00",
+              "secondary": "#000000",
+              "text": "#000000"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "أريس ثيسالونيكي",
+                "hi": "अरिस थेस्सालोनिकी",
+                "ru": "Арис Фессалоники"
+              },
+              "shortNameTranslation": {
+                "ar": "أريس",
+                "bn": "অ্যারিস",
+                "hi": "एरिस"
+              }
+            }
+          },
+          "descriptions": [],
+          "promotion": {
+            "text": "Qualifying round",
+            "id": 57
+          },
+          "position": 8,
+          "matches": 26,
+          "wins": 6,
+          "scoresFor": 20,
+          "scoresAgainst": 27,
+          "id": 1706392,
+          "losses": 8,
+          "draws": 12,
+          "points": 30,
+          "scoreDiffFormatted": "-7"
+        },
+        {
+          "team": {
+            "name": "APS Atromitos Athinon",
+            "slug": "atromitos-athens",
+            "shortName": "Atromitos",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 13332,
+            "nameCode": "ATR",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 5062,
+            "teamColors": {
+              "primary": "#0000ff",
+              "secondary": "#0000ff",
+              "text": "#0000ff"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "أتروميتوس أثينا",
+                "ru": "Атромитос Афины"
+              },
+              "shortNameTranslation": {
+                "ar": "أتروميتوس",
+                "bn": "এথেন্স",
+                "hi": "एट्रोमिटोस"
+              }
+            }
+          },
+          "descriptions": [],
+          "promotion": {
+            "text": "Relegation Round",
+            "id": 22
+          },
+          "position": 9,
+          "matches": 26,
+          "wins": 7,
+          "scoresFor": 26,
+          "scoresAgainst": 30,
+          "id": 1706394,
+          "losses": 11,
+          "draws": 8,
+          "points": 29,
+          "scoreDiffFormatted": "-4"
+        },
+        {
+          "team": {
+            "name": "AE Kifisia",
+            "slug": "ae-kifisia-fc",
+            "shortName": "Kifisia",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 7766,
+            "nameCode": "AEK",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 120224,
+            "teamColors": {
+              "primary": "#374df5",
+              "secondary": "#374df5",
+              "text": "#ffffff"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "أ.إي كيفيسيا"
+              },
+              "shortNameTranslation": {
+                "ar": "كيفيسيا"
+              }
+            }
+          },
+          "descriptions": [],
+          "promotion": {
+            "text": "Relegation Round",
+            "id": 22
+          },
+          "position": 10,
+          "matches": 26,
+          "wins": 6,
+          "scoresFor": 32,
+          "scoresAgainst": 42,
+          "id": 1706387,
+          "losses": 11,
+          "draws": 9,
+          "points": 27,
+          "scoreDiffFormatted": "-10"
+        },
+        {
+          "team": {
+            "name": "GFS Panetolikos",
+            "slug": "panetolikos",
+            "shortName": "Panetolikos",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 12368,
+            "nameCode": "PAN",
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 7004,
+            "teamColors": {
+              "primary": "#ffff33",
+              "secondary": "#0000ff",
+              "text": "#0000ff"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "بانيتوليكوس",
+                "bn": "প্যানেটোলিকোস",
+                "hi": "पनेटोलिकोस",
+                "ru": "ФК Панетоликос"
+              },
+              "shortNameTranslation": {}
+            }
+          },
+          "descriptions": [],
+          "promotion": {
+            "text": "Relegation Round",
+            "id": 22
+          },
+          "position": 11,
+          "matches": 26,
+          "wins": 7,
+          "scoresFor": 24,
+          "scoresAgainst": 38,
+          "id": 1706398,
+          "losses": 14,
+          "draws": 5,
+          "points": 26,
+          "scoreDiffFormatted": "-14"
+        },
+        {
+          "team": {
+            "name": "AEL Novibet",
+            "slug": "ae-larisa",
+            "shortName": "AEL Novibet",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 9125,
+            "nameCode": "AEL",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 3265,
+            "teamColors": {
+              "primary": "#990000",
+              "secondary": "#ffffff",
+              "text": "#ffffff"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "AE Larissa FC",
+                "ru": "Лариса"
+              },
+              "shortNameTranslation": {}
+            }
+          },
+          "descriptions": [],
+          "promotion": {
+            "text": "Relegation Round",
+            "id": 22
+          },
+          "position": 12,
+          "matches": 26,
+          "wins": 4,
+          "scoresFor": 22,
+          "scoresAgainst": 39,
+          "id": 1706388,
+          "losses": 11,
+          "draws": 11,
+          "points": 23,
+          "scoreDiffFormatted": "-17"
+        },
+        {
+          "team": {
+            "name": "MGS Panserraikos",
+            "slug": "panserraikos",
+            "shortName": "Panserraikos",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 10117,
+            "nameCode": "PAN",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 6347,
+            "teamColors": {
+              "primary": "#cc0000",
+              "secondary": "#cc0000",
+              "text": "#cc0000"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "إم جي إس بانسيررايكوس"
+              },
+              "shortNameTranslation": {
+                "ar": "بانسيررايكوس"
+              }
+            }
+          },
+          "descriptions": [],
+          "promotion": {
+            "text": "Relegation Round",
+            "id": 22
+          },
+          "position": 13,
+          "matches": 26,
+          "wins": 4,
+          "scoresFor": 16,
+          "scoresAgainst": 55,
+          "id": 1706400,
+          "losses": 17,
+          "draws": 5,
+          "points": 17,
+          "scoreDiffFormatted": "-39"
+        },
+        {
+          "team": {
+            "name": "Asteras Aktor",
+            "slug": "asteras-tripolis",
+            "shortName": "Asteras",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 9760,
+            "nameCode": "AST",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 6342,
+            "teamColors": {
+              "primary": "#ff9900",
+              "secondary": "#0000ff",
+              "text": "#0000ff"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "أستيراس ترايبوليس",
+                "ru": "Астерас Триполис"
+              },
+              "shortNameTranslation": {}
+            }
+          },
+          "descriptions": [],
+          "promotion": {
+            "text": "Relegation Round",
+            "id": 22
+          },
+          "position": 14,
+          "matches": 26,
+          "wins": 3,
+          "scoresFor": 22,
+          "scoresAgainst": 41,
+          "id": 1706393,
+          "losses": 15,
+          "draws": 8,
+          "points": 17,
+          "scoreDiffFormatted": "-19"
+        }
+      ],
+      "id": 183621,
+      "tournament": {
+        "name": "Stoiximan Super League",
+        "slug": "stoiximan-super-league",
+        "category": {
+          "name": "Greece",
+          "slug": "greece",
+          "sport": {
+            "name": "Football",
+            "slug": "football",
+            "id": 1
+          },
+          "priority": 0,
+          "country": {
+            "alpha2": "GR",
+            "alpha3": "GRC",
+            "name": "Greece",
+            "slug": "greece"
+          },
+          "id": 67,
+          "flag": "greece",
+          "alpha2": "GR",
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "اليونان",
+              "ru": "Греция"
+            },
+            "shortNameTranslation": {}
+          }
+        },
+        "uniqueTournament": {
+          "name": "Stoiximan Super League",
+          "slug": "stoiximan-super-league",
+          "primaryColorHex": "#61c0e2",
+          "secondaryColorHex": "#007eb7",
+          "category": {
+            "name": "Greece",
+            "slug": "greece",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "priority": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 67,
+            "flag": "greece",
+            "alpha2": "GR",
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "اليونان",
+                "ru": "Греция"
+              },
+              "shortNameTranslation": {}
+            }
+          },
+          "userCount": 43006,
+          "hasPerformanceGraphFeature": false,
+          "country": {},
+          "id": 185,
+          "displayInverseHomeAwayTeams": false,
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "الدوري اليوناني الممتاز ستويكسي مان",
+              "bn": "স্টয়ক্সিম্যান সুপার লীগ",
+              "hi": "स्टोक्सिमन सुपर लीग"
+            },
+            "shortNameTranslation": {}
+          }
+        },
+        "priority": 497,
+        "isGroup": false,
+        "isLive": false,
+        "id": 127,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "الدوري الممتاز",
+            "bn": "সুপার লীগ",
+            "hi": "सुपर लीग"
+          },
+          "shortNameTranslation": {}
+        }
+      },
+      "name": "Super League 25/26",
+      "updatedAtTimestamp": 1775396103
+    },
+    {
+      "type": "total",
+      "descriptions": [],
+      "tieBreakingRule": {
+        "text": "In the event that two (or more) teams finish with an equal number of points, the following rules break the tie:\nRegular season: 1. Head-to-head games between the teams concerned 1a. Points total 1b. Goal difference 2. Goal difference 3. Goals scored 4. Goals received\nChampionship and Relegation Round: 1. Head-to-head games between the teams concerned 1a. Points total 1b. Goal difference 2. Higher rank during regular season of the championship",
+        "id": 16333
+      },
+      "rows": [
+        {
+          "team": {
+            "name": "AEK Athens",
+            "slug": "aek-athens",
+            "shortName": "AEK",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 140094,
+            "nameCode": "AEK",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 3250,
+            "teamColors": {
+              "primary": "#000000",
+              "secondary": "#ffff00",
+              "text": "#ffff00"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "أيه إي كي أثينا",
+                "hi": "एइके एथेंस",
+                "ru": "АЕК Афины"
+              },
+              "shortNameTranslation": {
+                "ar": "أيه إي كي",
+                "bn": "এইকে",
+                "hi": "एईके"
+              }
+            }
+          },
+          "descriptions": [],
+          "promotion": {
+            "text": "Champions League Qualification",
+            "id": 24
+          },
+          "position": 1,
+          "matches": 28,
+          "wins": 20,
+          "scoresFor": 53,
+          "scoresAgainst": 17,
+          "id": 2217195,
+          "losses": 2,
+          "draws": 6,
+          "points": 66,
+          "scoreDiffFormatted": "+36"
+        },
+        {
+          "team": {
+            "name": "Olympiacos FC",
+            "slug": "olympiacos-fc",
+            "shortName": "Olympiacos",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 280169,
+            "nameCode": "OLY",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 3245,
+            "teamColors": {
+              "primary": "#ff0000",
+              "secondary": "#ffffff",
+              "text": "#ffffff"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "أولمبياكوس",
+                "bn": "অলিম্পিয়াকোস",
+                "hi": "ओलंपियाकोस",
+                "ru": "Олимпиакос"
+              },
+              "shortNameTranslation": {}
+            }
+          },
+          "descriptions": [],
+          "promotion": {
+            "text": "Champions League Qualification",
+            "id": 24
+          },
+          "position": 2,
+          "matches": 28,
+          "wins": 18,
+          "scoresFor": 47,
+          "scoresAgainst": 12,
+          "id": 2217196,
+          "losses": 3,
+          "draws": 7,
+          "points": 61,
+          "scoreDiffFormatted": "+35"
+        },
+        {
+          "team": {
+            "name": "PAOK",
+            "slug": "paok",
+            "shortName": "PAOK",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 159436,
+            "nameCode": "PAOK",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 3251,
+            "teamColors": {
+              "primary": "#000000",
+              "secondary": "#ffffff",
+              "text": "#ffffff"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "باوك",
+                "bn": "পিএওকে",
+                "hi": "पाओक",
+                "ru": "ПАОК"
+              },
+              "shortNameTranslation": {}
+            }
+          },
+          "descriptions": [],
+          "promotion": {
+            "text": "UEFA Europa League Qualification",
+            "id": 968
+          },
+          "position": 3,
+          "matches": 28,
+          "wins": 17,
+          "scoresFor": 52,
+          "scoresAgainst": 20,
+          "id": 2217197,
+          "losses": 4,
+          "draws": 7,
+          "points": 58,
+          "scoreDiffFormatted": "+32"
+        },
+        {
+          "team": {
+            "name": "Panathinaikos FC",
+            "slug": "panathinaikos",
+            "shortName": "Panathinaikos",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 159540,
+            "nameCode": "PAN",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 3248,
+            "teamColors": {
+              "primary": "#005e00",
+              "secondary": "#ffffff",
+              "text": "#ffffff"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "باناثينايكوس",
+                "bn": "পানাথিনাইকোস",
+                "hi": "पानाथिनाइकोस",
+                "ru": "Панатинаикос Афины"
+              },
+              "shortNameTranslation": {}
+            }
+          },
+          "descriptions": [],
+          "promotion": {
+            "text": "Conference League Qualification",
+            "id": 503
+          },
+          "position": 4,
+          "matches": 28,
+          "wins": 14,
+          "scoresFor": 44,
+          "scoresAgainst": 28,
+          "id": 2217198,
+          "losses": 6,
+          "draws": 8,
+          "points": 50,
+          "scoreDiffFormatted": "+16"
+        }
+      ],
+      "id": 260369,
+      "tournament": {
+        "name": "Stoiximan Super League, Championship Round",
+        "slug": "super-league-championship-round",
+        "category": {
+          "name": "Greece",
+          "slug": "greece",
+          "sport": {
+            "name": "Football",
+            "slug": "football",
+            "id": 1
+          },
+          "priority": 0,
+          "country": {
+            "alpha2": "GR",
+            "alpha3": "GRC",
+            "name": "Greece",
+            "slug": "greece"
+          },
+          "id": 67,
+          "flag": "greece",
+          "alpha2": "GR",
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "اليونان",
+              "ru": "Греция"
+            },
+            "shortNameTranslation": {}
+          }
+        },
+        "uniqueTournament": {
+          "name": "Stoiximan Super League",
+          "slug": "stoiximan-super-league",
+          "primaryColorHex": "#61c0e2",
+          "secondaryColorHex": "#007eb7",
+          "category": {
+            "name": "Greece",
+            "slug": "greece",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "priority": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 67,
+            "flag": "greece",
+            "alpha2": "GR",
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "اليونان",
+                "ru": "Греция"
+              },
+              "shortNameTranslation": {}
+            }
+          },
+          "userCount": 43006,
+          "hasPerformanceGraphFeature": false,
+          "country": {},
+          "id": 185,
+          "displayInverseHomeAwayTeams": false,
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "الدوري اليوناني الممتاز ستويكسي مان",
+              "bn": "স্টয়ক্সিম্যান সুপার লীগ",
+              "hi": "स्टोक्सिमन सुपर लीग"
+            },
+            "shortNameTranslation": {}
+          }
+        },
+        "priority": 493,
+        "isGroup": false,
+        "isLive": false,
+        "id": 78740,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "الدوري الممتاز، الجولة النهائية للبطولة",
+            "bn": "সুপার লীগ, চ্যাম্পিয়নশিপ রাউন্ড",
+            "hi": "सुपर लीग, चैंपियनशिप राउंड"
+          },
+          "shortNameTranslation": {}
+        }
+      },
+      "name": "Super League 25/26, Championship Round",
+      "updatedAtTimestamp": 1777222349
+    },
+    {
+      "type": "total",
+      "descriptions": [],
+      "tieBreakingRule": {
+        "text": "In the event that two (or more) teams finish with an equal number of points, the following rules break the tie:\nRegular season: 1. Head-to-head games between the teams concerned 1a. Points total 1b. Goal difference 2. Goal difference 3. Goals scored 4. Goals received\nChampionship and Relegation Round: 1. Head-to-head games between the teams concerned 1a. Points total 1b. Goal difference 2. Higher rank during regular season of the championship",
+        "id": 16333
+      },
+      "rows": [
+        {
+          "team": {
+            "name": "APS Atromitos Athinon",
+            "slug": "atromitos-athens",
+            "shortName": "Atromitos",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 13332,
+            "nameCode": "ATR",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 5062,
+            "teamColors": {
+              "primary": "#0000ff",
+              "secondary": "#0000ff",
+              "text": "#0000ff"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "أتروميتوس أثينا",
+                "ru": "Атромитос Афины"
+              },
+              "shortNameTranslation": {
+                "ar": "أتروميتوس",
+                "bn": "এথেন্স",
+                "hi": "एट्रोमिटोस"
+              }
+            }
+          },
+          "descriptions": [],
+          "position": 1,
+          "matches": 31,
+          "wins": 10,
+          "scoresFor": 36,
+          "scoresAgainst": 34,
+          "id": 2217219,
+          "losses": 11,
+          "draws": 10,
+          "points": 40,
+          "scoreDiffFormatted": "+2"
+        },
+        {
+          "team": {
+            "name": "GFS Panetolikos",
+            "slug": "panetolikos",
+            "shortName": "Panetolikos",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 12368,
+            "nameCode": "PAN",
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 7004,
+            "teamColors": {
+              "primary": "#ffff33",
+              "secondary": "#0000ff",
+              "text": "#0000ff"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "بانيتوليكوس",
+                "bn": "প্যানেটোলিকোস",
+                "hi": "पनेटोलिकोस",
+                "ru": "ФК Панетоликос"
+              },
+              "shortNameTranslation": {}
+            }
+          },
+          "descriptions": [],
+          "position": 2,
+          "matches": 31,
+          "wins": 8,
+          "scoresFor": 30,
+          "scoresAgainst": 45,
+          "id": 2217221,
+          "losses": 16,
+          "draws": 7,
+          "points": 31,
+          "scoreDiffFormatted": "-15"
+        },
+        {
+          "team": {
+            "name": "AE Kifisia",
+            "slug": "ae-kifisia-fc",
+            "shortName": "Kifisia",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 7766,
+            "nameCode": "AEK",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 120224,
+            "teamColors": {
+              "primary": "#374df5",
+              "secondary": "#374df5",
+              "text": "#ffffff"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "أ.إي كيفيسيا"
+              },
+              "shortNameTranslation": {
+                "ar": "كيفيسيا"
+              }
+            }
+          },
+          "descriptions": [],
+          "position": 3,
+          "matches": 31,
+          "wins": 7,
+          "scoresFor": 34,
+          "scoresAgainst": 45,
+          "id": 2217220,
+          "losses": 12,
+          "draws": 13,
+          "points": 31,
+          "scoreDiffFormatted": "-11"
+        },
+        {
+          "team": {
+            "name": "MGS Panserraikos",
+            "slug": "panserraikos",
+            "shortName": "Panserraikos",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 10117,
+            "nameCode": "PAN",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 6347,
+            "teamColors": {
+              "primary": "#cc0000",
+              "secondary": "#cc0000",
+              "text": "#cc0000"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "إم جي إس بانسيررايكوس"
+              },
+              "shortNameTranslation": {
+                "ar": "بانسيررايكوس"
+              }
+            }
+          },
+          "descriptions": [],
+          "position": 4,
+          "matches": 31,
+          "wins": 7,
+          "scoresFor": 22,
+          "scoresAgainst": 62,
+          "id": 2217224,
+          "losses": 18,
+          "draws": 6,
+          "points": 27,
+          "scoreDiffFormatted": "-40"
+        },
+        {
+          "team": {
+            "name": "Asteras Aktor",
+            "slug": "asteras-tripolis",
+            "shortName": "Asteras",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 9760,
+            "nameCode": "AST",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 6342,
+            "teamColors": {
+              "primary": "#ff9900",
+              "secondary": "#0000ff",
+              "text": "#0000ff"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "أستيراس ترايبوليس",
+                "ru": "Астерас Триполис"
+              },
+              "shortNameTranslation": {}
+            }
+          },
+          "descriptions": [],
+          "promotion": {
+            "text": "Relegation",
+            "id": 3
+          },
+          "position": 5,
+          "matches": 31,
+          "wins": 5,
+          "scoresFor": 28,
+          "scoresAgainst": 45,
+          "id": 2217223,
+          "losses": 16,
+          "draws": 10,
+          "points": 25,
+          "scoreDiffFormatted": "-17"
+        },
+        {
+          "team": {
+            "name": "AEL Novibet",
+            "slug": "ae-larisa",
+            "shortName": "AEL Novibet",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 9125,
+            "nameCode": "AEL",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 3265,
+            "teamColors": {
+              "primary": "#990000",
+              "secondary": "#ffffff",
+              "text": "#ffffff"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "AE Larissa FC",
+                "ru": "Лариса"
+              },
+              "shortNameTranslation": {}
+            }
+          },
+          "descriptions": [],
+          "promotion": {
+            "text": "Relegation",
+            "id": 3
+          },
+          "position": 6,
+          "matches": 31,
+          "wins": 4,
+          "scoresFor": 27,
+          "scoresAgainst": 49,
+          "id": 2217222,
+          "losses": 15,
+          "draws": 12,
+          "points": 24,
+          "scoreDiffFormatted": "-22"
+        }
+      ],
+      "id": 260375,
+      "tournament": {
+        "name": "Stoiximan Super League, Relegation Round",
+        "slug": "super-league-relegation-round",
+        "category": {
+          "name": "Greece",
+          "slug": "greece",
+          "sport": {
+            "name": "Football",
+            "slug": "football",
+            "id": 1
+          },
+          "priority": 0,
+          "country": {
+            "alpha2": "GR",
+            "alpha3": "GRC",
+            "name": "Greece",
+            "slug": "greece"
+          },
+          "id": 67,
+          "flag": "greece",
+          "alpha2": "GR",
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "اليونان",
+              "ru": "Греция"
+            },
+            "shortNameTranslation": {}
+          }
+        },
+        "uniqueTournament": {
+          "name": "Stoiximan Super League",
+          "slug": "stoiximan-super-league",
+          "primaryColorHex": "#61c0e2",
+          "secondaryColorHex": "#007eb7",
+          "category": {
+            "name": "Greece",
+            "slug": "greece",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "priority": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 67,
+            "flag": "greece",
+            "alpha2": "GR",
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "اليونان",
+                "ru": "Греция"
+              },
+              "shortNameTranslation": {}
+            }
+          },
+          "userCount": 43006,
+          "hasPerformanceGraphFeature": false,
+          "country": {},
+          "id": 185,
+          "displayInverseHomeAwayTeams": false,
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "الدوري اليوناني الممتاز ستويكسي مان",
+              "bn": "স্টয়ক্সিম্যান সুপার লীগ",
+              "hi": "स्टोक्सिमन सुपर लीग"
+            },
+            "shortNameTranslation": {}
+          }
+        },
+        "priority": 492,
+        "isGroup": false,
+        "isLive": false,
+        "id": 79177,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "الدوري الممتاز، جولة الهبوط",
+            "bn": "সুপার লীগ, রেলিগেশন রাউন্ড",
+            "hi": "सुपर लीग, रेलेगेशन राउंड"
+          },
+          "shortNameTranslation": {}
+        }
+      },
+      "name": "Super League 25/26, Relegation Round",
+      "updatedAtTimestamp": 1777301549
+    },
+    {
+      "type": "total",
+      "descriptions": [],
+      "tieBreakingRule": {
+        "text": "In the event that two (or more) teams finish with an equal number of points, the following rules break the tie:\nRegular season: 1. Head-to-head games between the teams concerned 1a. Points total 1b. Goal difference 2. Goal difference 3. Goals scored 4. Goals received\nChampionship and Relegation Round: 1. Head-to-head games between the teams concerned 1a. Points total 1b. Goal difference 2. Higher rank during regular season of the championship",
+        "id": 16333
+      },
+      "rows": [
+        {
+          "team": {
+            "name": "APO Levadiakos",
+            "slug": "levadiakos",
+            "shortName": "Levadiakos",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 16273,
+            "nameCode": "LEV",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 5063,
+            "teamColors": {
+              "primary": "#339900",
+              "secondary": "#339900",
+              "text": "#339900"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "إيه بي أو ليفادياكوس",
+                "ru": "Левадиакос"
+              },
+              "shortNameTranslation": {
+                "ar": "ليفادياكوس"
+              }
+            }
+          },
+          "descriptions": [],
+          "position": 1,
+          "matches": 28,
+          "wins": 12,
+          "scoresFor": 52,
+          "scoresAgainst": 40,
+          "id": 2217207,
+          "losses": 9,
+          "draws": 7,
+          "points": 22,
+          "scoreDiffFormatted": "+12"
+        },
+        {
+          "team": {
+            "name": "OFI Crete",
+            "slug": "ofi-crete",
+            "shortName": "OFI",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 15590,
+            "nameCode": "OFI",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 3241,
+            "teamColors": {
+              "primary": "#000000",
+              "secondary": "#000000",
+              "text": "#000000"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "أوفي كريت",
+                "hi": "ओऍफ़आई क्रेटे",
+                "ru": "ОФИ Крит"
+              },
+              "shortNameTranslation": {
+                "ar": "أوفي",
+                "bn": "ওএফআই",
+                "hi": "ओएफआई"
+              }
+            }
+          },
+          "descriptions": [],
+          "promotion": {
+            "text": "UEFA Europa League Qualification",
+            "id": 968
+          },
+          "position": 2,
+          "matches": 28,
+          "wins": 11,
+          "scoresFor": 37,
+          "scoresAgainst": 46,
+          "id": 2217208,
+          "losses": 14,
+          "draws": 3,
+          "points": 20,
+          "scoreDiffFormatted": "-9"
+        },
+        {
+          "team": {
+            "name": "Aris Thessaloniki",
+            "slug": "aris-thessaloniki",
+            "shortName": "Aris",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 34508,
+            "nameCode": "ARIS",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 3252,
+            "teamColors": {
+              "primary": "#ffff00",
+              "secondary": "#000000",
+              "text": "#000000"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "أريس ثيسالونيكي",
+                "hi": "अरिस थेस्सालोनिकी",
+                "ru": "Арис Фессалоники"
+              },
+              "shortNameTranslation": {
+                "ar": "أريس",
+                "bn": "অ্যারিস",
+                "hi": "एरिस"
+              }
+            }
+          },
+          "descriptions": [],
+          "position": 3,
+          "matches": 28,
+          "wins": 7,
+          "scoresFor": 24,
+          "scoresAgainst": 30,
+          "id": 2217210,
+          "losses": 8,
+          "draws": 13,
+          "points": 19,
+          "scoreDiffFormatted": "-6"
+        },
+        {
+          "team": {
+            "name": "NPS Volos",
+            "slug": "volos-nfc",
+            "shortName": "Volos",
+            "gender": "M",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "userCount": 10629,
+            "nameCode": "VOL",
+            "disabled": false,
+            "national": false,
+            "type": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 267459,
+            "teamColors": {
+              "primary": "#1752bd",
+              "secondary": "#ff0000",
+              "text": "#ff0000"
+            },
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "إن بي إس فولوس"
+              },
+              "shortNameTranslation": {
+                "ar": "فولوس",
+                "bn": "ভোলোস",
+                "hi": "वोलोस"
+              }
+            }
+          },
+          "descriptions": [],
+          "position": 4,
+          "matches": 28,
+          "wins": 9,
+          "scoresFor": 29,
+          "scoresAgainst": 42,
+          "id": 2217209,
+          "losses": 14,
+          "draws": 5,
+          "points": 17,
+          "scoreDiffFormatted": "-13"
+        }
+      ],
+      "id": 260372,
+      "tournament": {
+        "name": "Stoiximan Super League, Qualifying Round",
+        "slug": "super-league-qualifying-round",
+        "category": {
+          "name": "Greece",
+          "slug": "greece",
+          "sport": {
+            "name": "Football",
+            "slug": "football",
+            "id": 1
+          },
+          "priority": 0,
+          "country": {
+            "alpha2": "GR",
+            "alpha3": "GRC",
+            "name": "Greece",
+            "slug": "greece"
+          },
+          "id": 67,
+          "flag": "greece",
+          "alpha2": "GR",
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "اليونان",
+              "ru": "Греция"
+            },
+            "shortNameTranslation": {}
+          }
+        },
+        "uniqueTournament": {
+          "name": "Stoiximan Super League",
+          "slug": "stoiximan-super-league",
+          "primaryColorHex": "#61c0e2",
+          "secondaryColorHex": "#007eb7",
+          "category": {
+            "name": "Greece",
+            "slug": "greece",
+            "sport": {
+              "name": "Football",
+              "slug": "football",
+              "id": 1
+            },
+            "priority": 0,
+            "country": {
+              "alpha2": "GR",
+              "alpha3": "GRC",
+              "name": "Greece",
+              "slug": "greece"
+            },
+            "id": 67,
+            "flag": "greece",
+            "alpha2": "GR",
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "اليونان",
+                "ru": "Греция"
+              },
+              "shortNameTranslation": {}
+            }
+          },
+          "userCount": 43006,
+          "hasPerformanceGraphFeature": false,
+          "country": {},
+          "id": 185,
+          "displayInverseHomeAwayTeams": false,
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "الدوري اليوناني الممتاز ستويكسي مان",
+              "bn": "স্টয়ক্সিম্যান সুপার লীগ",
+              "hi": "स्टोक्सिमन सुपर लीग"
+            },
+            "shortNameTranslation": {}
+          }
+        },
+        "priority": 0,
+        "isGroup": false,
+        "id": 147674,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "الدوري الممتاز، الجولة التأهيلية",
+            "bn": "সুপার লীগ, কোয়ালিফাইং রাউন্ড",
+            "hi": "सुपर लीग, क्वालीफाइंग राउंड"
+          },
+          "shortNameTranslation": {}
+        }
+      },
+      "name": "Super League 25/26, Qualifying Round",
+      "updatedAtTimestamp": 1777222349
+    }
+  ]
+}

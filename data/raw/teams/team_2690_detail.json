@@ -1,0 +1,312 @@
+{
+  "team": {
+    "name": "Parma",
+    "slug": "parma",
+    "shortName": "Parma",
+    "gender": "M",
+    "sport": {
+      "name": "Football",
+      "slug": "football",
+      "id": 1
+    },
+    "category": {
+      "name": "Italy",
+      "slug": "italy",
+      "sport": {
+        "name": "Football",
+        "slug": "football",
+        "id": 1
+      },
+      "priority": 7,
+      "country": {
+        "alpha2": "IT",
+        "alpha3": "ITA",
+        "name": "Italy",
+        "slug": "italy"
+      },
+      "id": 31,
+      "flag": "italy",
+      "alpha2": "IT",
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "إيطاليا",
+          "bn": "ইতালি",
+          "hi": "इटली",
+          "ru": "Италия"
+        },
+        "shortNameTranslation": {}
+      },
+      "transferPeriod": [
+        {
+          "activeFrom": "06-01 00:00",
+          "activeTo": "09-18 00:00"
+        },
+        {
+          "activeFrom": "12-30 00:00",
+          "activeTo": "02-16 00:00"
+        }
+      ]
+    },
+    "tournament": {
+      "name": "Serie B",
+      "slug": "serie-b",
+      "category": {
+        "name": "Italy",
+        "slug": "italy",
+        "sport": {
+          "name": "Football",
+          "slug": "football",
+          "id": 1
+        },
+        "priority": 7,
+        "country": {
+          "alpha2": "IT",
+          "alpha3": "ITA",
+          "name": "Italy",
+          "slug": "italy"
+        },
+        "id": 31,
+        "flag": "italy",
+        "alpha2": "IT",
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "إيطاليا",
+            "bn": "ইতালি",
+            "hi": "इटली",
+            "ru": "Италия"
+          },
+          "shortNameTranslation": {}
+        },
+        "transferPeriod": [
+          {
+            "activeFrom": "06-01 00:00",
+            "activeTo": "09-18 00:00"
+          },
+          {
+            "activeFrom": "12-30 00:00",
+            "activeTo": "02-16 00:00"
+          }
+        ]
+      },
+      "uniqueTournament": {
+        "name": "Serie B",
+        "slug": "serie-b",
+        "primaryColorHex": "#027d32",
+        "secondaryColorHex": "#f18f01",
+        "category": {
+          "name": "Italy",
+          "slug": "italy",
+          "sport": {
+            "name": "Football",
+            "slug": "football",
+            "id": 1
+          },
+          "priority": 7,
+          "country": {
+            "alpha2": "IT",
+            "alpha3": "ITA",
+            "name": "Italy",
+            "slug": "italy"
+          },
+          "id": 31,
+          "flag": "italy",
+          "alpha2": "IT",
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "إيطاليا",
+              "bn": "ইতালি",
+              "hi": "इटली",
+              "ru": "Италия"
+            },
+            "shortNameTranslation": {}
+          },
+          "transferPeriod": [
+            {
+              "activeFrom": "06-01 00:00",
+              "activeTo": "09-18 00:00"
+            },
+            {
+              "activeFrom": "12-30 00:00",
+              "activeTo": "02-16 00:00"
+            }
+          ]
+        },
+        "userCount": 35861,
+        "hasPerformanceGraphFeature": true,
+        "country": {},
+        "id": 53,
+        "displayInverseHomeAwayTeams": false,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "دوري الدرجة الثانية",
+            "bn": "সেরি বি",
+            "hi": "सीरी बी"
+          },
+          "shortNameTranslation": {}
+        }
+      },
+      "priority": 346,
+      "isLive": false,
+      "id": 34,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "الدرجة الثانية",
+          "bn": "সেরি বি",
+          "hi": "सीरी बी"
+        },
+        "shortNameTranslation": {}
+      }
+    },
+    "primaryUniqueTournament": {
+      "name": "Serie A",
+      "slug": "serie-a",
+      "primaryColorHex": "#09519e",
+      "secondaryColorHex": "#008fd7",
+      "category": {
+        "name": "Italy",
+        "slug": "italy",
+        "sport": {
+          "name": "Football",
+          "slug": "football",
+          "id": 1
+        },
+        "priority": 7,
+        "country": {
+          "alpha2": "IT",
+          "alpha3": "ITA",
+          "name": "Italy",
+          "slug": "italy"
+        },
+        "id": 31,
+        "flag": "italy",
+        "alpha2": "IT",
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "إيطاليا",
+            "bn": "ইতালি",
+            "hi": "इटली",
+            "ru": "Италия"
+          },
+          "shortNameTranslation": {}
+        },
+        "transferPeriod": [
+          {
+            "activeFrom": "06-01 00:00",
+            "activeTo": "09-18 00:00"
+          },
+          {
+            "activeFrom": "12-30 00:00",
+            "activeTo": "02-16 00:00"
+          }
+        ]
+      },
+      "userCount": 644342,
+      "hasPerformanceGraphFeature": true,
+      "country": {},
+      "id": 23,
+      "displayInverseHomeAwayTeams": false,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "الدوري الإيطالي",
+          "hi": "सीरी ए",
+          "bn": "সিরি আ"
+        },
+        "shortNameTranslation": {}
+      }
+    },
+    "userCount": 103041,
+    "manager": {
+      "name": "Carlos Cuesta",
+      "slug": "carlos-cuesta",
+      "shortName": "C. Cuesta",
+      "country": {
+        "alpha2": "ES",
+        "alpha3": "ESP",
+        "name": "Spain",
+        "slug": "spain"
+      },
+      "id": 811357,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "كارلوس كويستا"
+        },
+        "shortNameTranslation": {
+          "ar": "ك. كويستا"
+        }
+      }
+    },
+    "venue": {
+      "venueCoordinates": {
+        "latitude": 44.794758,
+        "longitude": 10.338373
+      },
+      "hidden": false,
+      "slug": "ennio-tardini",
+      "name": "Ennio Tardini",
+      "capacity": 27906,
+      "country": {
+        "alpha2": "IT",
+        "alpha3": "ITA",
+        "name": "Italy",
+        "slug": "italy"
+      },
+      "id": 626,
+      "city": {
+        "name": "Parma"
+      },
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "إنيو تارديني",
+          "hi": "एन्नियो तारदिनी",
+          "bn": "এনিও তারদিনি"
+        },
+        "shortNameTranslation": {}
+      },
+      "stadium": {
+        "name": "Ennio Tardini",
+        "capacity": 27906
+      }
+    },
+    "nameCode": "PAR",
+    "class": 0,
+    "disabled": false,
+    "national": false,
+    "type": 0,
+    "country": {
+      "alpha2": "IT",
+      "alpha3": "ITA",
+      "name": "Italy",
+      "slug": "italy"
+    },
+    "id": 2690,
+    "fullName": "Parma",
+    "teamColors": {
+      "primary": "#ffffff",
+      "secondary": "#000000",
+      "text": "#000000"
+    },
+    "foundationDateTimestamp": -1780876800,
+    "fieldTranslations": {
+      "nameTranslation": {
+        "ar": "بارما",
+        "bn": "পরমা",
+        "hi": "पर्मा",
+        "ru": "Парма Кальчо"
+      },
+      "shortNameTranslation": {}
+    },
+    "timeActive": []
+  },
+  "pregameForm": {
+    "avgRating": "6.76",
+    "position": 12,
+    "value": "42",
+    "form": [
+      "L",
+      "D",
+      "D",
+      "W",
+      "W"
+    ]
+  }
+}

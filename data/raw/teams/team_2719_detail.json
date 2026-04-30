@@ -1,0 +1,312 @@
+{
+  "team": {
+    "name": "Cagliari",
+    "slug": "cagliari",
+    "shortName": "Cagliari",
+    "gender": "M",
+    "sport": {
+      "name": "Football",
+      "slug": "football",
+      "id": 1
+    },
+    "category": {
+      "name": "Italy",
+      "slug": "italy",
+      "sport": {
+        "name": "Football",
+        "slug": "football",
+        "id": 1
+      },
+      "priority": 7,
+      "country": {
+        "alpha2": "IT",
+        "alpha3": "ITA",
+        "name": "Italy",
+        "slug": "italy"
+      },
+      "id": 31,
+      "flag": "italy",
+      "alpha2": "IT",
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "إيطاليا",
+          "bn": "ইতালি",
+          "hi": "इटली",
+          "ru": "Италия"
+        },
+        "shortNameTranslation": {}
+      },
+      "transferPeriod": [
+        {
+          "activeFrom": "06-01 00:00",
+          "activeTo": "09-18 00:00"
+        },
+        {
+          "activeFrom": "12-30 00:00",
+          "activeTo": "02-16 00:00"
+        }
+      ]
+    },
+    "tournament": {
+      "name": "Serie A",
+      "slug": "serie-a",
+      "category": {
+        "name": "Italy",
+        "slug": "italy",
+        "sport": {
+          "name": "Football",
+          "slug": "football",
+          "id": 1
+        },
+        "priority": 7,
+        "country": {
+          "alpha2": "IT",
+          "alpha3": "ITA",
+          "name": "Italy",
+          "slug": "italy"
+        },
+        "id": 31,
+        "flag": "italy",
+        "alpha2": "IT",
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "إيطاليا",
+            "bn": "ইতালি",
+            "hi": "इटली",
+            "ru": "Италия"
+          },
+          "shortNameTranslation": {}
+        },
+        "transferPeriod": [
+          {
+            "activeFrom": "06-01 00:00",
+            "activeTo": "09-18 00:00"
+          },
+          {
+            "activeFrom": "12-30 00:00",
+            "activeTo": "02-16 00:00"
+          }
+        ]
+      },
+      "uniqueTournament": {
+        "name": "Serie A",
+        "slug": "serie-a",
+        "primaryColorHex": "#09519e",
+        "secondaryColorHex": "#008fd7",
+        "category": {
+          "name": "Italy",
+          "slug": "italy",
+          "sport": {
+            "name": "Football",
+            "slug": "football",
+            "id": 1
+          },
+          "priority": 7,
+          "country": {
+            "alpha2": "IT",
+            "alpha3": "ITA",
+            "name": "Italy",
+            "slug": "italy"
+          },
+          "id": 31,
+          "flag": "italy",
+          "alpha2": "IT",
+          "fieldTranslations": {
+            "nameTranslation": {
+              "ar": "إيطاليا",
+              "bn": "ইতালি",
+              "hi": "इटली",
+              "ru": "Италия"
+            },
+            "shortNameTranslation": {}
+          },
+          "transferPeriod": [
+            {
+              "activeFrom": "06-01 00:00",
+              "activeTo": "09-18 00:00"
+            },
+            {
+              "activeFrom": "12-30 00:00",
+              "activeTo": "02-16 00:00"
+            }
+          ]
+        },
+        "userCount": 644342,
+        "hasPerformanceGraphFeature": true,
+        "country": {},
+        "id": 23,
+        "displayInverseHomeAwayTeams": false,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "الدوري الإيطالي",
+            "hi": "सीरी ए",
+            "bn": "সিরি আ"
+          },
+          "shortNameTranslation": {}
+        }
+      },
+      "priority": 700,
+      "isLive": false,
+      "id": 33,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "hi": "सीरी ए",
+          "ar": "الدوري الإيطالي",
+          "bn": "সিরি আ"
+        },
+        "shortNameTranslation": {}
+      }
+    },
+    "primaryUniqueTournament": {
+      "name": "Serie A",
+      "slug": "serie-a",
+      "primaryColorHex": "#09519e",
+      "secondaryColorHex": "#008fd7",
+      "category": {
+        "name": "Italy",
+        "slug": "italy",
+        "sport": {
+          "name": "Football",
+          "slug": "football",
+          "id": 1
+        },
+        "priority": 7,
+        "country": {
+          "alpha2": "IT",
+          "alpha3": "ITA",
+          "name": "Italy",
+          "slug": "italy"
+        },
+        "id": 31,
+        "flag": "italy",
+        "alpha2": "IT",
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "إيطاليا",
+            "bn": "ইতালি",
+            "hi": "इटली",
+            "ru": "Италия"
+          },
+          "shortNameTranslation": {}
+        },
+        "transferPeriod": [
+          {
+            "activeFrom": "06-01 00:00",
+            "activeTo": "09-18 00:00"
+          },
+          {
+            "activeFrom": "12-30 00:00",
+            "activeTo": "02-16 00:00"
+          }
+        ]
+      },
+      "userCount": 644342,
+      "hasPerformanceGraphFeature": true,
+      "country": {},
+      "id": 23,
+      "displayInverseHomeAwayTeams": false,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "الدوري الإيطالي",
+          "hi": "सीरी ए",
+          "bn": "সিরি আ"
+        },
+        "shortNameTranslation": {}
+      }
+    },
+    "userCount": 114034,
+    "manager": {
+      "name": "Fabio Pisacane",
+      "slug": "fabio-pisacane",
+      "shortName": "F. Pisacane",
+      "country": {
+        "alpha2": "IT",
+        "alpha3": "ITA",
+        "name": "Italy",
+        "slug": "italy"
+      },
+      "id": 799934,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "فابيو بيساكان"
+        },
+        "shortNameTranslation": {
+          "ar": "ف. بيساكان"
+        }
+      }
+    },
+    "venue": {
+      "venueCoordinates": {
+        "latitude": 39.199687,
+        "longitude": 9.13741
+      },
+      "hidden": false,
+      "slug": "unipol-domus",
+      "name": "Unipol Domus",
+      "capacity": 16416,
+      "country": {
+        "alpha2": "IT",
+        "alpha3": "ITA",
+        "name": "Italy",
+        "slug": "italy"
+      },
+      "id": 17809,
+      "city": {
+        "name": "Cagliari"
+      },
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "يونيبول دوموس",
+          "hi": "यूनिपोल डोमस",
+          "bn": "ইউনিপোল ডোমাস"
+        },
+        "shortNameTranslation": {}
+      },
+      "stadium": {
+        "name": "Unipol Domus",
+        "capacity": 16416
+      }
+    },
+    "nameCode": "CAG",
+    "class": 0,
+    "disabled": false,
+    "national": false,
+    "type": 0,
+    "country": {
+      "alpha2": "IT",
+      "alpha3": "ITA",
+      "name": "Italy",
+      "slug": "italy"
+    },
+    "id": 2719,
+    "fullName": "Cagliari",
+    "teamColors": {
+      "primary": "#990000",
+      "secondary": "#242766",
+      "text": "#242766"
+    },
+    "foundationDateTimestamp": -1564963200,
+    "fieldTranslations": {
+      "nameTranslation": {
+        "ar": "كالياري",
+        "bn": "ক্যাগলিয়ারি",
+        "hi": "काग्लियारी",
+        "ru": "Кальяри"
+      },
+      "shortNameTranslation": {}
+    },
+    "timeActive": []
+  },
+  "pregameForm": {
+    "avgRating": "6.75",
+    "position": 16,
+    "value": "36",
+    "form": [
+      "L",
+      "L",
+      "W",
+      "L",
+      "W"
+    ]
+  }
+}
