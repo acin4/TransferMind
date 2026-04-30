@@ -406,7 +406,7 @@ function StatRankingChart({
   return (
     <section
       ref={refNode}
-      className="relative left-1/2 mt-10 w-[calc(100vw-3rem)] max-w-7xl -translate-x-1/2 rounded-[2rem] border border-slate-700/70 bg-slate-900/90 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.5),0_0_32px_rgba(59,130,246,0.08)] sm:w-[calc(100vw-4rem)] sm:p-6 md:w-[calc(100vw-6rem)] md:p-8"
+      className="relative left-1/2 mt-10 w-[calc(100vw-1rem)] max-w-[96rem] -translate-x-1/2 rounded-[2rem] border border-slate-700/70 bg-slate-900/90 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.5),0_0_32px_rgba(59,130,246,0.08)] sm:w-[calc(100vw-1.5rem)] sm:p-6 md:w-[calc(100vw-2rem)] md:p-8"
     >
       <div className="mx-auto mb-8 max-w-3xl text-center">
         <h4 className="text-xl font-black uppercase tracking-tight text-white md:text-2xl">
@@ -426,9 +426,9 @@ function StatRankingChart({
           No ranking data available.
         </p>
       ) : (
-        <div className="rounded-[1.5rem] border border-slate-800/90 bg-slate-950/70 px-3 pb-5 pt-6 shadow-inner sm:px-4 md:px-6 md:pb-7 md:pt-7">
+        <div className="overflow-hidden rounded-[1.5rem] border border-slate-800/90 bg-slate-950/70 px-2 pb-6 pt-6 shadow-inner sm:px-3 md:px-4 md:pb-8 md:pt-8 lg:px-6">
           <div
-            className="grid items-end gap-1.5 sm:gap-2.5 md:gap-4"
+            className="grid items-end gap-1.5 sm:gap-2 md:gap-3"
             style={{
               gridTemplateColumns: `repeat(${rows.length}, minmax(0, 1fr))`,
             }}
@@ -471,28 +471,35 @@ function RankingColumn({
   const barStart = Math.min(valuePercent, scale.baselinePercent);
   const barHeight = Math.max(3, Math.abs(valuePercent - scale.baselinePercent));
   const labelBottom = Math.min(96, Math.max(4, barStart + barHeight));
-  const initials = getTeamInitials(row.teamName);
+  const displayName = getTeamDisplayName(row.teamName);
 
   return (
     <div
-      className={`group flex min-w-0 flex-col items-center rounded-2xl border px-1.5 py-3 transition-colors sm:px-2 md:px-3 md:py-4 ${
+      className={`group flex min-w-0 flex-col items-center rounded-2xl border px-1 py-3 transition-colors md:px-1.5 md:py-4 ${
         row.isSelectedTeam
-          ? "border-blue-500/60 bg-blue-500/10 shadow-[0_0_24px_rgba(59,130,246,0.16)]"
+          ? "border-blue-400/80 bg-blue-500/15 shadow-[0_0_28px_rgba(59,130,246,0.22)]"
           : "border-transparent bg-transparent hover:border-slate-800/80 hover:bg-slate-950/30"
       }`}
     >
-      <TeamLogo logoUrl={row.teamLogo} teamName={row.teamName} compact />
-      <div className="mt-2 h-10 w-full min-w-0">
+      <div className="flex h-[5.5rem] w-full flex-col items-center">
+        <TeamLogo
+          logoUrl={row.teamLogo}
+          teamName={row.teamName}
+          compact
+          selected={row.isSelectedTeam}
+        />
         <p
-          className="line-clamp-2 break-words text-center text-[8px] font-black uppercase leading-tight text-slate-300 sm:text-[9px] md:text-[10px]"
+          className={`mt-2 line-clamp-2 w-full break-words text-center text-[8px] font-black uppercase leading-tight tracking-wide sm:text-[9px] md:text-[10px] ${
+            row.isSelectedTeam ? "text-white" : "text-slate-200"
+          }`}
           title={row.teamName}
         >
-          {row.teamName.length > 18 ? initials : row.teamName}
+          {displayName}
         </p>
       </div>
 
-      <div className="mt-3 h-[300px] w-full md:h-[380px]">
-        <div className="relative mx-auto h-full w-full max-w-16">
+      <div className="mt-2 h-[320px] w-full md:h-[410px]">
+        <div className="relative mx-auto h-full w-full max-w-14">
           <div
             className="absolute left-0 right-0 z-0 h-px bg-slate-600/70"
             style={{ bottom: `${scale.baselinePercent}%` }}
@@ -508,7 +515,7 @@ function RankingColumn({
                 {row.formattedValue}
               </div>
               <div
-                className={`absolute left-1/2 z-0 w-3.5 -translate-x-1/2 rounded-t-full rounded-b-full shadow-[0_10px_28px_rgba(15,23,42,0.3)] sm:w-5 md:w-7 ${
+                className={`absolute left-1/2 z-0 w-3 -translate-x-1/2 rounded-t-full rounded-b-full shadow-[0_10px_28px_rgba(15,23,42,0.3)] sm:w-4 md:w-6 ${
                   row.isSelectedTeam
                     ? "bg-blue-400 ring-2 ring-blue-200/50"
                     : "bg-gradient-to-t from-slate-500 to-slate-200 group-hover:from-blue-500 group-hover:to-blue-200"
@@ -532,29 +539,38 @@ function TeamLogo({
   logoUrl,
   teamName,
   compact = false,
+  selected = false,
 }: {
   logoUrl: string | null;
   teamName: string;
   compact?: boolean;
+  selected?: boolean;
 }) {
   const sizeClass = compact
-    ? "aspect-square w-full max-w-[1.75rem] sm:max-w-[2rem] md:max-w-[2.5rem]"
+    ? "h-8 w-8 sm:h-9 sm:w-9 md:h-10 md:w-10"
     : "h-10 w-10";
+  const badgeClass = selected
+    ? "border-blue-300/80 bg-slate-950 shadow-[0_0_20px_rgba(96,165,250,0.42)] ring-2 ring-blue-500/35"
+    : "border-slate-700/80 bg-slate-900/95 shadow-[0_10px_22px_rgba(2,6,23,0.38)] ring-1 ring-slate-950/70";
 
   if (logoUrl) {
     return (
-      <img
-        src={logoUrl}
-        alt=""
-        className={`${sizeClass} rounded-xl bg-white/5 object-contain p-1`}
-        loading="lazy"
-      />
+      <span
+        className={`${sizeClass} flex shrink-0 items-center justify-center rounded-xl border p-1 ${badgeClass}`}
+      >
+        <img
+          src={logoUrl}
+          alt=""
+          className="h-full w-full object-contain"
+          loading="lazy"
+        />
+      </span>
     );
   }
 
   return (
     <div
-      className={`${sizeClass} flex items-center justify-center rounded-full bg-slate-800 text-[9px] font-black text-slate-300 sm:text-[10px] md:text-xs`}
+      className={`${sizeClass} flex shrink-0 items-center justify-center rounded-xl border border-slate-600/80 bg-slate-800 text-[8px] font-black text-slate-100 shadow-[0_10px_22px_rgba(2,6,23,0.35)] sm:text-[9px] md:text-[10px]`}
     >
       {getTeamInitials(teamName)}
     </div>
@@ -599,6 +615,67 @@ function getTeamInitials(teamName: string) {
     .map((part) => part[0])
     .join("")
     .toUpperCase();
+}
+
+function getTeamDisplayName(teamName: string) {
+  const cleanedName = teamName
+    .replace(/\b(football club|fc|afc|cf|sc|club)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const alias = getTeamDisplayAlias(cleanedName);
+
+  if (alias) {
+    return alias;
+  }
+
+  if (cleanedName.length <= 14) {
+    return cleanedName || teamName;
+  }
+
+  const parts = cleanedName
+    .split(" ")
+    .map((part) => part.replace(/[^a-z0-9]/gi, ""))
+    .filter(Boolean);
+
+  if (parts.length <= 2) {
+    return cleanedName;
+  }
+
+  const firstTwoWords = parts.slice(0, 2).join(" ");
+
+  if (firstTwoWords.length <= 14) {
+    return firstTwoWords;
+  }
+
+  return `${parts[0]} ${parts[1][0]}.`;
+}
+
+function getTeamDisplayAlias(teamName: string) {
+  const normalizedName = teamName.toLowerCase();
+  const aliases: Array<[string, string]> = [
+    ["wolverhampton", "Wolves"],
+    ["burnley", "Burnley"],
+    ["crystal palace", "Palace"],
+    ["nottingham forest", "Forest"],
+    ["sunderland", "Sunderland"],
+    ["everton", "Everton"],
+    ["manchester city", "Man City"],
+    ["manchester united", "Man United"],
+    ["leeds", "Leeds"],
+    ["tottenham", "Spurs"],
+    ["west ham", "West Ham"],
+    ["fulham", "Fulham"],
+    ["brighton", "Brighton"],
+    ["bournemouth", "Bournemouth"],
+    ["newcastle", "Newcastle"],
+    ["aston villa", "Aston Villa"],
+    ["brentford", "Brentford"],
+    ["chelsea", "Chelsea"],
+    ["liverpool", "Liverpool"],
+    ["arsenal", "Arsenal"],
+  ];
+
+  return aliases.find(([needle]) => normalizedName.includes(needle))?.[1] ?? null;
 }
 
 function getStatBarFillPercent(
@@ -665,7 +742,8 @@ function StatPerformanceBar({
   color: TeamStatPerformanceColor;
   bestValue: string | number | null;
 }) {
-  const barPercent = fillPercent == null ? 6 : roundPercent(fillPercent);
+  const barPercent =
+    fillPercent == null ? 6 : Math.max(8, roundPercent(fillPercent));
   const bestPercent =
     bestFillPercent == null ? null : roundPercent(bestFillPercent);
   const [isExpanded, setIsExpanded] = useState(false);
