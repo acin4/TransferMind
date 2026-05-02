@@ -1,12 +1,7 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { supabase } from "../lib/supabaseClient.js";
 import { getSeasonEndYear, getSeasonLabel } from "../lib/seasonLabels.js";
 
 const TEAM_SELECT = "id, api_id, name, tournament_id, city, stadium, logo_url";
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const RAW_TEAM_STATS_DIR = path.resolve(__dirname, "../../data/raw/teamStats");
 const PARTICIPATION_SELECT = [
   "team_db_id",
   "team_id",
@@ -66,149 +61,6 @@ function inferCountryFromTournamentName(value) {
   return null;
 }
 
-const GERMAN_TEAM_MARKERS = [
-  "1. fc heidenheim",
-  "1. fc koln",
-  "1. fc union berlin",
-  "1. fsv mainz 05",
-  "bayer 04 leverkusen",
-  "borussia dortmund",
-  "borussia m'gladbach",
-  "darmstadt 98",
-  "eintracht frankfurt",
-  "fc augsburg",
-  "fc bayern munchen",
-  "fc st. pauli",
-  "hamburger sv",
-  "holstein kiel",
-  "rb leipzig",
-  "sc freiburg",
-  "sv werder bremen",
-  "tsg hoffenheim",
-  "vfb stuttgart",
-  "vfl bochum",
-  "vfl wolfsburg",
-];
-
-const ITALIAN_TEAM_MARKERS = [
-  "atalanta",
-  "bologna",
-  "cagliari",
-  "como",
-  "cremonese",
-  "empoli",
-  "fiorentina",
-  "frosinone",
-  "genoa",
-  "hellas verona",
-  "inter",
-  "juventus",
-  "lazio",
-  "lecce",
-  "milan",
-  "monza",
-  "napoli",
-  "parma",
-  "pisa",
-  "roma",
-  "salernitana",
-  "sassuolo",
-  "torino",
-  "udinese",
-  "venezia",
-];
-
-const GERMAN_LOCATION_MARKERS = [
-  "heidenheim",
-  "cologne",
-  "koln",
-  "berlin",
-  "mainz",
-  "leverkusen",
-  "dortmund",
-  "monchengladbach",
-  "darmstadt",
-  "frankfurt",
-  "augsburg",
-  "munich",
-  "hamburg",
-  "kiel",
-  "leipzig",
-  "freiburg",
-  "bremen",
-  "sinsheim",
-  "stuttgart",
-  "bochum",
-  "wolfsburg",
-];
-
-const ITALIAN_LOCATION_MARKERS = [
-  "bergamo",
-  "bologna",
-  "cagliari",
-  "como",
-  "cremona",
-  "empoli",
-  "florence",
-  "firenze",
-  "frosinone",
-  "genoa",
-  "genova",
-  "verona",
-  "milan",
-  "milano",
-  "turin",
-  "torino",
-  "rome",
-  "roma",
-  "lecce",
-  "monza",
-  "naples",
-  "napoli",
-  "parma",
-  "pisa",
-  "salerno",
-  "reggio emilia",
-  "udine",
-  "venice",
-  "venezia",
-];
-
-function normalizeSearchText(value) {
-  return String(value ?? "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase();
-}
-
-function includesAny(text, markers) {
-  return markers.some((marker) => text.includes(marker));
-}
-
-function inferCountryFromTeamIdentity(team) {
-  const identityText = normalizeSearchText(
-    [team?.name, team?.city, team?.stadium].filter(Boolean).join(" "),
-  );
-
-  if (includesAny(identityText, GERMAN_TEAM_MARKERS)) {
-    return "Germany";
-  }
-
-  if (includesAny(identityText, ITALIAN_TEAM_MARKERS)) {
-    return "Italy";
-  }
-
-  if (includesAny(identityText, GERMAN_LOCATION_MARKERS)) {
-    return "Germany";
-  }
-
-  if (includesAny(identityText, ITALIAN_LOCATION_MARKERS)) {
-    return "Italy";
-  }
-
-  return null;
-}
-
 function compareParticipationRows(a, b, preferredTournamentApiId = null) {
   const currentDelta = Number(Boolean(b.is_current)) - Number(Boolean(a.is_current));
 
@@ -254,24 +106,29 @@ function toBadgeLabel(row) {
   return `${tournamentName} ${seasonLabel}`.toLocaleUpperCase();
 }
 
-function buildParticipationSummary(rows) {
-  const uniqueRows = new Map();
+function inferTournamentNameFromSeason(season) {
+  const seasonName = String(season?.name ?? "").trim();
+  const seasonLabel = getSeasonLabel({
+    season_name: season?.name,
+    season_year: season?.year,
+  });
 
-  for (const row of rows ?? []) {
-    if (!row?.team_db_id) {
-      continue;
-    }
-
-    const key = buildParticipationKey(row);
-
-    if (!uniqueRows.has(key)) {
-      uniqueRows.set(key, row);
-    }
+  if (!seasonName) {
+    return null;
   }
 
+  if (!seasonLabel) {
+    return seasonName;
+  }
+
+  const trimmed = seasonName.replace(seasonLabel, "").trim();
+  return trimmed || seasonName;
+}
+
+function buildParticipationSummary(rows) {
   const summaryByTeamId = new Map();
 
-  for (const row of uniqueRows.values()) {
+  for (const row of dedupeParticipationRows(rows)) {
     const teamId = row.team_db_id;
     const existing = summaryByTeamId.get(teamId);
 
@@ -295,10 +152,34 @@ function dedupeParticipationRows(rows) {
 
     if (!uniqueRows.has(key)) {
       uniqueRows.set(key, row);
+      continue;
     }
+
+    const existing = uniqueRows.get(key);
+    uniqueRows.set(key, {
+      ...existing,
+      tournament_db_id: existing.tournament_db_id ?? row.tournament_db_id,
+      tournament_name: existing.tournament_name ?? row.tournament_name,
+      tournament_country: existing.tournament_country ?? row.tournament_country,
+      season_name: existing.season_name ?? row.season_name,
+      season_year: existing.season_year ?? row.season_year,
+      is_current: Boolean(existing.is_current || row.is_current),
+    });
   }
 
   return [...uniqueRows.values()];
+}
+
+function isSameTournamentContext(row, referenceRow) {
+  if (!row || !referenceRow) {
+    return false;
+  }
+
+  if (row.tournament_db_id && referenceRow.tournament_db_id) {
+    return row.tournament_db_id === referenceRow.tournament_db_id;
+  }
+
+  return String(row.tournament_id ?? "") === String(referenceRow.tournament_id ?? "");
 }
 
 function getPreferredParticipationRow(rows, preferredTournamentApiId = null) {
@@ -319,7 +200,7 @@ function getPreferredParticipationRow(rows, preferredTournamentApiId = null) {
 async function getTournamentByApiId(apiId) {
   const { data, error } = await supabase
     .from("tournaments")
-    .select("id, api_id, name")
+    .select("id, api_id, name, country")
     .eq("api_id", apiId)
     .maybeSingle();
 
@@ -363,8 +244,7 @@ async function listParticipationRowsByTeamId(teamId) {
   const { data, error } = await supabase
     .from("standings_with_team_info")
     .select(PARTICIPATION_SELECT)
-    .eq("team_db_id", teamId)
-    .not("tournament_db_id", "is", null);
+    .eq("team_db_id", teamId);
 
   if (error) {
     throw error;
@@ -425,6 +305,149 @@ function buildTeamComparisonSeasons(rows) {
 
 function buildStatsKey(teamApiId, tournamentApiId, seasonApiId) {
   return `${teamApiId}::${tournamentApiId}::${seasonApiId}`;
+}
+
+function toReference(value) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function uniqueReferences(values) {
+  return [
+    ...new Set(
+      values.map(toReference).filter((value) => value !== null),
+    ),
+  ];
+}
+
+function getTeamReferences(team) {
+  return uniqueReferences([team?.id, team?.api_id]);
+}
+
+function buildTeamByReference(teams) {
+  const teamsByReference = new Map();
+
+  for (const team of teams ?? []) {
+    for (const reference of getTeamReferences(team)) {
+      teamsByReference.set(String(reference), team);
+    }
+  }
+
+  return teamsByReference;
+}
+
+function mergeRowsById(...rowGroups) {
+  const rowsById = new Map();
+
+  for (const row of rowGroups.flat()) {
+    if (row?.id) {
+      rowsById.set(String(row.id), row);
+    }
+  }
+
+  return [...rowsById.values()];
+}
+
+function buildRowByReference(rows) {
+  const rowsByReference = new Map();
+
+  for (const row of rows ?? []) {
+    if (row?.id !== null && row?.id !== undefined) {
+      rowsByReference.set(String(row.id), row);
+    }
+
+    if (row?.api_id !== null && row?.api_id !== undefined) {
+      rowsByReference.set(String(row.api_id), row);
+    }
+  }
+
+  return rowsByReference;
+}
+
+function seasonBelongsToTournament(season, tournament) {
+  if (!season || !tournament) {
+    return false;
+  }
+
+  return [tournament.id, tournament.api_id]
+    .filter((value) => value !== null && value !== undefined)
+    .some((reference) => String(reference) === String(season.tournament_id));
+}
+
+function pickSeasonByReference(seasons, seasonReference, tournament) {
+  const candidates = (seasons ?? []).filter(
+    (season) =>
+      String(season.id) === String(seasonReference) ||
+      String(season.api_id) === String(seasonReference),
+  );
+
+  return (
+    candidates.find((season) => seasonBelongsToTournament(season, tournament)) ??
+    candidates[0] ??
+    null
+  );
+}
+
+async function listTournamentsByReferences(references) {
+  const ids = uniqueReferences(references);
+
+  if (ids.length === 0) {
+    return [];
+  }
+
+  const [byInternalId, byApiId] = await Promise.all([
+    supabase
+      .from("tournaments")
+      .select("id, api_id, name, country")
+      .in("id", ids),
+    supabase
+      .from("tournaments")
+      .select("id, api_id, name, country")
+      .in("api_id", ids),
+  ]);
+
+  if (byInternalId.error) {
+    throw byInternalId.error;
+  }
+
+  if (byApiId.error) {
+    throw byApiId.error;
+  }
+
+  return mergeRowsById(byInternalId.data ?? [], byApiId.data ?? []);
+}
+
+async function listSeasonsByReferences(references) {
+  const ids = uniqueReferences(references);
+
+  if (ids.length === 0) {
+    return [];
+  }
+
+  const [byInternalId, byApiId] = await Promise.all([
+    supabase
+      .from("seasons")
+      .select("id, api_id, name, year, tournament_id, is_current")
+      .in("id", ids),
+    supabase
+      .from("seasons")
+      .select("id, api_id, name, year, tournament_id, is_current")
+      .in("api_id", ids),
+  ]);
+
+  if (byInternalId.error) {
+    throw byInternalId.error;
+  }
+
+  if (byApiId.error) {
+    throw byApiId.error;
+  }
+
+  return mergeRowsById(byInternalId.data ?? [], byApiId.data ?? []);
 }
 
 function truncateStatNumber(value, decimals = 2) {
@@ -630,91 +653,27 @@ function toLocalTeamStatsRow(rawPayload, ids) {
   };
 }
 
-async function readLocalTeamStats(teamApiId, tournamentApiId, seasonApiId) {
-  const filePath = path.join(
-    RAW_TEAM_STATS_DIR,
-    `debug_t${teamApiId}_s${seasonApiId}.json`,
-  );
-
-  try {
-    const raw = await fs.readFile(filePath, "utf8");
-    return toLocalTeamStatsRow(JSON.parse(raw), {
-      teamApiId,
-      tournamentApiId,
-      seasonApiId,
-    });
-  } catch (error) {
-    if (error?.code === "ENOENT") {
-      return null;
-    }
-
-    throw error;
-  }
-}
-
-async function listLocalTeamStatsReferences(teams) {
-  const teamsByApiId = new Map(
-    (teams ?? [])
-      .filter((team) => team?.api_id && team?.tournament_id)
-      .map((team) => [String(team.api_id), team]),
-  );
-
-  if (teamsByApiId.size === 0) {
-    return [];
-  }
-
-  let files = [];
-
-  try {
-    files = await fs.readdir(RAW_TEAM_STATS_DIR);
-  } catch (error) {
-    if (error?.code === "ENOENT") {
-      return [];
-    }
-
-    throw error;
-  }
-
-  return files
-    .map((fileName) => {
-      const match = /^debug_t(\d+)_s(\d+)\.json$/u.exec(fileName);
-
-      if (!match) {
-        return null;
-      }
-
-      const team = teamsByApiId.get(match[1]);
-
-      if (!team) {
-        return null;
-      }
-
-      return {
-        team_id: Number(match[1]),
-        tournament_id: team.tournament_id,
-        season_id: Number(match[2]),
-      };
-    })
-    .filter(Boolean);
-}
-
 async function listTeamStatsByApiReferences(references) {
-  const teamApiIds = [
-    ...new Set(references.map((reference) => reference.teamApiId).filter(Boolean)),
-  ];
-  const tournamentApiIds = [
-    ...new Set(
-      references.map((reference) => reference.tournamentApiId).filter(Boolean),
-    ),
-  ];
-  const seasonApiIds = [
-    ...new Set(references.map((reference) => reference.seasonApiId).filter(Boolean)),
-  ];
+  const teamIds = uniqueReferences(
+    references.flatMap((reference) => [reference.teamApiId, reference.teamId]),
+  );
+  const tournamentIds = uniqueReferences(
+    references.flatMap((reference) => [
+      reference.tournamentApiId,
+      reference.tournamentId,
+    ]),
+  );
+  const seasonIds = uniqueReferences(
+    references.flatMap((reference) => [
+      reference.seasonApiId,
+      reference.seasonId,
+    ]),
+  );
 
   if (
-    teamApiIds.length === 0 ||
-    tournamentApiIds.length === 0 ||
-    seasonApiIds.length === 0
+    teamIds.length === 0 ||
+    tournamentIds.length === 0 ||
+    seasonIds.length === 0
   ) {
     return new Map();
   }
@@ -722,40 +681,58 @@ async function listTeamStatsByApiReferences(references) {
   const { data, error } = await supabase
     .from("team_stats")
     .select("*")
-    .in("team_id", teamApiIds)
-    .in("tournament_id", tournamentApiIds)
-    .in("season_id", seasonApiIds);
+    .in("team_id", teamIds)
+    .in("tournament_id", tournamentIds)
+    .in("season_id", seasonIds);
 
   if (error) {
     throw error;
   }
 
-  const statsByReference = new Map(
+  const statsByCandidateKey = new Map(
     (data ?? []).map((stats) => [
       buildStatsKey(stats.team_id, stats.tournament_id, stats.season_id),
       stats,
     ]),
   );
+  const statsByReference = new Map();
 
   for (const reference of references) {
-    const key = buildStatsKey(
+    const normalizedKey = buildStatsKey(
       reference.teamApiId,
       reference.tournamentApiId,
       reference.seasonApiId,
     );
-
-    if (statsByReference.has(key)) {
-      continue;
-    }
-
-    const localStats = await readLocalTeamStats(
+    const teamCandidates = uniqueReferences([
       reference.teamApiId,
+      reference.teamId,
+    ]);
+    const tournamentCandidates = uniqueReferences([
       reference.tournamentApiId,
+      reference.tournamentId,
+    ]);
+    const seasonCandidates = uniqueReferences([
       reference.seasonApiId,
-    );
+      reference.seasonId,
+    ]);
 
-    if (localStats) {
-      statsByReference.set(key, localStats);
+    for (const teamId of teamCandidates) {
+      for (const tournamentId of tournamentCandidates) {
+        for (const seasonId of seasonCandidates) {
+          const candidate = statsByCandidateKey.get(
+            buildStatsKey(teamId, tournamentId, seasonId),
+          );
+
+          if (candidate) {
+            statsByReference.set(normalizedKey, candidate);
+            break;
+          }
+        }
+
+        if (statsByReference.has(normalizedKey)) break;
+      }
+
+      if (statsByReference.has(normalizedKey)) break;
     }
   }
 
@@ -763,82 +740,55 @@ async function listTeamStatsByApiReferences(references) {
 }
 
 async function buildStatsSeasonRowsForTeams(teams, statsRows) {
-  const teamsByApiId = new Map(
-    (teams ?? [])
-      .filter((team) => team?.api_id)
-      .map((team) => [String(team.api_id), team]),
+  return buildSeasonRowsFromSource(teams, statsRows);
+}
+
+async function buildSeasonRowsFromSource(teams, sourceRows) {
+  const teamsByReference = buildTeamByReference(teams);
+  const seasonReferences = uniqueReferences(
+    (sourceRows ?? []).map((row) => row.season_id),
   );
-  const tournamentApiIds = [
-    ...new Set((statsRows ?? []).map((row) => row.tournament_id).filter(Boolean)),
-  ];
-  const seasonApiIds = [
-    ...new Set((statsRows ?? []).map((row) => row.season_id).filter(Boolean)),
-  ];
 
   if (
-    teamsByApiId.size === 0 ||
-    tournamentApiIds.length === 0 ||
-    seasonApiIds.length === 0
+    teamsByReference.size === 0 ||
+    seasonReferences.length === 0
   ) {
     return [];
   }
 
-  const [tournamentsResult, seasonsResult] = await Promise.all([
-    supabase
-      .from("tournaments")
-      .select("id, api_id, name, country")
-      .in("api_id", tournamentApiIds),
-    supabase
-      .from("seasons")
-      .select("id, api_id, name, year, tournament_id, is_current")
-      .in("api_id", seasonApiIds)
-      .in("tournament_id", tournamentApiIds),
+  const tournamentReferences = uniqueReferences(
+    (sourceRows ?? []).map((row) => row.tournament_id),
+  );
+  const [tournaments, seasons] = await Promise.all([
+    listTournamentsByReferences(tournamentReferences),
+    listSeasonsByReferences(seasonReferences),
   ]);
 
-  if (tournamentsResult.error) {
-    throw tournamentsResult.error;
-  }
+  const tournamentsByReference = buildRowByReference(tournaments);
 
-  if (seasonsResult.error) {
-    throw seasonsResult.error;
-  }
-
-  const tournamentsByApiId = new Map(
-    (tournamentsResult.data ?? []).map((tournament) => [
-      String(tournament.api_id),
-      tournament,
-    ]),
-  );
-  const seasonsByApiContext = new Map(
-    (seasonsResult.data ?? []).map((season) => [
-      buildStatsKey(null, season.tournament_id, season.api_id),
-      season,
-    ]),
-  );
-
-  return (statsRows ?? [])
+  const rows = (sourceRows ?? [])
     .map((row) => {
-      const team = teamsByApiId.get(String(row.team_id));
-      const tournament = tournamentsByApiId.get(String(row.tournament_id));
-      const season = seasonsByApiContext.get(
-        buildStatsKey(null, row.tournament_id, row.season_id),
-      );
+      const team = teamsByReference.get(String(row.team_id));
+      const tournament =
+        tournamentsByReference.get(String(row.tournament_id)) ?? null;
+      const season = pickSeasonByReference(seasons, row.season_id, tournament);
 
-      if (!team || !tournament || !season) {
+      if (!team || !season) {
         return null;
       }
 
       return {
         team_db_id: team.id,
-        team_id: row.team_id,
-        tournament_id: row.tournament_id,
-        tournament_db_id: tournament.id,
-        tournament_name: tournament.name,
+        team_id: team.api_id ?? row.team_id,
+        tournament_id: tournament?.api_id ?? row.tournament_id,
+        tournament_db_id: tournament?.id ?? null,
+        tournament_name:
+          tournament?.name ?? inferTournamentNameFromSeason(season),
         tournament_country:
-          normalizeCountry(tournament.country) ??
-          inferCountryFromTournamentName(tournament.name) ??
-          inferCountryFromTeamIdentity(team),
-        season_id: row.season_id,
+          normalizeCountry(tournament?.country) ??
+          inferCountryFromTournamentName(tournament?.name) ??
+          inferCountryFromTournamentName(season?.name),
+        season_id: season.api_id ?? row.season_id,
         season_db_id: season.id,
         season_name: season.name,
         season_year: season.year,
@@ -846,33 +796,58 @@ async function buildStatsSeasonRowsForTeams(teams, statsRows) {
       };
     })
     .filter(Boolean);
+
+  return rows;
 }
 
 async function listStatsSeasonRowsForTeams(teams) {
-  const teamApiIds = [
-    ...new Set((teams ?? []).map((team) => team.api_id).filter(Boolean)),
-  ];
+  const teamReferences = uniqueReferences(
+    (teams ?? []).flatMap((team) => getTeamReferences(team)),
+  );
 
-  if (teamApiIds.length === 0) {
+  if (teamReferences.length === 0) {
     return [];
   }
 
   const { data, error } = await supabase
     .from("team_stats")
     .select("team_id, tournament_id, season_id")
-    .in("team_id", teamApiIds);
+    .in("team_id", teamReferences);
 
   if (error) {
     throw error;
   }
 
-  const localRows = await listLocalTeamStatsReferences(teams);
-
-  return buildStatsSeasonRowsForTeams(teams, [...(data ?? []), ...localRows]);
+  return buildStatsSeasonRowsForTeams(teams, data ?? []);
 }
 
 async function listStatsSeasonRowsForTeam(team) {
   return listStatsSeasonRowsForTeams(team ? [team] : []);
+}
+
+async function listPlayerStatsSeasonRowsForTeams(teams) {
+  const teamReferences = uniqueReferences(
+    (teams ?? []).flatMap((team) => getTeamReferences(team)),
+  );
+
+  if (teamReferences.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("player_stats")
+    .select("team_id, tournament_id, season_id")
+    .in("team_id", teamReferences);
+
+  if (error) {
+    throw error;
+  }
+
+  return buildSeasonRowsFromSource(teams, data ?? []);
+}
+
+async function listPlayerStatsSeasonRowsForTeam(team) {
+  return listPlayerStatsSeasonRowsForTeams(team ? [team] : []);
 }
 
 export async function listTeams() {
@@ -934,7 +909,15 @@ export async function listTeams() {
     );
   }
 
-  const summaryByTeamId = buildParticipationSummary(participationRows ?? []);
+  const [statsSeasonRows, playerStatsSeasonRows] = await Promise.all([
+    listStatsSeasonRowsForTeams(nextTeams),
+    listPlayerStatsSeasonRowsForTeams(nextTeams),
+  ]);
+  const summaryByTeamId = buildParticipationSummary([
+    ...(participationRows ?? []),
+    ...statsSeasonRows,
+    ...playerStatsSeasonRows,
+  ]);
 
   return nextTeams.map((team) => {
     const participation = summaryByTeamId.get(team.id);
@@ -945,7 +928,6 @@ export async function listTeams() {
         normalizeCountry(participation?.tournament_country) ??
         inferCountryFromTournamentName(participation?.tournament_name) ??
         fallbackCountryByTournamentApiId.get(team.tournament_id) ??
-        inferCountryFromTeamIdentity(team) ??
         null,
       badge_label: toBadgeLabel(participation),
       badge_is_current: Boolean(participation?.is_current),
@@ -971,17 +953,23 @@ export async function getTeamProfileById(id) {
     return null;
   }
 
-  const participationRows = await listParticipationRowsByTeamId(id);
+  const [participationRows, statsSeasonRows, playerStatsSeasonRows] =
+    await Promise.all([
+      listParticipationRowsByTeamId(id),
+      listStatsSeasonRowsForTeam(team),
+      listPlayerStatsSeasonRowsForTeam(team),
+    ]);
   const preferredParticipation = getPreferredParticipationRow(
-    participationRows,
+    [...participationRows, ...statsSeasonRows, ...playerStatsSeasonRows],
     team.tournament_id ?? null,
   );
 
-  if (preferredParticipation?.tournament_db_id) {
+  if (preferredParticipation) {
     return {
       ...team,
-      tournament_id: preferredParticipation.tournament_db_id,
+      tournament_id: preferredParticipation.tournament_db_id ?? null,
       tournament_name: preferredParticipation.tournament_name?.trim() || null,
+      country: normalizeCountry(preferredParticipation.tournament_country),
     };
   }
 
@@ -999,6 +987,7 @@ export async function getTeamProfileById(id) {
     ...team,
     tournament_id: fallbackTournament?.id ?? null,
     tournament_name: fallbackTournament?.name?.trim() || null,
+    country: normalizeCountry(fallbackTournament?.country),
   };
 }
 
@@ -1009,17 +998,22 @@ export async function listTeamSeasonsById(teamId, preferredTournamentApiId = nul
     return [];
   }
 
-  const [participationRows, statsSeasonRows] = await Promise.all([
+  const [participationRows, statsSeasonRows, playerStatsSeasonRows] = await Promise.all([
     listParticipationRowsByTeamId(teamId),
     listStatsSeasonRowsForTeam(team),
+    listPlayerStatsSeasonRowsForTeam(team),
   ]);
-  const seasonRows = [...participationRows, ...statsSeasonRows];
+  const seasonRows = [
+    ...participationRows,
+    ...statsSeasonRows,
+    ...playerStatsSeasonRows,
+  ];
   const preferredParticipation = getPreferredParticipationRow(
     seasonRows,
     preferredTournamentApiId,
   );
 
-  if (!preferredParticipation?.tournament_db_id) {
+  if (!preferredParticipation) {
     return [];
   }
 
@@ -1027,7 +1021,7 @@ export async function listTeamSeasonsById(teamId, preferredTournamentApiId = nul
 
   for (const row of dedupeParticipationRows(seasonRows)) {
     if (
-      row.tournament_db_id !== preferredParticipation.tournament_db_id ||
+      !isSameTournamentContext(row, preferredParticipation) ||
       !row.season_db_id
     ) {
       continue;
@@ -1038,7 +1032,13 @@ export async function listTeamSeasonsById(teamId, preferredTournamentApiId = nul
       season_api_id: row.season_id ?? null,
       season_name: getSeasonLabel(row),
       tournament_id: row.tournament_db_id ?? null,
-      tournament_name: row.tournament_name?.trim() || null,
+      tournament_api_id: row.tournament_id ?? null,
+      tournament_name:
+        row.tournament_name?.trim() ||
+        inferTournamentNameFromSeason({
+          name: row.season_name,
+          year: row.season_year,
+        }),
       is_current: Boolean(row.is_current),
     };
     const existingSeason = seasonsById.get(nextSeason.season_id);
@@ -1052,7 +1052,7 @@ export async function listTeamSeasonsById(teamId, preferredTournamentApiId = nul
     }
   }
 
-  return [...seasonsById.values()].sort((a, b) => {
+  const seasons = [...seasonsById.values()].sort((a, b) => {
     const aEndYear = getSeasonEndYear(a);
     const bEndYear = getSeasonEndYear(b);
 
@@ -1062,6 +1062,19 @@ export async function listTeamSeasonsById(teamId, preferredTournamentApiId = nul
 
     return b.season_id - a.season_id;
   });
+
+  console.debug("[TeamProfile] available seasons", {
+    teamId,
+    teamReferences: getTeamReferences(team),
+    rawRows: {
+      standings: participationRows.length,
+      teamStats: statsSeasonRows.length,
+      playerStats: playerStatsSeasonRows.length,
+    },
+    seasonCount: seasons.length,
+  });
+
+  return seasons;
 }
 
 export async function listTeamMappings() {
@@ -1121,11 +1134,18 @@ export async function listTeamMappingsByReferences(teamReferences) {
   return [...teamsById.values()];
 }
 
-export async function getLatestTeamStatsByApiId(apiId) {
+export async function getLatestTeamStatsByTeamReferences(team) {
+  const teamReferences = getTeamReferences(team);
+
+  if (teamReferences.length === 0) {
+    return null;
+  }
+
   const { data, error } = await supabase
     .from("team_stats")
     .select("*")
-    .eq("team_id", apiId)
+    .in("team_id", teamReferences)
+    .order("id", { ascending: false })
     .limit(1);
 
   if (error) {
@@ -1133,6 +1153,10 @@ export async function getLatestTeamStatsByApiId(apiId) {
   }
 
   return data?.[0] ?? null;
+}
+
+export async function getLatestTeamStatsByApiId(apiId) {
+  return getLatestTeamStatsByTeamReferences({ api_id: apiId });
 }
 
 export async function getTeamStatsByApiReferences(
@@ -1152,11 +1176,7 @@ export async function getTeamStatsByApiReferences(
     throw error;
   }
 
-  if (data) {
-    return data;
-  }
-
-  return readLocalTeamStats(teamApiId, tournamentApiId, seasonApiId);
+  return data ?? null;
 }
 
 export async function getTeamStatsByApiAndInternalSeason(teamApiId, seasonId) {
@@ -1183,6 +1203,89 @@ export async function getTeamStatsByApiAndInternalSeason(teamApiId, seasonId) {
     season.tournament_id,
     season.api_id,
   );
+}
+
+export async function getTeamStatsForTeamSeason(team, seasonId) {
+  if (!team || !seasonId) {
+    return null;
+  }
+
+  const { data: season, error: seasonError } = await supabase
+    .from("seasons")
+    .select("id, api_id, name, year, tournament_id, is_current")
+    .eq("id", seasonId)
+    .maybeSingle();
+
+  if (seasonError) {
+    throw seasonError;
+  }
+
+  if (!season) {
+    return null;
+  }
+
+  const tournaments = await listTournamentsByReferences([
+    season.tournament_id,
+    team.tournament_id,
+  ]);
+  const tournamentReferences = uniqueReferences([
+    season.tournament_id,
+    team.tournament_id,
+    ...tournaments.flatMap((tournament) => [tournament.id, tournament.api_id]),
+  ]);
+  const teamReferences = getTeamReferences(team);
+  const seasonReferences = uniqueReferences([season.id, season.api_id]);
+
+  if (teamReferences.length === 0 || seasonReferences.length === 0) {
+    return null;
+  }
+
+  let query = supabase
+    .from("team_stats")
+    .select("*")
+    .in("team_id", teamReferences)
+    .in("season_id", seasonReferences);
+
+  if (tournamentReferences.length > 0) {
+    query = query.in("tournament_id", tournamentReferences);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw error;
+  }
+
+  const tournamentsByReference = buildRowByReference(tournaments);
+  const scoredRows = (data ?? [])
+    .map((row) => {
+      const tournament = tournamentsByReference.get(String(row.tournament_id));
+      let score = 0;
+
+      if (String(row.team_id) === String(team.api_id)) score += 8;
+      if (String(row.team_id) === String(team.id)) score += 6;
+      if (String(row.season_id) === String(season.api_id)) score += 8;
+      if (String(row.season_id) === String(season.id)) score += 6;
+      if (tournament && seasonBelongsToTournament(season, tournament)) score += 4;
+      if (String(row.tournament_id) === String(season.tournament_id)) score += 3;
+      if (String(row.tournament_id) === String(team.tournament_id)) score += 2;
+
+      return { row, score };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  console.debug("[TeamProfile] team_stats selected-season query", {
+    routeTeamId: team.id,
+    teamApiId: team.api_id,
+    teamReferences,
+    selectedSeasonId: season.id,
+    selectedSeasonApiId: season.api_id,
+    seasonTournamentReference: season.tournament_id,
+    tournamentReferences,
+    resultCount: data?.length ?? 0,
+  });
+
+  return scoredRows[0]?.row ?? null;
 }
 
 export async function listTeamsComparisonDatasetRows() {
@@ -1249,8 +1352,11 @@ export async function listTeamsComparisonDatasetRows() {
         entry.season_api_id
       ) {
         statsReferences.push({
+          teamId: entry.team_id,
           teamApiId: entry.team_api_id,
+          tournamentId: entry.tournament_id,
           tournamentApiId: entry.tournament_api_id,
+          seasonId: entry.season_id,
           seasonApiId: entry.season_api_id,
         });
       }
@@ -1319,17 +1425,23 @@ export async function listTeamComparisonRowsByContext({
     const missingTeams = missingTeamIds
       .map((teamId) => teamsById.get(teamId))
       .filter(Boolean);
-    const missingTeamApiIds = missingTeams
-      .map((team) => team.api_id)
-      .filter(Boolean);
+    const missingTeamReferences = uniqueReferences(
+      missingTeams.flatMap((team) => [team.id, team.api_id]),
+    );
+    const tournamentReferences = uniqueReferences([tournament.id, tournament.api_id]);
+    const seasonReferences = uniqueReferences([season.id, season.api_id]);
 
-    if (missingTeamApiIds.length > 0) {
+    if (
+      missingTeamReferences.length > 0 &&
+      tournamentReferences.length > 0 &&
+      seasonReferences.length > 0
+    ) {
       const { data: statsRows, error: statsError } = await supabase
         .from("team_stats")
         .select("team_id, tournament_id, season_id")
-        .eq("tournament_id", tournament.api_id)
-        .eq("season_id", season.api_id)
-        .in("team_id", missingTeamApiIds);
+        .in("tournament_id", tournamentReferences)
+        .in("season_id", seasonReferences)
+        .in("team_id", missingTeamReferences);
 
       if (statsError) {
         throw statsError;
@@ -1376,17 +1488,20 @@ export async function listTeamComparisonRowsByContext({
 
     entries.push(entry);
 
-    if (
-      entry.team_api_id &&
-      entry.tournament_api_id &&
-      entry.season_api_id
-    ) {
-      statsReferences.push({
-        teamApiId: entry.team_api_id,
-        tournamentApiId: entry.tournament_api_id,
-        seasonApiId: entry.season_api_id,
-      });
-    }
+      if (
+        entry.team_api_id &&
+        entry.tournament_api_id &&
+        entry.season_api_id
+      ) {
+        statsReferences.push({
+          teamId: entry.team_id,
+          teamApiId: entry.team_api_id,
+          tournamentId: entry.tournament_id,
+          tournamentApiId: entry.tournament_api_id,
+          seasonId: entry.season_id,
+          seasonApiId: entry.season_api_id,
+        });
+      }
   }
 
   const statsByReference = await listTeamStatsByApiReferences(statsReferences);

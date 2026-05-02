@@ -3,17 +3,15 @@ import { getPlayers } from "./playerService.js";
 import { dedupeStandingsRowsByTeam } from "./standingsGrouping.js";
 import { getStandingsRows } from "./standingsService.js";
 import {
-  getLatestTeamStatsByApiId,
+  getLatestTeamStatsByTeamReferences,
   getTeamById,
   getTeamProfileById,
-  getTeamStatsByApiAndInternalSeason,
-  getTeamStatsByApiReferences,
+  getTeamStatsForTeamSeason,
   listTeamComparisonRowsByContext,
   listTeamsComparisonDatasetRows,
   listTeams,
   listTeamSeasonsById,
 } from "../repositories/teamRepository.js";
-import { getTournamentSeason } from "../repositories/standingsRepository.js";
 import {
   getTeamStatMetadata,
   listTeamStatMetadata,
@@ -429,13 +427,29 @@ export async function getTeamProfile(id, seasonId) {
     throw new HttpError(404, "Team season not found.");
   }
 
+  console.debug("[TeamProfile] selected season", {
+    routeTeamId: id,
+    teamApiId: baseTeam.api_id ?? null,
+    selectedSeasonId: selectedSeason?.season_id ?? null,
+    selectedSeasonApiId: selectedSeason?.season_api_id ?? null,
+    seasonCount: seasons.length,
+  });
+
   const [squad, stats, standingsRows] = await Promise.all([
-    getPlayers(id),
+    selectedSeason ? getPlayers(id, selectedSeason.season_id) : getPlayers(id),
     selectedSeason ? getOptionalTeamStats(id, selectedSeason.season_id) : null,
     selectedSeason
       ? getOptionalStandings(team?.tournament_id, selectedSeason.season_id)
       : [],
   ]);
+
+  console.debug("[TeamProfile] loaded season-specific profile data", {
+    routeTeamId: id,
+    selectedSeasonId: selectedSeason?.season_id ?? null,
+    selectedSeasonApiId: selectedSeason?.season_api_id ?? null,
+    statisticsResultCount: stats ? 1 : 0,
+    squadResultCount: squad.length,
+  });
 
   const standingsGroups = buildStandingsGroups(standingsRows);
   const selectedStandings = selectTeamProfileStandingsRows(standingsRows, id);
@@ -460,53 +474,18 @@ export async function getTeamProfile(id, seasonId) {
 }
 
 export async function getTeamStats(id, seasonId) {
-  const team =
-    seasonId === undefined
-      ? await getTeamById(id)
-      : await getTeamProfileById(id);
+  const team = await getTeamById(id);
 
   if (!team) {
     throw new HttpError(404, "Team not found.");
   }
 
-  if (!team.api_id) {
-    return null;
-  }
-
   if (seasonId === undefined) {
-    const stats = await getLatestTeamStatsByApiId(team.api_id);
+    const stats = await getLatestTeamStatsByTeamReferences(team);
     return sanitizeTeamStats(stats, team.id);
   }
 
-  if (!team.tournament_id) {
-    const stats = await getTeamStatsByApiAndInternalSeason(
-      team.api_id,
-      seasonId,
-    );
-    return sanitizeTeamStats(stats, team.id);
-  }
-
-  const tournamentSeason = await getTournamentSeason(team.tournament_id, seasonId);
-
-  if (!tournamentSeason) {
-    const stats = await getTeamStatsByApiAndInternalSeason(
-      team.api_id,
-      seasonId,
-    );
-
-    if (stats) {
-      return sanitizeTeamStats(stats, team.id);
-    }
-
-    throw new HttpError(404, "Team season not found.");
-  }
-
-  const stats = await getTeamStatsByApiReferences(
-    team.api_id,
-    tournamentSeason.tournament_api_id,
-    tournamentSeason.season_api_id,
-  );
-
+  const stats = await getTeamStatsForTeamSeason(team, seasonId);
   return sanitizeTeamStats(stats, team.id);
 }
 

@@ -46,6 +46,7 @@ export type TeamProfileSeason = {
   season_api_id?: number | null;
   season_name?: string | null;
   tournament_id?: number | null;
+  tournament_api_id?: number | null;
   tournament_name?: string | null;
   is_current: boolean;
 };
