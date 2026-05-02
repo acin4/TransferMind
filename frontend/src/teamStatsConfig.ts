@@ -13,6 +13,7 @@ function defineTeamStatMeta<T extends Record<string, TeamStatMeta>>(meta: T) {
 }
 
 const TEAM_STAT_META = defineTeamStatMeta({
+  matches: { label: "Matches" },
   goals_scored: { label: "Goals Scored" },
   assists: { label: "Assists" },
   shots: { label: "Shots" },
@@ -91,6 +92,7 @@ const TEAM_STAT_META = defineTeamStatMeta({
   freekick_goals: { label: "Free-Kick Goals" },
   freekick_taken: { label: "Free-Kicks Taken" },
   freekick_ratio: { label: "Free-Kick Conversion %", format: "percent" },
+  corners: { label: "Corners" },
   fouls: { label: "Fouls" },
   yellowcards: { label: "Yellow Cards" },
   yellowcards_second: { label: "Second Yellow Red Cards" },
@@ -100,6 +102,8 @@ const TEAM_STAT_META = defineTeamStatMeta({
   shots_against: { label: "Shots Against" },
   shots_ontarget_against: { label: "Shots On Target Against" },
   shots_offtarget_against: { label: "Shots Off Target Against" },
+  shots_inside_against: { label: "Shots Inside Box Against" },
+  shots_outside_against: { label: "Shots Outside Box Against" },
   shots_blocked_against: { label: "Shots Blocked Against" },
   shots_ontarget_against_ratio: {
     label: "Shots On Target Against Ratio",
@@ -361,7 +365,7 @@ export function getTeamStatMeta(statKey: TeamStatKey): TeamStatMeta {
 export function getTeamStatCategory(statKey: TeamStatKey) {
   return (
     TEAM_STATS_CATEGORIES.find((category) =>
-      category.statKeys.includes(statKey),
+      (category.statKeys as readonly TeamStatKey[]).includes(statKey),
     )?.label ?? null
   );
 }

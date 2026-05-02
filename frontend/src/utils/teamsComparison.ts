@@ -106,6 +106,9 @@ export function normalizeStatValue(
   range: StatRange | undefined,
   reverse = false,
 ) {
+  if (rawValue == null) {
+    return null;
+  }
   if (!Number.isFinite(rawValue) || !range) {
     return 50;
   }
