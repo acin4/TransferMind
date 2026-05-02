@@ -37,18 +37,10 @@ function parseStatKeys(value) {
     ...new Set(
       value.map((item) => String(item ?? "").trim()).filter(Boolean),
     ),
-  ];
+  ].filter((statKey) => getTeamStatMetadata(statKey));
 
   if (statKeys.length < 2) {
     throw new HttpError(400, "Select at least two statistics.");
-  }
-
-  const invalidStatKey = statKeys.find(
-    (statKey) => !getTeamStatMetadata(statKey),
-  );
-
-  if (invalidStatKey) {
-    throw new HttpError(400, `Unknown statistic key: ${invalidStatKey}.`);
   }
 
   return statKeys;

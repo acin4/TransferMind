@@ -28,6 +28,7 @@ import SearchableCheckboxPanel from "./SearchableCheckboxPanel";
 
 type ClusterAnalysisTabProps = {
   entries: TeamSeasonStatEntry[];
+  statKeys: TeamStatKey[];
 };
 
 type TournamentOption = {
@@ -42,6 +43,7 @@ type SeasonOption = {
 
 export default function ClusterAnalysisTab({
   entries,
+  statKeys: supportedStatKeys,
 }: ClusterAnalysisTabProps) {
   const [selectedTournamentId, setSelectedTournamentId] = useState<number | null>(
     null,
@@ -58,6 +60,11 @@ export default function ClusterAnalysisTab({
   const [loadingElbow, setLoadingElbow] = useState(false);
   const [loadingClusters, setLoadingClusters] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
+
+  const supportedStatKeySet = useMemo(
+    () => new Set(supportedStatKeys),
+    [supportedStatKeys],
+  );
 
   const tournamentOptions = useMemo<TournamentOption[]>(() => {
     const optionsById = new Map<number, TournamentOption>();
@@ -142,13 +149,15 @@ export default function ClusterAnalysisTab({
     [contextEntries],
   );
 
-  const statKeys = useMemo(() => {
+  const availableStatKeys = useMemo(() => {
     const statKeySet = new Set<TeamStatKey>();
 
     contextEntries.forEach((entry) => {
       Object.entries(entry.stats).forEach(([statKey, value]) => {
-        if (value != null) {
-          statKeySet.add(statKey as TeamStatKey);
+        const typedStatKey = statKey as TeamStatKey;
+
+        if (value != null && supportedStatKeySet.has(typedStatKey)) {
+          statKeySet.add(typedStatKey);
         }
       });
     });
@@ -158,11 +167,21 @@ export default function ClusterAnalysisTab({
       .sort((a, b) =>
         safeCompareLabels(getSafeStatLabel(a), getSafeStatLabel(b)),
       );
-  }, [contextEntries]);
+  }, [contextEntries, supportedStatKeySet]);
+
+  const availableStatKeySet = useMemo(
+    () => new Set(availableStatKeys),
+    [availableStatKeys],
+  );
+
+  const cleanedSelectedStatKeys = useMemo(
+    () => sanitizeSelectedStatKeys(selectedStatKeys, availableStatKeySet),
+    [availableStatKeySet, selectedStatKeys],
+  );
 
   const statOptions = useMemo(
     () =>
-      statKeys
+      availableStatKeys
         .map((statKey) => ({
           value: statKey,
           label: getSafeStatLabel(statKey),
@@ -177,7 +196,7 @@ export default function ClusterAnalysisTab({
             typeof option.label === "string" &&
             option.label.trim().length > 0,
         ),
-    [statKeys],
+    [availableStatKeys],
   );
 
   const validationMessage = useMemo(() => {
@@ -193,14 +212,14 @@ export default function ClusterAnalysisTab({
       return "Select at least three teams.";
     }
 
-    if (selectedStatKeys.length < 2) {
+    if (cleanedSelectedStatKeys.length < 2) {
       return "Select at least two statistics.";
     }
 
     return null;
   }, [
+    cleanedSelectedStatKeys.length,
     selectedSeasonId,
-    selectedStatKeys.length,
     selectedTeamIds.length,
     selectedTournamentId,
   ]);
@@ -228,6 +247,12 @@ export default function ClusterAnalysisTab({
   }, [selectedSeasonId, selectedTournamentId]);
 
   useEffect(() => {
+    if (!areStatKeyArraysEqual(selectedStatKeys, cleanedSelectedStatKeys)) {
+      setSelectedStatKeys(cleanedSelectedStatKeys);
+    }
+  }, [cleanedSelectedStatKeys, selectedStatKeys]);
+
+  useEffect(() => {
     setMaxK((current) => Math.min(Math.max(2, current), maxAllowedK));
   }, [maxAllowedK]);
 
@@ -237,9 +262,9 @@ export default function ClusterAnalysisTab({
     setSelectedK(null);
     setRequestError(null);
   }, [
+    cleanedSelectedStatKeys,
     maxK,
     selectedSeasonId,
-    selectedStatKeys,
     selectedTeamIdValues,
     selectedTournamentId,
   ]);
@@ -259,6 +284,10 @@ export default function ClusterAnalysisTab({
   const toggleStat = (statKey: string) => {
     const typedStatKey = statKey as TeamStatKey;
 
+    if (!availableStatKeySet.has(typedStatKey)) {
+      return;
+    }
+
     setSelectedStatKeys((current) =>
       current.includes(typedStatKey)
         ? current.filter((value) => value !== typedStatKey)
@@ -275,7 +304,7 @@ export default function ClusterAnalysisTab({
       tournamentId: selectedTournamentId,
       seasonId: selectedSeasonId,
       teamIds: selectedTeamIds,
-      statKeys: selectedStatKeys,
+      statKeys: cleanedSelectedStatKeys,
     };
   };
 
@@ -406,7 +435,7 @@ export default function ClusterAnalysisTab({
               Matrix
             </p>
             <p className="mt-2 text-sm font-black text-white">
-              {selectedTeamIds.length} rows x {selectedStatKeys.length} columns
+              {selectedTeamIds.length} rows x {cleanedSelectedStatKeys.length} columns
             </p>
           </div>
         </div>
@@ -428,9 +457,9 @@ export default function ClusterAnalysisTab({
             title="Statistics"
             subtitle="Dataset columns"
             items={statOptions}
-            selectedValues={selectedStatKeys}
+            selectedValues={cleanedSelectedStatKeys}
             onToggle={toggleStat}
-            onSelectAll={() => setSelectedStatKeys(statKeys)}
+            onSelectAll={() => setSelectedStatKeys(availableStatKeys)}
             onClear={() => setSelectedStatKeys([])}
             searchPlaceholder="Search statistics..."
           />
@@ -585,7 +614,7 @@ export default function ClusterAnalysisTab({
 
                 <CentroidSummary
                   centroid={cluster.centroid}
-                  statKeys={selectedStatKeys}
+                  statKeys={cleanedSelectedStatKeys}
                 />
 
                 <div className="mt-5 space-y-4">
@@ -604,7 +633,7 @@ export default function ClusterAnalysisTab({
                       </div>
                       <TeamStatsGrid
                         assignment={assignment}
-                        statKeys={selectedStatKeys}
+                        statKeys={cleanedSelectedStatKeys}
                       />
                     </div>
                   ))}
@@ -767,6 +796,31 @@ function ElbowTooltip({
         Inertia: {Number(point?.inertia ?? 0).toFixed(4)}
       </div>
     </div>
+  );
+}
+
+function sanitizeSelectedStatKeys(
+  statKeys: TeamStatKey[],
+  availableStatKeys: Set<TeamStatKey>,
+) {
+  const cleanedStatKeys: TeamStatKey[] = [];
+
+  statKeys.forEach((statKey) => {
+    if (
+      availableStatKeys.has(statKey) &&
+      !cleanedStatKeys.includes(statKey)
+    ) {
+      cleanedStatKeys.push(statKey);
+    }
+  });
+
+  return cleanedStatKeys;
+}
+
+function areStatKeyArraysEqual(left: TeamStatKey[], right: TeamStatKey[]) {
+  return (
+    left.length === right.length &&
+    left.every((statKey, index) => statKey === right[index])
   );
 }
 
