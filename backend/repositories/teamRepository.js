@@ -328,11 +328,19 @@ function getTeamReferences(team) {
   return uniqueReferences([team?.id, team?.api_id]);
 }
 
-function buildTeamByReference(teams) {
+function getTeamApiReferences(team) {
+  return uniqueReferences([team?.api_id]);
+}
+
+function getTeamInternalReferences(team) {
+  return uniqueReferences([team?.id]);
+}
+
+function buildTeamByReference(teams, getReferences = getTeamReferences) {
   const teamsByReference = new Map();
 
   for (const team of teams ?? []) {
-    for (const reference of getTeamReferences(team)) {
+    for (const reference of getReferences(team)) {
       teamsByReference.set(String(reference), team);
     }
   }
@@ -655,19 +663,13 @@ function toLocalTeamStatsRow(rawPayload, ids) {
 
 async function listTeamStatsByApiReferences(references) {
   const teamIds = uniqueReferences(
-    references.flatMap((reference) => [reference.teamApiId, reference.teamId]),
+    references.map((reference) => reference.teamApiId),
   );
   const tournamentIds = uniqueReferences(
-    references.flatMap((reference) => [
-      reference.tournamentApiId,
-      reference.tournamentId,
-    ]),
+    references.map((reference) => reference.tournamentApiId),
   );
   const seasonIds = uniqueReferences(
-    references.flatMap((reference) => [
-      reference.seasonApiId,
-      reference.seasonId,
-    ]),
+    references.map((reference) => reference.seasonApiId),
   );
 
   if (
@@ -703,36 +705,10 @@ async function listTeamStatsByApiReferences(references) {
       reference.tournamentApiId,
       reference.seasonApiId,
     );
-    const teamCandidates = uniqueReferences([
-      reference.teamApiId,
-      reference.teamId,
-    ]);
-    const tournamentCandidates = uniqueReferences([
-      reference.tournamentApiId,
-      reference.tournamentId,
-    ]);
-    const seasonCandidates = uniqueReferences([
-      reference.seasonApiId,
-      reference.seasonId,
-    ]);
+    const candidate = statsByCandidateKey.get(normalizedKey);
 
-    for (const teamId of teamCandidates) {
-      for (const tournamentId of tournamentCandidates) {
-        for (const seasonId of seasonCandidates) {
-          const candidate = statsByCandidateKey.get(
-            buildStatsKey(teamId, tournamentId, seasonId),
-          );
-
-          if (candidate) {
-            statsByReference.set(normalizedKey, candidate);
-            break;
-          }
-        }
-
-        if (statsByReference.has(normalizedKey)) break;
-      }
-
-      if (statsByReference.has(normalizedKey)) break;
+    if (candidate) {
+      statsByReference.set(normalizedKey, candidate);
     }
   }
 
@@ -740,11 +716,17 @@ async function listTeamStatsByApiReferences(references) {
 }
 
 async function buildStatsSeasonRowsForTeams(teams, statsRows) {
-  return buildSeasonRowsFromSource(teams, statsRows);
+  return buildSeasonRowsFromSource(teams, statsRows, {
+    getTeamRowReferences: getTeamApiReferences,
+  });
 }
 
-async function buildSeasonRowsFromSource(teams, sourceRows) {
-  const teamsByReference = buildTeamByReference(teams);
+async function buildSeasonRowsFromSource(
+  teams,
+  sourceRows,
+  { getTeamRowReferences = getTeamReferences } = {},
+) {
+  const teamsByReference = buildTeamByReference(teams, getTeamRowReferences);
   const seasonReferences = uniqueReferences(
     (sourceRows ?? []).map((row) => row.season_id),
   );
@@ -802,7 +784,7 @@ async function buildSeasonRowsFromSource(teams, sourceRows) {
 
 async function listStatsSeasonRowsForTeams(teams) {
   const teamReferences = uniqueReferences(
-    (teams ?? []).flatMap((team) => getTeamReferences(team)),
+    (teams ?? []).flatMap((team) => getTeamApiReferences(team)),
   );
 
   if (teamReferences.length === 0) {
@@ -827,7 +809,7 @@ async function listStatsSeasonRowsForTeam(team) {
 
 async function listPlayerStatsSeasonRowsForTeams(teams) {
   const teamReferences = uniqueReferences(
-    (teams ?? []).flatMap((team) => getTeamReferences(team)),
+    (teams ?? []).flatMap((team) => getTeamInternalReferences(team)),
   );
 
   if (teamReferences.length === 0) {
@@ -843,7 +825,9 @@ async function listPlayerStatsSeasonRowsForTeams(teams) {
     throw error;
   }
 
-  return buildSeasonRowsFromSource(teams, data ?? []);
+  return buildSeasonRowsFromSource(teams, data ?? [], {
+    getTeamRowReferences: getTeamInternalReferences,
+  });
 }
 
 async function listPlayerStatsSeasonRowsForTeam(team) {
@@ -1135,7 +1119,7 @@ export async function listTeamMappingsByReferences(teamReferences) {
 }
 
 export async function getLatestTeamStatsByTeamReferences(team) {
-  const teamReferences = getTeamReferences(team);
+  const teamReferences = getTeamApiReferences(team);
 
   if (teamReferences.length === 0) {
     return null;
@@ -1224,17 +1208,16 @@ export async function getTeamStatsForTeamSeason(team, seasonId) {
     return null;
   }
 
-  const tournaments = await listTournamentsByReferences([
-    season.tournament_id,
-    team.tournament_id,
-  ]);
+  const tournaments = await listTournamentsByReferences([season.tournament_id]);
+  const tournament = tournaments.find((candidate) =>
+    seasonBelongsToTournament(season, candidate),
+  );
   const tournamentReferences = uniqueReferences([
-    season.tournament_id,
-    team.tournament_id,
-    ...tournaments.flatMap((tournament) => [tournament.id, tournament.api_id]),
+    tournament?.api_id,
+    tournament ? null : season.tournament_id,
   ]);
-  const teamReferences = getTeamReferences(team);
-  const seasonReferences = uniqueReferences([season.id, season.api_id]);
+  const teamReferences = getTeamApiReferences(team);
+  const seasonReferences = uniqueReferences([season.api_id]);
 
   if (teamReferences.length === 0 || seasonReferences.length === 0) {
     return null;
@@ -1263,12 +1246,9 @@ export async function getTeamStatsForTeamSeason(team, seasonId) {
       let score = 0;
 
       if (String(row.team_id) === String(team.api_id)) score += 8;
-      if (String(row.team_id) === String(team.id)) score += 6;
       if (String(row.season_id) === String(season.api_id)) score += 8;
-      if (String(row.season_id) === String(season.id)) score += 6;
       if (tournament && seasonBelongsToTournament(season, tournament)) score += 4;
       if (String(row.tournament_id) === String(season.tournament_id)) score += 3;
-      if (String(row.tournament_id) === String(team.tournament_id)) score += 2;
 
       return { row, score };
     })
@@ -1426,10 +1406,10 @@ export async function listTeamComparisonRowsByContext({
       .map((teamId) => teamsById.get(teamId))
       .filter(Boolean);
     const missingTeamReferences = uniqueReferences(
-      missingTeams.flatMap((team) => [team.id, team.api_id]),
+      missingTeams.flatMap((team) => getTeamApiReferences(team)),
     );
-    const tournamentReferences = uniqueReferences([tournament.id, tournament.api_id]);
-    const seasonReferences = uniqueReferences([season.id, season.api_id]);
+    const tournamentReferences = uniqueReferences([tournament.api_id]);
+    const seasonReferences = uniqueReferences([season.api_id]);
 
     if (
       missingTeamReferences.length > 0 &&

@@ -87,7 +87,7 @@ export default function CustomComparisonTab({
         label: entry.teamName || entry.label,
         helperText: [
           entry.seasonName || `Season ${entry.seasonId}`,
-          entry.tournamentName ?? `Tournament ${entry.tournamentId ?? "Unknown"}`,
+          entry.tournamentName ?? "Unknown league",
         ].join(" • "),
         kind: "team-season" as const,
         logoUrl: entry.teamLogo,

@@ -70,7 +70,7 @@ export default function ClusterAnalysisTab({
       if (!optionsById.has(entry.tournamentId)) {
         optionsById.set(entry.tournamentId, {
           id: entry.tournamentId,
-          name: entry.tournamentName ?? `Tournament ${entry.tournamentId}`,
+          name: entry.tournamentName ?? "Unknown league",
         });
       }
     });
