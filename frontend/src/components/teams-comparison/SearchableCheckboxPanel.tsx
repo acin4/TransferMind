@@ -26,6 +26,10 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
+import {
+  filterAndRankSearchResults,
+  type SearchFieldValue,
+} from "../../utils/search";
 
 type CheckboxItem = {
   value: string;
@@ -37,6 +41,7 @@ type CheckboxItem = {
   statKey?: string;
   tagLabel?: string;
   tagHelperText?: string | null;
+  searchFields?: SearchFieldValue[];
 };
 
 type SearchableCheckboxPanelProps = {
@@ -65,16 +70,8 @@ export default function SearchableCheckboxPanel({
   const [query, setQuery] = useState("");
 
   const filteredItems = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-
-    if (!normalizedQuery) {
-      return items;
-    }
-
-    return items.filter((item) =>
-      [item.label, item.helperText]
-        .filter(Boolean)
-        .some((value) => value?.toLowerCase().includes(normalizedQuery)),
+    return filterAndRankSearchResults(items, query, (item) =>
+      item.searchFields ?? [item.label, item.helperText, item.statKey, item.value],
     );
   }, [items, query]);
 

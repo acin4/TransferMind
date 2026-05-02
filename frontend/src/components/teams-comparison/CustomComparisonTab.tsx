@@ -94,6 +94,19 @@ export default function CustomComparisonTab({
         seasonLabel: entry.seasonName,
         tagLabel: entry.teamName || entry.label,
         tagHelperText: entry.seasonName,
+        searchFields: [
+          entry.teamName,
+          entry.label,
+          entry.seasonName,
+          entry.seasonId,
+          entry.tournamentName,
+          entry.tournamentId,
+          entry.stageLabel,
+          entry.stageName,
+          entry.groupName,
+          entry.standingGroupId,
+          entry.stageTournamentId,
+        ],
       })),
     [entries],
   );
@@ -106,6 +119,7 @@ export default function CustomComparisonTab({
         helperText: statKey,
         kind: "stat" as const,
         statKey,
+        searchFields: [getTeamStatMeta(statKey).label, statKey],
       })),
     [statKeys],
   );

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Award, Loader2 } from "lucide-react";
+import { Award, Loader2, Search } from "lucide-react";
 import {
   getCurrentTournaments,
   getStandings,
@@ -15,6 +15,7 @@ import type {
   SeasonOption,
   TournamentOption,
 } from "../components/standings/types";
+import { filterAndRankSearchResults } from "../utils/search";
 
 type TournamentSeasonRecord = {
   tournament_id: number;
@@ -50,6 +51,7 @@ export default function Standings() {
   const [selectedLeagueId, setSelectedLeagueId] = useState<number | null>(null);
   const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null);
   const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null);
+  const [standingsSearchQuery, setStandingsSearchQuery] = useState("");
 
   useEffect(() => {
     const fetchTournaments = async () => {
@@ -241,13 +243,27 @@ export default function Standings() {
     return Array.from(leagueMap.values());
   }, [tournaments]);
 
-  const selectedStandingsRows = useMemo<TeamStandingRow[]>(() => {
-    const selectedGroup =
+  const selectedStandingsGroup = useMemo<StandingsGroup | undefined>(
+    () =>
       standingsGroups.find((group) => group.key === selectedGroupKey) ??
-      standingsGroups[0];
+      standingsGroups[0],
+    [standingsGroups, selectedGroupKey],
+  );
 
-    return selectedGroup?.rows ?? [];
-  }, [standingsGroups, selectedGroupKey]);
+  const selectedStandingsRows = useMemo<TeamStandingRow[]>(
+    () => selectedStandingsGroup?.rows ?? [],
+    [selectedStandingsGroup],
+  );
+
+  const visibleStandingsRows = useMemo(
+    () =>
+      filterAndRankSearchResults(
+        selectedStandingsRows,
+        standingsSearchQuery,
+        (row) => getStandingRowSearchFields(row, selectedStandingsGroup),
+      ),
+    [selectedStandingsGroup, selectedStandingsRows, standingsSearchQuery],
+  );
 
   const updateStandingsUrl = (
     tournamentId: number | null,
@@ -370,6 +386,18 @@ export default function Standings() {
           />
         </div>
 
+        <div className="relative mb-6 max-w-xl">
+          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-500">
+            <Search size={16} />
+          </div>
+          <input
+            value={standingsSearchQuery}
+            onChange={(event) => setStandingsSearchQuery(event.target.value)}
+            placeholder="Search standings..."
+            className="w-full rounded-2xl border border-slate-800 bg-slate-950/70 py-3 pl-11 pr-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
+          />
+        </div>
+
         {loading ? (
           <div className="text-center p-32 bg-slate-900/20 border-2 border-dashed border-slate-800 rounded-[3rem] italic animate-pulse font-black uppercase tracking-widest text-blue-500 flex flex-col items-center gap-4">
             <Loader2 className="animate-spin" size={40} />
@@ -386,10 +414,26 @@ export default function Standings() {
               selectedGroupKey={selectedGroupKey}
               onSelectGroup={handleGroupSelect}
             />
-            <StandingsTable rows={selectedStandingsRows} />
+            <StandingsTable rows={visibleStandingsRows} />
           </div>
         )}
       </div>
     </div>
   );
+}
+
+function getStandingRowSearchFields(
+  row: TeamStandingRow,
+  group: StandingsGroup | undefined,
+) {
+  return [
+    row.team_name,
+    row.standing_group_name,
+    row.stage_tournament_name,
+    row.stage_label,
+    group?.label,
+    group?.stage,
+    group?.tournamentId,
+    group?.seasonId,
+  ];
 }

@@ -259,6 +259,8 @@ export type SearchTeamResult = {
   country: string | null;
   city: string | null;
   stadium: string | null;
+  tournamentName?: string | null;
+  seasonName?: string | null;
 };
 
 export type SearchPlayerResult = {

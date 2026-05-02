@@ -9,6 +9,7 @@ import {
   type SearchPlayerResult,
   type SearchTeamResult,
 } from "../api/api";
+import { filterAndRankSearchResults } from "../utils/search";
 
 export default function Home() {
   const [query, setQuery] = useState("");
@@ -40,8 +41,20 @@ export default function Home() {
         const results = await getSearchResults(trimmedQuery);
 
         if (!cancelled) {
-          setPlayers(results?.players ?? []);
-          setTeams(results?.teams ?? []);
+          setPlayers(
+            filterAndRankSearchResults(
+              results?.players ?? [],
+              trimmedQuery,
+              getSearchPlayerFields,
+            ),
+          );
+          setTeams(
+            filterAndRankSearchResults(
+              results?.teams ?? [],
+              trimmedQuery,
+              getSearchTeamFields,
+            ),
+          );
           setError(null);
         }
       } catch (err) {
@@ -116,7 +129,14 @@ export default function Home() {
                     <div className="bg-blue-500/10 p-3 rounded-xl text-blue-400 group-hover:scale-110 transition-transform">
                       <Trophy size={24} />
                     </div>
-                    <span className="font-black italic uppercase text-slate-200 text-xl group-hover:text-blue-400 transition-colors">{t.name}</span>
+                    <div className="min-w-0">
+                      <span className="block truncate font-black italic uppercase text-slate-200 text-xl group-hover:text-blue-400 transition-colors">{t.name}</span>
+                      {getTeamSearchContext(t) && (
+                        <span className="mt-1 block truncate text-xs font-bold uppercase tracking-widest text-slate-500">
+                          {getTeamSearchContext(t)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -138,7 +158,14 @@ export default function Home() {
                     <div className="bg-purple-500/10 p-3 rounded-xl text-purple-400 group-hover:scale-110 transition-transform">
                       <User size={24} />
                     </div>
-                    <span className="font-bold italic uppercase text-slate-300 text-xl group-hover:text-purple-400 transition-colors">{p.name}</span>
+                    <div className="min-w-0">
+                      <span className="block truncate font-bold italic uppercase text-slate-300 text-xl group-hover:text-purple-400 transition-colors">{p.name}</span>
+                      {getPlayerSearchContext(p) && (
+                        <span className="mt-1 block truncate text-xs font-bold uppercase tracking-widest text-slate-500">
+                          {getPlayerSearchContext(p)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -310,6 +337,40 @@ export default function Home() {
 
     </div>
   );
+}
+
+function getSearchTeamFields(team: SearchTeamResult) {
+  return [team.name];
+}
+
+function getSearchPlayerFields(player: SearchPlayerResult) {
+  return [player.name];
+}
+
+function getTeamSearchContext(team: SearchTeamResult) {
+  return joinSearchContext([
+    team.country,
+    team.city,
+    team.stadium,
+    team.tournamentName,
+    team.seasonName,
+  ]);
+}
+
+function getPlayerSearchContext(player: SearchPlayerResult) {
+  return joinSearchContext([
+    player.teamName,
+    player.position,
+    player.nationality,
+  ]);
+}
+
+function joinSearchContext(values: Array<string | null | undefined>) {
+  const uniqueValues = values
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value));
+
+  return [...new Set(uniqueValues)].slice(0, 3).join(" / ");
 }
 
 type QuickLinkPreviewId = "standings" | "teams" | "platform";
