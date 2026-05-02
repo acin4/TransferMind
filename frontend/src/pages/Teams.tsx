@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Users, ChevronRight, Trophy, Building2, MapPin } from "lucide-react";
+import { Users, ChevronRight, Trophy, Building2, MapPin, Search } from "lucide-react";
 import { useTeams } from "../hooks/useTeams";
+import type { TeamListItem } from "../api/api";
 import {
   getTeamCountry,
   getTeamLocation,
   getTeamStadium,
 } from "../utils/teamDisplay";
 import SegmentedTabs from "../components/ui/SegmentedTabs";
+import { filterAndRankSearchResults } from "../utils/search";
 
 const ALL_TAB = "ALL";
 const OTHER_TAB = "Other";
@@ -15,6 +17,7 @@ const OTHER_TAB = "Other";
 export default function Teams() {
   const { teams, isLoading } = useTeams();
   const [activeCountry, setActiveCountry] = useState(ALL_TAB);
+  const [teamSearchQuery, setTeamSearchQuery] = useState("");
 
   const countryTabs = useMemo(() => {
     const countries = new Set<string>();
@@ -47,7 +50,7 @@ export default function Teams() {
     }
   }, [activeCountry, countryTabs]);
 
-  const filteredTeams = useMemo(() => {
+  const countryFilteredTeams = useMemo(() => {
     if (activeCountry === ALL_TAB) {
       return teams;
     }
@@ -60,6 +63,16 @@ export default function Teams() {
       (team) => getTeamCountry(team) === activeCountry,
     );
   }, [activeCountry, teams]);
+
+  const filteredTeams = useMemo(
+    () =>
+      filterAndRankSearchResults(
+        countryFilteredTeams,
+        teamSearchQuery,
+        getTeamSearchFields,
+      ),
+    [countryFilteredTeams, teamSearchQuery],
+  );
 
   if (isLoading) {
     return (
@@ -75,6 +88,18 @@ export default function Teams() {
         <h1 className="text-4xl font-black uppercase mb-10 text-white tracking-tight">
           Teams
         </h1>
+
+        <div className="relative mb-6 max-w-xl">
+          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-500">
+            <Search size={16} />
+          </div>
+          <input
+            value={teamSearchQuery}
+            onChange={(event) => setTeamSearchQuery(event.target.value)}
+            placeholder="Search teams..."
+            className="w-full rounded-2xl border border-slate-800 bg-slate-950/70 py-3 pl-11 pr-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
+          />
+        </div>
 
         <div className="mb-8">
           <SegmentedTabs
@@ -149,6 +174,33 @@ export default function Teams() {
       </div>
     </div>
   );
+}
+
+function getTeamSearchFields(team: TeamListItem) {
+  return [
+    team.name,
+    getTeamCountry(team),
+    team.country,
+    team.city,
+    team.stadium,
+    getTeamLocation(team),
+    getTeamStadium(team),
+    getVenueName(team.venue),
+    getVenueCity(team.venue),
+    team.badge_label,
+  ];
+}
+
+function getVenueName(venue: TeamListItem["venue"]) {
+  if (typeof venue === "string") {
+    return venue;
+  }
+
+  return venue?.name ?? null;
+}
+
+function getVenueCity(venue: TeamListItem["venue"]) {
+  return typeof venue === "object" && venue ? venue.city ?? null : null;
 }
 
 function TeamMetaLine({

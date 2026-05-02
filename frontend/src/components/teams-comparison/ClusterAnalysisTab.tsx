@@ -137,6 +137,20 @@ export default function ClusterAnalysisTab({
           kind: "team" as const,
           logoUrl: entry.teamLogo,
           tagLabel: entry.teamName || `Team ${entry.teamId}`,
+          searchFields: [
+            entry.teamName,
+            entry.teamId,
+            entry.label,
+            entry.seasonName,
+            entry.seasonId,
+            entry.tournamentName,
+            entry.tournamentId,
+            entry.stageLabel,
+            entry.stageName,
+            entry.groupName,
+            entry.standingGroupId,
+            entry.stageTournamentId,
+          ],
         }))
         .filter(
           (option) =>
@@ -188,6 +202,7 @@ export default function ClusterAnalysisTab({
           helperText: statKey,
           kind: "stat" as const,
           statKey,
+          searchFields: [getSafeStatLabel(statKey), statKey],
         }))
         .filter(
           (option) =>
