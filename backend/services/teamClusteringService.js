@@ -87,24 +87,30 @@ function parseSelectedK(value, validRowCount) {
   if (k >= validRowCount) {
     throw new HttpError(
       400,
-      "k must be less than the number of valid selected teams.",
+      "k must be less than the number of selected teams.",
     );
   }
 
   return k;
 }
 
-function toNumericStatValue(value) {
+function sanitizeClusterStatValue(value) {
   if (typeof value === "number") {
-    return Number.isFinite(value) ? value : null;
+    return Number.isFinite(value) ? value : 0;
   }
 
-  if (typeof value === "string" && value.trim() !== "") {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
+  if (typeof value === "string") {
+    const trimmedValue = value.trim();
+
+    if (trimmedValue === "") {
+      return 0;
+    }
+
+    const parsed = Number(trimmedValue);
+    return Number.isFinite(parsed) ? parsed : 0;
   }
 
-  return null;
+  return 0;
 }
 
 function squaredDistance(a, b) {
@@ -315,7 +321,10 @@ function calculateSuggestedK(elbowPoints) {
 
 function toClusterRow(row, statKeys) {
   const rawStats = Object.fromEntries(
-    statKeys.map((statKey) => [statKey, toNumericStatValue(row.stats?.[statKey])]),
+    statKeys.map((statKey) => [
+      statKey,
+      sanitizeClusterStatValue(row.stats?.[statKey]),
+    ]),
   );
 
   return {
@@ -327,38 +336,17 @@ function toClusterRow(row, statKeys) {
 
 function buildNormalizedMatrix(rows, statKeys) {
   const warnings = [];
-  const sourceRows = rows.map((row) => toClusterRow(row, statKeys));
-  const validRows = [];
-
-  for (const row of sourceRows) {
-    const missingStats = statKeys.filter((statKey) => row.rawStats[statKey] == null);
-
-    if (missingStats.length > 0) {
-      warnings.push(
-        `${row.teamName} was excluded because it has missing/non-numeric values for: ${missingStats.join(", ")}.`,
-      );
-      continue;
-    }
-
-    validRows.push(row);
-  }
-
-  if (validRows.length < 3) {
-    throw new HttpError(
-      400,
-      "At least three selected teams must have numeric values for every selected statistic.",
-    );
-  }
+  const matrixSourceRows = rows.map((row) => toClusterRow(row, statKeys));
 
   const columnStats = Object.fromEntries(
     statKeys.map((statKey) => {
-      const values = validRows.map((row) => row.rawStats[statKey]);
+      const values = matrixSourceRows.map((row) => row.rawStats[statKey]);
       const min = Math.min(...values);
       const max = Math.max(...values);
 
       if (min === max) {
         warnings.push(
-          `${getTeamStatMetadata(statKey).label} is constant across the valid selected teams; its normalized column was set to 0.`,
+          `${getTeamStatMetadata(statKey).label} is constant across the selected teams; its normalized column was set to 0.`,
         );
       }
 
@@ -373,7 +361,7 @@ function buildNormalizedMatrix(rows, statKeys) {
     }),
   );
 
-  const matrixRows = validRows.map((row) => {
+  const matrixRows = matrixSourceRows.map((row) => {
     const normalizedStats = Object.fromEntries(
       statKeys.map((statKey) => {
         const column = columnStats[statKey];
@@ -463,7 +451,7 @@ export async function calculateTeamClusterElbow(payload) {
   if (maxK < 2) {
     throw new HttpError(
       400,
-      "Select at least three teams with complete numeric data to calculate elbow values.",
+      "Select at least three teams to calculate elbow values.",
     );
   }
 

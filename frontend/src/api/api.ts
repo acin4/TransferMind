@@ -205,7 +205,7 @@ export type TeamClusterStat = {
 export type TeamClusterMatrixRow = {
   teamId: number;
   teamName: string;
-  rawStats: Partial<Record<TeamStatKey, number | null>>;
+  rawStats: Partial<Record<TeamStatKey, number>>;
   normalizedStats: Partial<Record<TeamStatKey, number>>;
 };
 
