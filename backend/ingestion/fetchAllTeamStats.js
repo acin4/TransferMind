@@ -21,10 +21,53 @@ import { supabase } from "../lib/supabaseClient.js";
 // Throttle delay between API calls (milliseconds)
 // This protects you from rate limits and avoids overwhelming the API.
 const THROTTLE_MS = 600;
+const VALID_MODES = new Set(["refresh", "init"]);
 
 // Small async helper that pauses execution for a given time
 // Used to throttle API requests
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
+
+function parseMode(argv) {
+  let mode = null;
+  let modeProvided = false;
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+
+    if (arg === "--mode") {
+      modeProvided = true;
+      mode = argv[i + 1];
+      break;
+    }
+
+    if (arg.startsWith("--mode=")) {
+      modeProvided = true;
+      mode = arg.slice("--mode=".length);
+      break;
+    }
+
+    if (
+      arg === "refresh" ||
+      arg === "init" ||
+      arg === "--refresh" ||
+      arg === "--init"
+    ) {
+      modeProvided = true;
+      mode = arg.replace(/^--/, "");
+      break;
+    }
+  }
+
+  if (!modeProvided) return "refresh";
+
+  if (!VALID_MODES.has(mode)) {
+    throw new Error(
+      `Invalid team stats sync mode "${mode}". Use "refresh", "init", or "--mode <mode>".`,
+    );
+  }
+
+  return mode;
+}
 
 // ==============================================================================
 // 1️⃣ GENERIC PAGINATION FETCH (SUPABASE)
@@ -118,8 +161,8 @@ async function fetchAllRows({ table, select, filters = [], pageSize = 1000 }) {
  * - Sometimes standings may contain multiple rows for the same team/season/tournament
  *   (e.g., different stages, groups, or duplicated ingestion).
  */
-async function getTargetData() {
-  console.log("📥 Loading Standings to identify Teams...");
+async function getInitTargetData() {
+  console.log("📥 Loading Standings to identify Teams for init mode...");
 
   // Fetch all rows that have valid IDs because they connect Team <-> Season <-> Tournament
   const standings = await fetchAllRows({
@@ -151,6 +194,64 @@ async function getTargetData() {
   return rows;
 }
 
+async function getRefreshTargetData() {
+  console.log(
+    "📥 Loading current-season team context from current_season_teams...",
+  );
+
+  // current_season_teams exposes both internal DB ids and external API ids.
+  // This script preserves the existing team_stats contract, which stores the
+  // external ids used by standings and by /teams/get-statistics.
+  const currentSeasonTeams = await fetchAllRows({
+    table: "current_season_teams",
+    select:
+      "team_id, team_api_id, tournament_id, season_id, tournament_api_id, season_api_id",
+    filters: [
+      ["team_api_id", "is", null, true],
+      ["tournament_api_id", "is", null, true],
+      ["season_api_id", "is", null, true],
+    ],
+    pageSize: 1000,
+  });
+
+  if (currentSeasonTeams.length === 0) {
+    console.log(
+      "ℹ️ current_season_teams returned 0 rows. No current-season team stats to fetch.",
+    );
+    return [];
+  }
+
+  const uniqueMap = new Map();
+  const rows = [];
+
+  for (const row of currentSeasonTeams) {
+    const target = {
+      team_id: row.team_api_id,
+      tournament_id: row.tournament_api_id,
+      season_id: row.season_api_id,
+    };
+
+    const key = `${target.team_id}-${target.season_id}-${target.tournament_id}`;
+    if (!uniqueMap.has(key)) {
+      uniqueMap.set(key, true);
+      rows.push(target);
+    }
+  }
+
+  console.log(
+    `✅ Prepared ${rows.length} current-season Team/Season requests`,
+  );
+  return rows;
+}
+
+async function getTargetDataForMode(mode) {
+  if (mode === "init") {
+    return getInitTargetData();
+  }
+
+  return getRefreshTargetData();
+}
+
 // ==============================================================================
 // 3️⃣ API CALL + SAVE TO team_stats
 // ==============================================================================
@@ -172,7 +273,8 @@ async function getTargetData() {
  * Upsert conflict key:
  *   team_id, season_id, tournament_id
  * This ensures 1 row per team per season per tournament.
- */ async function fetchAndSaveTeamStats(row) {
+ */
+async function fetchAndSaveTeamStats(row) {
   const { team_id, tournament_id, season_id } = row;
 
   try {
@@ -562,9 +664,16 @@ async function getTargetData() {
  */
 (async () => {
   try {
-    console.log("🚀 Starting Team Stats Fetch...");
+    const mode = parseMode(process.argv.slice(2));
 
-    const rows = await getTargetData();
+    console.log(`🚀 Starting Team Stats Fetch (${mode} mode)...`);
+    console.log(
+      mode === "init"
+        ? "Mode detail: init fetches team stats for all standings-backed DB seasons."
+        : "Mode detail: refresh fetches team stats only for current seasons.",
+    );
+
+    const rows = await getTargetDataForMode(mode);
 
     // Sequential processing (safe for rate limits)
     // You could later upgrade this to a concurrency pool if needed.
