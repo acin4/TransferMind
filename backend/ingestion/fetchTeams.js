@@ -1,6 +1,7 @@
 import { client } from "../lib/client.js";
 import { saveJSON } from "../lib/utils.js";
 import { supabase } from "../lib/supabaseClient.js";
+import { fileURLToPath } from "url";
 
 const THROTTLE_MS = 300;
 const PAGE_SIZE = 1000;
@@ -121,7 +122,7 @@ async function fetchAndStoreTeamDetails(teamId) {
 
     if (!t?.id) {
       console.log(`   ⚠️ No valid team payload for team ${teamId}`);
-      return;
+      throw new Error(`No valid team payload for team ${teamId}`);
     }
 
     const row = {
@@ -138,42 +139,75 @@ async function fetchAndStoreTeamDetails(teamId) {
 
     if (error) {
       console.error(`❌ Supabase upsert error for team ${teamId}:`, error);
-      return;
+      throw error;
     }
 
     console.log(`   ✅ Upserted team ${teamId} (${row.name ?? "unknown"})`);
+    return { upserted: 1 };
   } catch (err) {
     console.error(
       `❌ Error fetching team ${teamId}:`,
       err.response?.data || err.message,
     );
+    throw err;
   }
 }
 
 /**
  * Main runner
  */
-(async () => {
-  try {
-    console.log("🚀 Starting Teams Sync from standings table...");
+export async function runFetchTeams() {
+  console.log("🚀 Starting Teams Sync from standings table...");
 
-    const missingTeamIds = await getMissingTeamIdsFromDb();
+  const missingTeamIds = await getMissingTeamIdsFromDb();
+  const summary = {
+    targets: missingTeamIds.length,
+    upserted: 0,
+    skipped: 0,
+    failed: 0,
+  };
 
-    if (missingTeamIds.length === 0) {
-      console.log("✅ No missing teams. Everything is already synced.");
-      return;
-    }
-
-    for (const teamId of missingTeamIds) {
-      await fetchAndStoreTeamDetails(teamId);
-
-      if (THROTTLE_MS > 0) {
-        await delay(THROTTLE_MS);
-      }
-    }
-
-    console.log("\n🎉 Done fetching missing teams!");
-  } catch (e) {
-    console.error("❌ Fatal Error:", e.response?.data || e.message || e);
+  if (missingTeamIds.length === 0) {
+    console.log("✅ No missing teams. Everything is already synced.");
+    return summary;
   }
-})();
+
+  const failures = [];
+
+  for (const teamId of missingTeamIds) {
+    try {
+      const result = await fetchAndStoreTeamDetails(teamId);
+      summary.upserted += result?.upserted ?? 0;
+    } catch (error) {
+      failures.push({ teamId, error });
+      summary.failed += 1;
+    }
+
+    if (THROTTLE_MS > 0) {
+      await delay(THROTTLE_MS);
+    }
+  }
+
+  if (failures.length > 0) {
+    const error = new Error(`Teams sync failed for ${failures.length} team(s).`);
+    error.summary = summary;
+    throw error;
+  }
+
+  console.log("\n🎉 Done fetching missing teams!");
+  return summary;
+}
+
+const currentFilePath = fileURLToPath(import.meta.url);
+
+if (process.argv[1] === currentFilePath) {
+  try {
+    await runFetchTeams();
+  } catch (error) {
+    console.error(
+      "❌ Fatal Error:",
+      error.response?.data || error.message || error,
+    );
+    process.exitCode = 1;
+  }
+}

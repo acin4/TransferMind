@@ -634,7 +634,7 @@ Add separate local job plans for the final refresh schedule after ingestion runn
 - Weekly job plan: Tuesday midnight, current-season standings and current-season team stats only.
 - Monthly job plan: 1st day of each month, current-season player stats only.
 - Annual job plan: July 1st, tournaments, seasons, teams, missing or changed team logos, and `is_current` recalculation.
-- Player refresh job plan: July 1, August 1, October 1, January 1, February 1, and March 1, current-season players only.
+- Player refresh job plan: July 1, August 1, September 1, October 1, January 1, February 1, and March 1, current-season players only.
 - Keep each job small and named for its schedule or purpose.
 - Jobs should import reusable runners only after scripts have been refactored to export them safely.
 - Fail clearly on critical errors and avoid silent partial success.

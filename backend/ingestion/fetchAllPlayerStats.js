@@ -8,6 +8,7 @@ import { client } from "../lib/client.js";
 import { saveJSON, truncateNumericStatFields } from "../lib/utils.js";
 // Supabase client (PostgreSQL connection via Supabase SDK)
 import { supabase } from "../lib/supabaseClient.js";
+import { fileURLToPath } from "url";
 
 // ==============================================================================
 // GLOBAL CONFIGURATION
@@ -96,14 +97,14 @@ async function fetchAllRows({ table, select, filters = [], pageSize = 1000 }) {
 // ==============================================================================
 
 /**
- * Builds all valid combinations of:
- *  player + tournament + season
+ * Builds all valid current-season combinations of:
+ *  player + current tournament + current season
  *
  * Logic:
  * 1. Load players
  * 2. Load current-season team context
  * 3. Match player.team_id with current_season_teams.team_id
- * 4. Prepare API request rows
+ * 4. Prepare current-season API request rows
  *
  * Performance Optimization:
  * Uses Map() instead of .find()
@@ -177,9 +178,9 @@ async function getTargetData() {
     });
   }
 
-  console.log(`✅ Valid player requests prepared: ${rows.length}`);
+  console.log(`✅ Valid current-season player requests prepared: ${rows.length}`);
   console.log(
-    `⏭️ Players skipped (team_id not found in current_season_teams): ${skippedPlayers}`,
+    `⏭️ Players skipped outside current-season scope (team_id not found in current_season_teams): ${skippedPlayers}`,
   );
   return rows;
 }
@@ -189,12 +190,12 @@ async function getTargetData() {
 // ==============================================================================
 
 /**
- * For a given (player, team, tournament, season):
+ * For a given current-season (player, team, tournament, season):
  *
- * 1. Calls external API
+ * 1. Calls external API with tournament/season API ids
  * 2. Saves raw JSON for debugging
  * 3. Normalizes statistics
- * 4. Upserts into player_stats table
+ * 4. Upserts into player_stats table with internal team/tournament/season ids
  *
  * Upsert ensures:
  * - If row exists → UPDATE
@@ -214,14 +215,13 @@ async function fetchAndSaveStats(row) {
   } = row;
 
   try {
-    // Call external API
+    // Call external API using external tournament/season ids only for request params.
     const res = await client.get("/players/get-statistics", {
       params: {
         playerId: player.api_id,
         tournamentId: tournament_api_id,
         seasonId: season_api_id,
       },
-      timeout: 10000, // 10 seconds timeout to avoid hanging
     });
 
     // Debug log so you can validate behavior while running
@@ -240,7 +240,7 @@ async function fetchAndSaveStats(row) {
     // Extract statistics object safely
     const s = res.data?.statistics;
 
-    // If API returns no stats, still save the identifiers (and defaults for everything else)
+    // If API returns no stats, still save current-season identifiers.
     const hasStats = !!(s && Object.keys(s).length > 0);
 
     // Always save raw payload for debugging
@@ -250,8 +250,11 @@ async function fetchAndSaveStats(row) {
     // CASE 1: NO STATS AVAILABLE
     // ==========================================================
     if (!hasStats) {
-      console.log(`🔸 No stats for ${player.name} → saving identifiers only`);
+      console.log(
+        `🔸 No current-season stats for ${player.name} → saving identifiers only`,
+      );
 
+      // Skeleton row preserves the current-season identity while marking stats unavailable.
       const skeletonRow = {
         player_id: player.api_id,
         team_id,
@@ -268,17 +271,25 @@ async function fetchAndSaveStats(row) {
 
       if (error) {
         console.error(`❌ DB Error (${player.name}):`, error.message);
+        throw error;
       } else {
-        console.log(`✅ Saved identifiers only(no stats): ${player.name}`);
+        console.log(
+          `✅ Saved current-season identifiers only (no stats): ${player.name}`,
+        );
       }
-      return;
+      return {
+        upserted: 1,
+        skeletonRows: 1,
+        noDataRows: 1,
+      };
     }
 
     // ==========================================================
     // CASE 2: STATS AVAILABLE
     // ==========================================================
 
-    // Build normalized DB row
+    // Build normalized current-season DB row
+    // - Store internal team/tournament/season ids from current_season_teams
     // - Convert numeric strings → floats
     // - Replace undefined with null
     // - Avoid NaN
@@ -466,9 +477,16 @@ async function fetchAndSaveStats(row) {
 
     if (error) {
       console.error(`❌ DB Error (${player.name}):`, error.message);
+      throw error;
     } else {
-      console.log(`✅ Saved: ${player.name}`);
+      console.log(`✅ Saved current-season stats: ${player.name}`);
     }
+
+    return {
+      upserted: 1,
+      skeletonRows: 0,
+      noDataRows: 0,
+    };
   } catch (err) {
     // Handle timeouts separately
     if (err.code === "ECONNABORTED" || err.message.includes("timeout")) {
@@ -476,6 +494,7 @@ async function fetchAndSaveStats(row) {
     } else {
       console.error(`❌ Error for ${player.name}:`, err.message);
     }
+    throw err;
   }
 }
 
@@ -491,22 +510,55 @@ async function fetchAndSaveStats(row) {
  *     node fetchAllPlayerStats.js
  * - Prevents global variable pollution
  */
-(async () => {
-  try {
-    console.log("🚀 Starting API Stats Fetch...");
+export async function runFetchAllPlayerStats() {
+  console.log("🚀 Starting current-season player stats fetch...");
 
-    // Build all valid API requests
-    const rows = await getTargetData();
+  // Build all valid current-season API requests
+  const rows = await getTargetData();
+  const failures = [];
+  const summary = {
+    targets: rows.length,
+    upserted: 0,
+    failed: 0,
+    skeletonRows: 0,
+    noDataRows: 0,
+  };
 
-    // Sequential processing (safe for rate limits)
-    // You could later upgrade this to a concurrency pool if needed.
-    for (const row of rows) {
-      await fetchAndSaveStats(row);
-      await delay(THROTTLE_MS); // Throttle to avoid rate limits
+  // Sequential processing (safe for rate limits)
+  // You could later upgrade this to a concurrency pool if needed.
+  for (const row of rows) {
+    try {
+      const result = await fetchAndSaveStats(row);
+      summary.upserted += result?.upserted ?? 0;
+      summary.skeletonRows += result?.skeletonRows ?? 0;
+      summary.noDataRows += result?.noDataRows ?? 0;
+    } catch (error) {
+      failures.push({ row, error });
+      summary.failed += 1;
     }
 
-    console.log("\n🎉 ALL DONE!");
-  } catch (e) {
-    console.error("❌ Fatal Error:", e.message);
+    await delay(THROTTLE_MS); // Throttle to avoid rate limits
   }
-})();
+
+  if (failures.length > 0) {
+    const error = new Error(
+      `Player stats sync failed for ${failures.length} row(s).`,
+    );
+    error.summary = summary;
+    throw error;
+  }
+
+  console.log("\n🎉 Current-season player stats fetch complete!");
+  return summary;
+}
+
+const currentFilePath = fileURLToPath(import.meta.url);
+
+if (process.argv[1] === currentFilePath) {
+  try {
+    await runFetchAllPlayerStats();
+  } catch (error) {
+    console.error("❌ Fatal Error:", error.message);
+    process.exitCode = 1;
+  }
+}

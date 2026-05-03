@@ -1,5 +1,6 @@
 import { client } from "../lib/client.js";
 import { supabase } from "../lib/supabaseClient.js";
+import { fileURLToPath } from "url";
 
 const BUCKET_NAME = "team-logos";
 const PAGE_SIZE = 1000;
@@ -81,8 +82,16 @@ async function updateTeamLogo(teamId, url) {
   }
 }
 
-async function main() {
+export async function runFetchTeamLogos() {
   const teams = await getTeamsWithoutLogo();
+  const failures = [];
+  const summary = {
+    targets: teams.length,
+    upserted: 0,
+    skipped: 0,
+    failed: 0,
+    notFoundSkipped: 0,
+  };
 
   console.log(`Found ${teams.length} teams without logos.`);
 
@@ -97,7 +106,20 @@ async function main() {
       await updateTeamLogo(teamId, publicUrl);
 
       console.log(`Saved logo for ${team.name ?? "Unknown"} (${teamId}).`);
+      summary.upserted += 1;
     } catch (error) {
+      if (error.response?.status === 404) {
+        console.warn(
+          `No logo available for ${team.name ?? "Unknown"} (${teamId}).`,
+        );
+        summary.skipped += 1;
+        summary.notFoundSkipped += 1;
+        await delay(THROTTLE_MS);
+        continue;
+      }
+
+      failures.push({ teamId, error });
+      summary.failed += 1;
       console.error(
         `Failed logo import for ${team.name ?? "Unknown"} (${teamId}):`,
         error.message,
@@ -107,12 +129,25 @@ async function main() {
     await delay(THROTTLE_MS);
   }
 
+  if (failures.length > 0) {
+    const error = new Error(
+      `Team logo sync failed for ${failures.length} team(s).`,
+    );
+    error.summary = summary;
+    throw error;
+  }
+
   console.log("Done.");
+  return summary;
 }
 
-try {
-  await main();
-} catch (error) {
-  console.error("Fatal error:", error.message);
-  process.exit(1);
+const currentFilePath = fileURLToPath(import.meta.url);
+
+if (process.argv[1] === currentFilePath) {
+  try {
+    await runFetchTeamLogos();
+  } catch (error) {
+    console.error("Fatal error:", error.message);
+    process.exitCode = 1;
+  }
 }

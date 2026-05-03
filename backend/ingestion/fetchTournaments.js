@@ -1,6 +1,7 @@
 import { client } from "../lib/client.js";
 import { saveJSON } from "../lib/utils.js";
 import { supabase } from "../lib/supabaseClient.js";
+import { fileURLToPath } from "url";
 
 // === helper: φέρε τα ids από Supabase ===
 async function getTournamentIdsFromDb() {
@@ -59,22 +60,55 @@ async function fetchAndStoreTournament(tournamentId) {
 
   if (error) {
     console.error("❌ Supabase error:", error);
-    return;
+    throw error;
   }
 
   console.log("✅ Inserted/updated tournament", t.id, t.name);
+  return { upserted: 1 };
 }
 
-// === Runner ===
-(async () => {
-  try {
-    const TOURNAMENT_IDS = await getTournamentIdsFromDb();
+export async function runFetchTournaments() {
+  const tournamentIds = await getTournamentIdsFromDb();
+  const failures = [];
+  const summary = {
+    targets: tournamentIds.length,
+    upserted: 0,
+    failed: 0,
+  };
 
-    for (const tournamentId of TOURNAMENT_IDS) {
-      await fetchAndStoreTournament(tournamentId);
+  for (const tournamentId of tournamentIds) {
+    try {
+      const result = await fetchAndStoreTournament(tournamentId);
+      summary.upserted += result?.upserted ?? 0;
+    } catch (error) {
+      failures.push({ tournamentId, error });
+      summary.failed += 1;
+      console.error(
+        `❌ Error fetching tournament ${tournamentId}:`,
+        error.response?.data || error.message || error,
+      );
     }
-    console.log("\n🎉 Done for all tournaments!");
-  } catch (e) {
-    console.error("❌ Error:", e.response?.data || e.message);
   }
-})();
+
+  if (failures.length > 0) {
+    const error = new Error(
+      `Tournament sync failed for ${failures.length} tournament(s).`,
+    );
+    error.summary = summary;
+    throw error;
+  }
+
+  console.log("\n🎉 Done for all tournaments!");
+  return summary;
+}
+
+const currentFilePath = fileURLToPath(import.meta.url);
+
+if (process.argv[1] === currentFilePath) {
+  try {
+    await runFetchTournaments();
+  } catch (error) {
+    console.error("❌ Error:", error.response?.data || error.message || error);
+    process.exitCode = 1;
+  }
+}
