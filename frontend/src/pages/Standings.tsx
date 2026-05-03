@@ -1,68 +1,361 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom"; // Προστέθηκε για το ChevronRight Link
-import { getCurrentTournaments, getStandings } from "../api/api";
-// Προστέθηκαν όλα τα εικονίδια που έλειπαν
-import { Trophy, Hash, ChevronRight, Loader2, Award } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Award, Loader2, Search } from "lucide-react";
+import {
+  getCurrentTournaments,
+  getStandings,
+  getTournamentSeasons,
+  type StandingsGroup,
+  type TeamStandingRow,
+} from "../api/api";
+import StandingsFilters from "../components/standings/StandingsFilters";
+import StageTabs from "../components/standings/StageTabs";
+import StandingsTable from "../components/standings/StandingsTable";
+import type {
+  SeasonOption,
+  TournamentOption,
+} from "../components/standings/types";
+import { filterAndRankSearchResults } from "../utils/search";
+
+type TournamentSeasonRecord = {
+  tournament_id: number;
+  tournament_name?: string | null;
+};
+
+function parseOptionalNumber(value: string | null) {
+  if (value == null) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
 export default function Standings() {
-  const [tournaments, setTournaments] = useState<any[]>([]);
-  const [selectedTournament, setSelectedTournament] = useState<any>(null);
-  const [standings, setStandings] = useState<any[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialSelectionRef = useRef({
+    tournamentId: parseOptionalNumber(searchParams.get("tournamentId")),
+    seasonId: parseOptionalNumber(searchParams.get("seasonId")),
+    standingGroupId: parseOptionalNumber(searchParams.get("standingGroupId")),
+    stageTournamentId: parseOptionalNumber(searchParams.get("stageTournamentId")),
+    tournamentName: searchParams.get("tournamentName")?.trim() || null,
+  });
+  const initialGroupSelectionConsumedRef = useRef(false);
+
+  const [tournaments, setTournaments] = useState<TournamentSeasonRecord[]>([]);
+  const [availableSeasons, setAvailableSeasons] = useState<SeasonOption[]>([]);
+  const [standingsGroups, setStandingsGroups] = useState<StandingsGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // ΒΗΜΑ 1: Φέρνουμε τα πρωταθλήματα
-  useEffect(() => {
-    const init = async () => {
-      try {
-        const leagues = await getCurrentTournaments();
-        setTournaments(leagues);
+  const [selectedLeagueId, setSelectedLeagueId] = useState<number | null>(null);
+  const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null);
+  const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null);
+  const [standingsSearchQuery, setStandingsSearchQuery] = useState("");
 
-        if (leagues.length > 0) {
-          setSelectedTournament(leagues[0]);
+  useEffect(() => {
+    const fetchTournaments = async () => {
+      try {
+        const data = await getCurrentTournaments();
+
+        if (data && data.length > 0) {
+          setTournaments(data);
+          setSelectedLeagueId(
+            initialSelectionRef.current.tournamentId ?? data[0].tournament_id,
+          );
           setError(null);
         } else {
-          setError("Δεν βρέθηκαν διοργανώσεις.");
+          setTournaments([]);
+          setAvailableSeasons([]);
+          setError("Δεν βρέθηκαν διαθέσιμες διοργανώσεις.");
           setLoading(false);
         }
       } catch (err) {
-        console.error(err);
+        console.error("Σφάλμα φόρτωσης διοργανώσεων:", err);
         setTournaments([]);
-        setError("Αδυναμία φόρτωσης διοργανώσεων.");
+        setAvailableSeasons([]);
+        setError("Αδυναμία φόρτωσης διοργανώσεων από τον server.");
         setLoading(false);
       }
     };
-    init();
+    fetchTournaments();
   }, []);
 
-// ΒΗΜΑ 2: Φέρνουμε τη βαθμολογία
   useEffect(() => {
-    if (selectedTournament) {
-      setLoading(true);
-      getStandings(selectedTournament.tournament_id, selectedTournament.season_id)
-        .then((data) => {
-          setStandings(data);
-          setError(null);
-        })
-        .catch((err) => {
-          console.error(err);
-          setStandings([]);
-          setError("Αδυναμία φόρτωσης βαθμολογίας.");
-        })
-        .finally(() => {
-          setLoading(false);
-        });
+    if (!selectedLeagueId) {
+      setAvailableSeasons([]);
+      setSelectedSeasonId(null);
+      setLoading(false);
+      return;
     }
-  }, [selectedTournament]);
 
-  if (!selectedTournament) {
+    let cancelled = false;
+
+    setLoading(true);
+    setError(null);
+    setStandingsGroups([]);
+    setSelectedGroupKey(null);
+
+    const fetchSeasons = async () => {
+      try {
+        const seasons = await getTournamentSeasons(selectedLeagueId);
+
+        if (cancelled) {
+          return;
+        }
+
+        const nextSeasons: SeasonOption[] = seasons || [];
+        const requestedSeason =
+          selectedLeagueId === initialSelectionRef.current.tournamentId
+            ? nextSeasons.find(
+                (season) =>
+                  season.season_id === initialSelectionRef.current.seasonId,
+              )
+            : null;
+        const defaultSeason =
+          requestedSeason ??
+          nextSeasons.find((season) => season.is_current) ??
+          nextSeasons[0] ??
+          null;
+
+        setAvailableSeasons(nextSeasons);
+        setSelectedSeasonId(defaultSeason?.season_id ?? null);
+
+        if (!defaultSeason) {
+          setError("Δεν βρέθηκαν διαθέσιμες σεζόν για αυτό το πρωτάθλημα.");
+          setLoading(false);
+        }
+      } catch (err) {
+        if (cancelled) {
+          return;
+        }
+
+        console.error("Σφάλμα φόρτωσης σεζόν:", err);
+        setAvailableSeasons([]);
+        setSelectedSeasonId(null);
+        setError("Αδυναμία φόρτωσης των σεζόν.");
+        setLoading(false);
+      }
+    };
+
+    fetchSeasons();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedLeagueId]);
+
+  useEffect(() => {
+    if (!selectedLeagueId || !selectedSeasonId) {
+      setStandingsGroups([]);
+      setSelectedGroupKey(null);
+      return;
+    }
+
+    let cancelled = false;
+    const hasInitialGroupSelection =
+      initialSelectionRef.current.standingGroupId != null ||
+      initialSelectionRef.current.stageTournamentId != null;
+    const shouldUseLegacyGroupSelection =
+      hasInitialGroupSelection &&
+      !initialGroupSelectionConsumedRef.current &&
+      selectedLeagueId === initialSelectionRef.current.tournamentId &&
+      selectedSeasonId === initialSelectionRef.current.seasonId;
+
+    setLoading(true);
+    getStandings(
+      selectedLeagueId,
+      selectedSeasonId,
+      shouldUseLegacyGroupSelection
+        ? {
+            standingGroupId: initialSelectionRef.current.standingGroupId,
+            stageTournamentId: initialSelectionRef.current.stageTournamentId,
+          }
+        : {},
+    )
+      .then((data) => {
+        if (cancelled) {
+          return;
+        }
+
+        const nextGroups = data?.groups ?? [];
+        if (import.meta.env.DEV) {
+          console.debug("[Standings] API groups", nextGroups);
+        }
+
+        setStandingsGroups(nextGroups);
+        setSelectedGroupKey(data?.selectedGroupKey ?? null);
+        initialGroupSelectionConsumedRef.current =
+          initialGroupSelectionConsumedRef.current ||
+          shouldUseLegacyGroupSelection;
+        setError(null);
+      })
+      .catch((err) => {
+        if (cancelled) {
+          return;
+        }
+
+        console.error("Σφάλμα φόρτωσης βαθμολογίας:", err);
+        setStandingsGroups([]);
+        setSelectedGroupKey(null);
+        setError("Αδυναμία φόρτωσης της βαθμολογίας.");
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedLeagueId, selectedSeasonId]);
+
+  const uniqueLeagues = useMemo<TournamentOption[]>(() => {
+    if (!tournaments || tournaments.length === 0) {
+      return [];
+    }
+
+    const leagueMap = new Map<number, TournamentOption>();
+    tournaments.forEach((tournament) => {
+      if (!leagueMap.has(tournament.tournament_id)) {
+        leagueMap.set(tournament.tournament_id, {
+          id: tournament.tournament_id,
+          name:
+            tournament.tournament_name ||
+            `Tournament ${tournament.tournament_id}`,
+        });
+      }
+    });
+
+    if (
+      initialSelectionRef.current.tournamentId &&
+      !leagueMap.has(initialSelectionRef.current.tournamentId)
+    ) {
+      leagueMap.set(initialSelectionRef.current.tournamentId, {
+        id: initialSelectionRef.current.tournamentId,
+        name:
+          initialSelectionRef.current.tournamentName ||
+          `Tournament ${initialSelectionRef.current.tournamentId}`,
+      });
+    }
+
+    return Array.from(leagueMap.values());
+  }, [tournaments]);
+
+  const selectedStandingsGroup = useMemo<StandingsGroup | undefined>(
+    () =>
+      standingsGroups.find((group) => group.key === selectedGroupKey) ??
+      standingsGroups[0],
+    [standingsGroups, selectedGroupKey],
+  );
+
+  const selectedStandingsRows = useMemo<TeamStandingRow[]>(
+    () => selectedStandingsGroup?.rows ?? [],
+    [selectedStandingsGroup],
+  );
+
+  const visibleStandingsRows = useMemo(
+    () =>
+      filterAndRankSearchResults(
+        selectedStandingsRows,
+        standingsSearchQuery,
+        (row) => getStandingRowSearchFields(row, selectedStandingsGroup),
+      ),
+    [selectedStandingsGroup, selectedStandingsRows, standingsSearchQuery],
+  );
+
+  const updateStandingsUrl = (
+    tournamentId: number | null,
+    seasonId: number | null,
+    group?: StandingsGroup | null,
+  ) => {
+    const nextParams = new URLSearchParams();
+
+    if (tournamentId != null) {
+      nextParams.set("tournamentId", String(tournamentId));
+    }
+
+    if (seasonId != null) {
+      nextParams.set("seasonId", String(seasonId));
+    }
+
+    const tournamentName =
+      uniqueLeagues.find((league) => league.id === tournamentId)?.name ??
+      initialSelectionRef.current.tournamentName;
+
+    if (tournamentName) {
+      nextParams.set("tournamentName", tournamentName);
+    }
+
+    if (group?.standingGroupId != null) {
+      nextParams.set("standingGroupId", String(group.standingGroupId));
+    }
+
+    if (group?.stageTournamentId != null) {
+      nextParams.set("stageTournamentId", String(group.stageTournamentId));
+    }
+
+    setSearchParams(nextParams, { replace: false });
+  };
+
+  const handleLeagueChange = (newLeagueId: number | null) => {
+    setSelectedLeagueId(newLeagueId);
+    setSelectedSeasonId(null);
+    updateStandingsUrl(newLeagueId, null, null);
+  };
+
+  const handleSeasonChange = (newSeasonId: number | null) => {
+    setSelectedSeasonId(newSeasonId);
+    updateStandingsUrl(selectedLeagueId, newSeasonId, null);
+  };
+
+  const handleGroupSelect = async (groupKey: string) => {
+    const selectedGroup = standingsGroups.find(
+      (group) => group.key === groupKey,
+    );
+
+    if (!selectedGroup || !selectedLeagueId || !selectedSeasonId) {
+      setSelectedGroupKey(groupKey);
+      return;
+    }
+
+    setSelectedGroupKey(groupKey);
+    updateStandingsUrl(selectedLeagueId, selectedSeasonId, selectedGroup);
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const data = await getStandings(selectedLeagueId, selectedSeasonId, {
+        standingGroupId: selectedGroup.standingGroupId,
+        stageTournamentId: selectedGroup.stageTournamentId,
+      });
+      const nextGroups = data?.groups ?? [];
+
+      if (import.meta.env.DEV) {
+        console.debug("[Standings] API groups", nextGroups);
+      }
+
+      setStandingsGroups(nextGroups);
+      setSelectedGroupKey(data?.selectedGroupKey ?? groupKey);
+    } catch (err) {
+      console.error("Î£Ï†Î¬Î»Î¼Î± Ï†ÏŒÏÏ„Ï‰ÏƒÎ·Ï‚ Î¿Î¼Î¬Î´Î±Ï‚ Î²Î±Î¸Î¼Î¿Î»Î¿Î³Î¯Î±Ï‚:", err);
+      setError("Î‘Î´Ï…Î½Î±Î¼Î¯Î± Ï†ÏŒÏÏ„Ï‰ÏƒÎ·Ï‚ Ï„Î·Ï‚ ÎµÏ€Î¹Î»ÎµÎ³Î¼Î­Î½Î·Ï‚ Î²Î±Î¸Î¼Î¿Î»Î¿Î³Î¯Î±Ï‚.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!selectedLeagueId || (!selectedSeasonId && loading)) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center text-blue-500 font-black gap-2">
         {error ? (
           <span className="italic uppercase text-rose-400">{error}</span>
         ) : (
           <>
-            <Loader2 className="animate-spin" /> <span className="italic uppercase">Initializing...</span>
+            <Loader2 className="animate-spin" />{" "}
+            <span className="italic uppercase">Initializing Data...</span>
           </>
         )}
       </div>
@@ -72,103 +365,75 @@ export default function Standings() {
   return (
     <div className="min-h-screen bg-slate-950 p-6 md:p-12 text-white font-sans selection:bg-blue-500/30">
       <div className="max-w-6xl mx-auto">
-        
-        {/* HEADER & ICON (Χρήση του Award) */}
-
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-8">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-12 gap-8">
           <div>
             <h1 className="text-6xl font-black italic uppercase tracking-tighter bg-gradient-to-r from-white via-blue-400 to-blue-600 bg-clip-text text-transparent leading-none">
               Standings
             </h1>
             <p className="text-slate-500 font-bold uppercase tracking-[0.3em] text-[10px] mt-4 flex items-center gap-2">
-              <Award size={14} className="text-blue-500" /> Professional Scouting Network
+              <Award size={14} className="text-blue-500" /> Professional
+              Scouting Network
             </p>
           </div>
 
-          <select 
-            className="bg-slate-900 border-2 border-slate-800 text-white px-8 py-4 rounded-[2rem] font-black uppercase text-xs tracking-widest focus:outline-none focus:border-blue-500 transition-all cursor-pointer hover:bg-slate-800 shadow-xl"
-            value={selectedTournament.tournament_id}
-            onChange={(e) => {
-              const found = tournaments.find(t => t.tournament_id === Number(e.target.value));
-              setSelectedTournament(found);
-            }}
-          >
-            {tournaments.map(t => (
-              <option key={t.tournament_id} value={t.tournament_id}>
-                {t.season_name}
-              </option>
-            ))}
-          </select>
+          <StandingsFilters
+            tournaments={uniqueLeagues}
+            seasons={availableSeasons}
+            selectedTournamentId={selectedLeagueId}
+            selectedSeasonId={selectedSeasonId}
+            onTournamentChange={handleLeagueChange}
+            onSeasonChange={handleSeasonChange}
+          />
         </div>
 
-        {/* TABLE SECTION */}
+        <div className="relative mb-6 max-w-xl">
+          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-500">
+            <Search size={16} />
+          </div>
+          <input
+            value={standingsSearchQuery}
+            onChange={(event) => setStandingsSearchQuery(event.target.value)}
+            placeholder="Search standings..."
+            className="w-full rounded-2xl border border-slate-800 bg-slate-950/70 py-3 pl-11 pr-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
+          />
+        </div>
+
         {loading ? (
-           <div className="text-center p-20 opacity-50 italic animate-pulse font-black uppercase tracking-widest">
-             Updating {selectedTournament.season_name}...
-           </div>
+          <div className="text-center p-32 bg-slate-900/20 border-2 border-dashed border-slate-800 rounded-[3rem] italic animate-pulse font-black uppercase tracking-widest text-blue-500 flex flex-col items-center gap-4">
+            <Loader2 className="animate-spin" size={40} />
+            Loading Standings...
+          </div>
         ) : error ? (
-          <div className="text-center p-20 text-rose-400 font-black uppercase tracking-widest">
+          <div className="text-center p-20 bg-rose-500/10 border border-rose-500/20 rounded-[3rem] text-rose-400 font-black uppercase tracking-widest">
             {error}
           </div>
         ) : (
-
-          <div className="bg-slate-900/40 border border-slate-800/60 rounded-[3rem] overflow-hidden shadow-2xl backdrop-blur-xl">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-900/90 border-b border-slate-800 text-slate-500 uppercase text-[10px] font-black tracking-[0.25em]">
-                    <th className="px-8 py-6 text-center"><Hash size={14} /></th>
-                    <th className="px-8 py-6">Club</th>
-                    <th className="px-4 py-6 text-center">MP</th>
-                    <th className="px-4 py-6 text-center text-blue-400 font-bold italic">Pts</th>
-                    <th className="px-8 py-6 text-right">Analysis</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/30">
-                  {standings.map((row, index) => (
-                    <tr key={row.id || row.team_id} className="hover:bg-blue-500/[0.03] transition-all group">
-                      <td className="px-8 py-5 text-center">
-                        <span className={`inline-flex items-center justify-center w-10 h-10 rounded-2xl font-black text-sm ${index === 0 ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/20' : 'text-slate-600'}`}>
-                          {row.position}
-                        </span>
-                      </td>
-                      <td className="px-8 py-5">
-                        <div className="flex items-center gap-4">
-                          <span className="font-black text-xl tracking-tighter uppercase italic group-hover:text-blue-400 transition-colors">
-                            {/* Χρήση team_name για να μη χτυπάει το TypeScript */}
-                            {row.team_name || row.teams?.name || "Unknown Team"}
-                          </span>
-                          {index === 0 && <Trophy size={18} className="text-yellow-500 animate-pulse" />}
-                        </div>
-                      </td>
-                      <td className="px-4 py-5 text-center font-bold text-slate-500">
-                        {row.matches || 0}
-                      </td>
-                      <td className="px-4 py-5 text-center">
-                        <span className="text-2xl font-black text-blue-400">{row.points}</span>
-                      </td>
-                      <td className="px-8 py-5 text-right">
-                        {row.team_id ? (
-                          <Link 
-                            to={`/team/${row.team_id}`} 
-                            className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-slate-800 text-slate-600 group-hover:border-blue-500 group-hover:text-blue-400 transition-all hover:bg-blue-500 hover:text-white"
-                          >
-                            <ChevronRight size={18} />
-                          </Link>
-                        ) : (
-                          <span className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-slate-800 text-slate-700">
-                            <ChevronRight size={18} />
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div className="bg-slate-900/40 border border-slate-800/60 rounded-[3rem] overflow-hidden shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <StageTabs
+              groups={standingsGroups}
+              selectedGroupKey={selectedGroupKey}
+              onSelectGroup={handleGroupSelect}
+            />
+            <StandingsTable rows={visibleStandingsRows} />
           </div>
         )}
       </div>
     </div>
   );
+}
+
+function getStandingRowSearchFields(
+  row: TeamStandingRow,
+  group: StandingsGroup | undefined,
+) {
+  return [
+    row.team_name,
+    row.standing_group_name,
+    row.stage_tournament_name,
+    row.stage_label,
+    group?.label,
+    group?.stage,
+    group?.tournamentId,
+    group?.seasonId,
+  ];
 }

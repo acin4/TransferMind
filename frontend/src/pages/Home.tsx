@@ -4,13 +4,21 @@ import {
   ChevronRight, Activity, X, LineChart, Database 
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { getTeams, getPlayers } from "../api/api"; 
+import {
+  getSearchResults,
+  type SearchPlayerResult,
+  type SearchTeamResult,
+} from "../api/api";
+import { filterAndRankSearchResults } from "../utils/search";
 
 export default function Home() {
   const [query, setQuery] = useState("");
-  const [players, setPlayers] = useState<any[]>([]);
-  const [teams, setTeams] = useState<any[]>([]);
+  const [players, setPlayers] = useState<SearchPlayerResult[]>([]);
+  const [teams, setTeams] = useState<SearchTeamResult[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [activePreview, setActivePreview] = useState<QuickLinkPreviewId | null>(
+    null,
+  );
   
   // 🟢 ΝΕΟ STATE ΓΙΑ ΤΟ POP-UP
   const [isAboutOpen, setIsAboutOpen] = useState(false);
@@ -18,34 +26,55 @@ export default function Home() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    const trimmedQuery = query.trim();
+
+    if (!trimmedQuery) {
+      setPlayers([]);
+      setTeams([]);
+      setError(null);
+      return;
+    }
+
+    let cancelled = false;
     const fetchData = async () => {
       try {
-        const [playersData, teamsData] = await Promise.all([
-          getPlayers(),
-          getTeams(),
-        ]);
+        const results = await getSearchResults(trimmedQuery);
 
-        setPlayers(playersData || []);
-        setTeams(teamsData || []);
-        setError(null);
+        if (!cancelled) {
+          setPlayers(
+            filterAndRankSearchResults(
+              results?.players ?? [],
+              trimmedQuery,
+              getSearchPlayerFields,
+            ),
+          );
+          setTeams(
+            filterAndRankSearchResults(
+              results?.teams ?? [],
+              trimmedQuery,
+              getSearchTeamFields,
+            ),
+          );
+          setError(null);
+        }
       } catch (err) {
         console.error(err);
+        if (cancelled) {
+          return;
+        }
         setPlayers([]);
         setTeams([]);
         setError("Αδυναμία φόρτωσης δεδομένων.");
       }
     };
 
-    fetchData();
-  }, []);
+    const timeoutId = window.setTimeout(fetchData, 300);
 
-  const filteredPlayers = players.filter((p) =>
-    p?.name?.toLowerCase().includes(query.toLowerCase())
-  );
-
-  const filteredTeams = teams.filter((t) =>
-    t?.name?.toLowerCase().includes(query.toLowerCase())
-  );
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [query]);
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center px-6 font-sans relative py-32 text-slate-100 overflow-x-hidden">
@@ -71,7 +100,7 @@ export default function Home() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Αναζήτηση ομάδας ή παίκτη..."
-              className="w-full py-6 px-10 text-center text-xl md:text-2xl font-bold bg-transparent border-none focus:ring-0 outline-none text-slate-900 placeholder-slate-400"
+              className="w-full py-6 px-10 text-center text-xl md:text-2xl font-bold bg-transparent border-none focus:ring-0 outline-none text-slate-900 placeholder-slate-400 focus:placeholder-transparent"
             />
             <div className="absolute right-4 p-4 bg-blue-600 rounded-full text-white shadow-lg">
                <Search size={28} />
@@ -82,16 +111,16 @@ export default function Home() {
         {/* RESULTS DROPDOWN */}
         {query && (
           <div className="absolute top-[110%] left-0 w-full mt-4 bg-slate-900/95 backdrop-blur-xl border border-slate-800 rounded-[2rem] shadow-2xl max-h-[400px] overflow-y-auto z-50 custom-scrollbar">
-            {filteredPlayers.length === 0 && filteredTeams.length === 0 && (
+            {players.length === 0 && teams.length === 0 && (
               <div className="p-12 text-center text-slate-500 font-medium text-lg uppercase tracking-widest italic">
                 Δεν βρέθηκαν αποτελέσματα για "{query}"
               </div>
             )}
 
-            {filteredTeams.length > 0 && (
+            {teams.length > 0 && (
               <div className="p-6">
                 <h3 className="text-xs font-black text-center text-slate-500 uppercase tracking-[0.3em] px-4 pb-4 pt-2">Ομαδες</h3>
-                {filteredTeams.map((t) => (
+                {teams.map((t) => (
                   <div
                     key={t.id}
                     onClick={() => navigate(`/team/${t.id}`)}
@@ -100,20 +129,27 @@ export default function Home() {
                     <div className="bg-blue-500/10 p-3 rounded-xl text-blue-400 group-hover:scale-110 transition-transform">
                       <Trophy size={24} />
                     </div>
-                    <span className="font-black italic uppercase text-slate-200 text-xl group-hover:text-blue-400 transition-colors">{t.name}</span>
+                    <div className="min-w-0">
+                      <span className="block truncate font-black italic uppercase text-slate-200 text-xl group-hover:text-blue-400 transition-colors">{t.name}</span>
+                      {getTeamSearchContext(t) && (
+                        <span className="mt-1 block truncate text-xs font-bold uppercase tracking-widest text-slate-500">
+                          {getTeamSearchContext(t)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
             )}
 
-            {filteredTeams.length > 0 && filteredPlayers.length > 0 && (
+            {teams.length > 0 && players.length > 0 && (
               <div className="h-px bg-slate-800/50 mx-8 my-2"></div>
             )}
 
-            {filteredPlayers.length > 0 && (
+            {players.length > 0 && (
               <div className="p-6">
                 <h3 className="text-xs font-black text-center text-slate-500 uppercase tracking-[0.3em] px-4 pb-4 pt-2">Παικτες</h3>
-                {filteredPlayers.map((p) => (
+                {players.map((p) => (
                   <div
                     key={p.id}
                     onClick={() => navigate(`/player/${p.id}`)}
@@ -122,7 +158,14 @@ export default function Home() {
                     <div className="bg-purple-500/10 p-3 rounded-xl text-purple-400 group-hover:scale-110 transition-transform">
                       <User size={24} />
                     </div>
-                    <span className="font-bold italic uppercase text-slate-300 text-xl group-hover:text-purple-400 transition-colors">{p.name}</span>
+                    <div className="min-w-0">
+                      <span className="block truncate font-bold italic uppercase text-slate-300 text-xl group-hover:text-purple-400 transition-colors">{p.name}</span>
+                      {getPlayerSearchContext(p) && (
+                        <span className="mt-1 block truncate text-xs font-bold uppercase tracking-widest text-slate-500">
+                          {getPlayerSearchContext(p)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -138,14 +181,22 @@ export default function Home() {
       )}
 
       {/* QUICK LINKS & ΕΠΕΞΗΓΗΣΗ ΠΛΑΤΦΟΡΜΑΣ */}
-      <div className="w-full max-w-6xl mt-24 grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
+      <div className="w-full max-w-6xl mt-14 grid grid-cols-1 gap-7 md:grid-cols-3 md:items-end relative z-10">
         
         {/* CARD 1: STANDINGS */}
+        <div className="flex flex-col gap-4">
+        <QuickLinkPreview
+          previewId={activePreview === "standings" ? "standings" : null}
+        />
         <button 
           onClick={() => navigate('/standings')}
-          className="text-left bg-slate-900/40 backdrop-blur-sm border border-slate-800 p-8 rounded-[2.5rem] hover:bg-slate-800/50 hover:border-blue-500 hover:-translate-y-2 transition-all duration-300 group shadow-xl"
+          onFocus={() => setActivePreview("standings")}
+          onMouseEnter={() => setActivePreview("standings")}
+          onMouseLeave={() => setActivePreview(null)}
+          onBlur={() => setActivePreview(null)}
+          className="group relative min-h-[245px] w-full text-left bg-slate-900/40 backdrop-blur-sm border border-slate-800 p-9 rounded-[2.5rem] hover:bg-slate-800/50 hover:border-blue-500 hover:-translate-y-2 transition-all duration-300 shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/70"
         >
-          <div className="bg-blue-500/10 w-16 h-16 flex items-center justify-center rounded-2xl mb-8 group-hover:bg-blue-500 transition-colors duration-300">
+          <div className="bg-blue-500/10 w-16 h-16 flex items-center justify-center rounded-2xl mb-7 group-hover:bg-blue-500 transition-colors duration-300">
             <Table2 size={28} className="text-blue-400 group-hover:text-white transition-colors" />
           </div>
           <h2 className="text-2xl font-black italic uppercase text-slate-100 mb-4 flex items-center justify-between">
@@ -155,13 +206,22 @@ export default function Home() {
             Παρακολούθησε ζωντανά τη βαθμολογία, τους πόντους και την ακριβή κατάταξη των κορυφαίων συλλόγων.
           </p>
         </button>
+        </div>
 
         {/* CARD 2: TEAM ANALYTICS */}
+        <div className="flex flex-col gap-4">
+        <QuickLinkPreview
+          previewId={activePreview === "teams" ? "teams" : null}
+        />
         <button 
           onClick={() => navigate('/teams')}
-          className="text-left bg-slate-900/40 backdrop-blur-sm border border-slate-800 p-8 rounded-[2.5rem] hover:bg-slate-800/50 hover:border-purple-500 hover:-translate-y-2 transition-all duration-300 group shadow-xl"
+          onFocus={() => setActivePreview("teams")}
+          onMouseEnter={() => setActivePreview("teams")}
+          onMouseLeave={() => setActivePreview(null)}
+          onBlur={() => setActivePreview(null)}
+          className="group relative min-h-[245px] w-full text-left bg-slate-900/40 backdrop-blur-sm border border-slate-800 p-9 rounded-[2.5rem] hover:bg-slate-800/50 hover:border-purple-500 hover:-translate-y-2 transition-all duration-300 shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/70"
         >
-          <div className="bg-purple-500/10 w-16 h-16 flex items-center justify-center rounded-2xl mb-8 group-hover:bg-purple-500 transition-colors duration-300">
+          <div className="bg-purple-500/10 w-16 h-16 flex items-center justify-center rounded-2xl mb-7 group-hover:bg-purple-500 transition-colors duration-300">
             <Shield size={28} className="text-purple-400 group-hover:text-white transition-colors" />
           </div>
           <h2 className="text-2xl font-black italic uppercase text-slate-100 mb-4 flex items-center justify-between">
@@ -173,13 +233,22 @@ export default function Home() {
         </button>
 
         {/* CARD 3: ABOUT (Πλέον είναι κουμπί που ανοίγει το Pop-Up) */}
+        </div>
+        <div className="flex flex-col gap-4">
+        <QuickLinkPreview
+          previewId={activePreview === "platform" ? "platform" : null}
+        />
         <button 
           onClick={() => setIsAboutOpen(true)}
-          className="text-left bg-gradient-to-br from-slate-900/80 to-slate-900/20 backdrop-blur-sm border border-slate-800 p-8 rounded-[2.5rem] hover:border-emerald-500 hover:-translate-y-2 transition-all duration-300 shadow-xl relative overflow-hidden group"
+          onFocus={() => setActivePreview("platform")}
+          onMouseEnter={() => setActivePreview("platform")}
+          onMouseLeave={() => setActivePreview(null)}
+          onBlur={() => setActivePreview(null)}
+          className="group relative min-h-[245px] w-full overflow-visible text-left bg-gradient-to-br from-slate-900/80 to-slate-900/20 backdrop-blur-sm border border-slate-800 p-9 rounded-[2.5rem] hover:border-emerald-500 hover:-translate-y-2 transition-all duration-300 shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70"
         >
-          <Brain size={120} className="absolute -right-8 -bottom-8 text-white/[0.03] rotate-12 group-hover:text-emerald-500/10 transition-colors duration-500" />
+          <Brain size={120} className="absolute bottom-0 right-0 text-white/[0.03] rotate-12 group-hover:text-emerald-500/10 transition-colors duration-500" />
           
-          <div className="bg-emerald-500/10 w-16 h-16 flex items-center justify-center rounded-2xl mb-8 relative z-10 group-hover:bg-emerald-500 transition-colors duration-300">
+          <div className="bg-emerald-500/10 w-16 h-16 flex items-center justify-center rounded-2xl mb-7 relative z-10 group-hover:bg-emerald-500 transition-colors duration-300">
             <Activity size={28} className="text-emerald-400 group-hover:text-white transition-colors" />
           </div>
           <h2 className="text-2xl font-black italic uppercase text-slate-100 mb-4 flex items-center justify-between relative z-10">
@@ -189,6 +258,7 @@ export default function Home() {
             Πάτησε εδώ για να ανακαλύψεις τις δυνατότητες του TransferMind και πώς λειτουργεί η ανάλυση δεδομένων μας.
           </p>
         </button>
+        </div>
       </div>
 
       {/* 🟢 ΤΟ POP-UP (MODAL) ΤΗΣ ΠΛΑΤΦΟΡΜΑΣ */}
@@ -265,6 +335,136 @@ export default function Home() {
         </div>
       )}
 
+    </div>
+  );
+}
+
+function getSearchTeamFields(team: SearchTeamResult) {
+  return [team.name];
+}
+
+function getSearchPlayerFields(player: SearchPlayerResult) {
+  return [player.name];
+}
+
+function getTeamSearchContext(team: SearchTeamResult) {
+  return joinSearchContext([
+    team.country,
+    team.city,
+    team.stadium,
+    team.tournamentName,
+    team.seasonName,
+  ]);
+}
+
+function getPlayerSearchContext(player: SearchPlayerResult) {
+  return joinSearchContext([
+    player.teamName,
+    player.position,
+    player.nationality,
+  ]);
+}
+
+function joinSearchContext(values: Array<string | null | undefined>) {
+  const uniqueValues = values
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value));
+
+  return [...new Set(uniqueValues)].slice(0, 3).join(" / ");
+}
+
+type QuickLinkPreviewId = "standings" | "teams" | "platform";
+
+const QUICK_LINK_PREVIEWS: Record<
+  QuickLinkPreviewId,
+  {
+    title: string;
+    description: string;
+    accentClassName: string;
+    borderClassName: string;
+    shadowClassName: string;
+    primaryChipClassName: string;
+    chips: string[];
+  }
+> = {
+  standings: {
+    title: "Live League Table",
+    description:
+      "Rankings, points, wins, goal difference, and filtered standings by competition.",
+    accentClassName: "text-blue-300",
+    borderClassName: "border-blue-500/20",
+    shadowClassName: "shadow-blue-950/30",
+    primaryChipClassName: "bg-blue-500/10 text-blue-200",
+    chips: ["Rank", "Points", "Form"],
+  },
+  teams: {
+    title: "Team Profiles",
+    description:
+      "Club pages with season stats, relative bars, squad data, and ranking charts.",
+    accentClassName: "text-purple-300",
+    borderClassName: "border-purple-500/20",
+    shadowClassName: "shadow-purple-950/30",
+    primaryChipClassName: "bg-purple-500/10 text-purple-200",
+    chips: ["Stats", "Squad", "Charts"],
+  },
+  platform: {
+    title: "Platform Overview",
+    description:
+      "A compact explanation of TransferMind data, analysis flow, and thesis features.",
+    accentClassName: "text-emerald-300",
+    borderClassName: "border-emerald-500/20",
+    shadowClassName: "shadow-emerald-950/30",
+    primaryChipClassName: "bg-emerald-500/10 text-emerald-200",
+    chips: ["Data", "Model", "Scope"],
+  },
+};
+
+function QuickLinkPreview({
+  previewId,
+}: {
+  previewId: QuickLinkPreviewId | null;
+}) {
+  const preview = previewId ? QUICK_LINK_PREVIEWS[previewId] : null;
+
+  return (
+    <div className="pointer-events-none hidden h-52 w-full md:block">
+      <div
+        className={`h-full rounded-[2rem] border bg-slate-950/95 p-6 shadow-2xl backdrop-blur-xl transition-all duration-300 ${
+          preview
+            ? "translate-y-0 opacity-100"
+            : "translate-y-3 opacity-0"
+        } ${preview?.borderClassName ?? "border-slate-800"} ${
+          preview?.shadowClassName ?? "shadow-slate-950/30"
+        }`}
+      >
+        {preview ? (
+          <>
+            <p
+              className={`text-[11px] font-black uppercase tracking-[0.3em] ${preview.accentClassName}`}
+            >
+              Preview
+            </p>
+            <h3 className="mt-3 text-xl font-black uppercase italic text-white">
+              {preview.title}
+            </h3>
+            <p className="mt-3 text-sm font-semibold leading-relaxed text-slate-400">
+              {preview.description}
+            </p>
+            <div className="mt-5 grid grid-cols-3 gap-2.5 text-center text-[10px] font-black uppercase tracking-widest text-slate-300">
+              {preview.chips.map((chip, index) => (
+                <span
+                  key={chip}
+                  className={`rounded-2xl px-2.5 py-2.5 ${
+                    index === 0 ? preview.primaryChipClassName : "bg-slate-900"
+                  }`}
+                >
+                  {chip}
+                </span>
+              ))}
+            </div>
+          </>
+        ) : null}
+      </div>
     </div>
   );
 }

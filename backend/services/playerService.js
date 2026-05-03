@@ -3,6 +3,7 @@ import {
   getPlayerById,
   listPlayers,
   listPlayersByTeamReferences,
+  listPlayersByTeamSeasonReferences,
 } from "../repositories/playerRepository.js";
 import { getTeamById, listTeamMappings } from "../repositories/teamRepository.js";
 
@@ -36,7 +37,7 @@ function sanitizePlayer(player, teamIdByAnyReference) {
   };
 }
 
-export async function getPlayers(teamId) {
+export async function getPlayers(teamId, seasonId) {
   const teamRows = await listTeamMappings();
   const { teamIdByAnyReference } = buildTeamMaps(teamRows);
 
@@ -47,7 +48,11 @@ export async function getPlayers(teamId) {
       throw new HttpError(404, "Team not found.");
     }
 
-    const players = await listPlayersByTeamReferences(team.id, team.api_id);
+    const players =
+      seasonId === undefined
+        ? await listPlayersByTeamReferences(team.id, team.api_id)
+        : await listPlayersByTeamSeasonReferences(team, seasonId);
+
     return players.map((player) => sanitizePlayer(player, teamIdByAnyReference));
   }
 
