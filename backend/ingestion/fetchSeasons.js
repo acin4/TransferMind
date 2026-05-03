@@ -2,6 +2,7 @@ import { client } from "../lib/client.js";
 import { saveJSON } from "../lib/utils.js";
 import { supabase } from "../lib/supabaseClient.js";
 import { getCurrentSeasonFromList } from "../lib/utils.js";
+import { fileURLToPath } from "url";
 
 // 👇 εδώ βάζεις ΟΛΑ τα tournaments που θες να τραβήξεις
 const TOURNAMENT_IDS = [185, 17, 8, 35, 23];
@@ -66,7 +67,7 @@ async function fetchAndStoreSeasonsForTournament(tournamentId) {
 
   if (error) {
     console.error("❌ Supabase error:", error);
-    return;
+    throw error;
   }
 
   console.log(
@@ -74,14 +75,35 @@ async function fetchAndStoreSeasonsForTournament(tournamentId) {
   );
 }
 
-// === Runner ===
-(async () => {
-  try {
-    for (const tournamentId of TOURNAMENT_IDS) {
+export async function runFetchSeasons() {
+  const failures = [];
+
+  for (const tournamentId of TOURNAMENT_IDS) {
+    try {
       await fetchAndStoreSeasonsForTournament(tournamentId);
+    } catch (error) {
+      failures.push({ tournamentId, error });
+      console.error(
+        `❌ Error fetching seasons for tournament ${tournamentId}:`,
+        error.response?.data || error.message || error,
+      );
     }
-    console.log("\n🎉 Done for all tournaments!");
-  } catch (e) {
-    console.error("❌ Error:", e.response?.data || e.message);
   }
-})();
+
+  if (failures.length > 0) {
+    throw new Error(`Seasons sync failed for ${failures.length} tournament(s).`);
+  }
+
+  console.log("\n🎉 Done for all tournaments!");
+}
+
+const currentFilePath = fileURLToPath(import.meta.url);
+
+if (process.argv[1] === currentFilePath) {
+  try {
+    await runFetchSeasons();
+  } catch (error) {
+    console.error("❌ Error:", error.response?.data || error.message || error);
+    process.exitCode = 1;
+  }
+}

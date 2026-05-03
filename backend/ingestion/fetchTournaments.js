@@ -1,6 +1,7 @@
 import { client } from "../lib/client.js";
 import { saveJSON } from "../lib/utils.js";
 import { supabase } from "../lib/supabaseClient.js";
+import { fileURLToPath } from "url";
 
 // === helper: φέρε τα ids από Supabase ===
 async function getTournamentIdsFromDb() {
@@ -59,22 +60,44 @@ async function fetchAndStoreTournament(tournamentId) {
 
   if (error) {
     console.error("❌ Supabase error:", error);
-    return;
+    throw error;
   }
 
   console.log("✅ Inserted/updated tournament", t.id, t.name);
 }
 
-// === Runner ===
-(async () => {
-  try {
-    const TOURNAMENT_IDS = await getTournamentIdsFromDb();
+export async function runFetchTournaments() {
+  const tournamentIds = await getTournamentIdsFromDb();
+  const failures = [];
 
-    for (const tournamentId of TOURNAMENT_IDS) {
+  for (const tournamentId of tournamentIds) {
+    try {
       await fetchAndStoreTournament(tournamentId);
+    } catch (error) {
+      failures.push({ tournamentId, error });
+      console.error(
+        `❌ Error fetching tournament ${tournamentId}:`,
+        error.response?.data || error.message || error,
+      );
     }
-    console.log("\n🎉 Done for all tournaments!");
-  } catch (e) {
-    console.error("❌ Error:", e.response?.data || e.message);
   }
-})();
+
+  if (failures.length > 0) {
+    throw new Error(
+      `Tournament sync failed for ${failures.length} tournament(s).`,
+    );
+  }
+
+  console.log("\n🎉 Done for all tournaments!");
+}
+
+const currentFilePath = fileURLToPath(import.meta.url);
+
+if (process.argv[1] === currentFilePath) {
+  try {
+    await runFetchTournaments();
+  } catch (error) {
+    console.error("❌ Error:", error.response?.data || error.message || error);
+    process.exitCode = 1;
+  }
+}

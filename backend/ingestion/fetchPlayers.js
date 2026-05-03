@@ -10,6 +10,7 @@ import { saveJSON } from "../lib/utils.js";
 import { supabase } from "../lib/supabaseClient.js";
 // Position service to ensure positions exist in DB and get their IDs
 import { createPositionService, normalizePositions } from "../lib/positions.js";
+import { fileURLToPath } from "url";
 
 // ==============================================================================
 // GLOBAL CONFIGURATION
@@ -353,172 +354,185 @@ async function upsertPlayerPositions(playerDbId, positionCodes) {
 // - delay(ms): helper that returns a Promise that resolves after ms.
 // ==============================================================================
 
-(async () => {
-  // Wrap the entire ingestion run in a try/catch so we can catch unexpected failures
-  // (e.g., DB connection errors, misconfigured env vars, etc.)
-  try {
-    // --------------------------------------------------------------------------
-    // Step 1: Load the current-season teams we are going to process
-    // --------------------------------------------------------------------------
-    // teams is the current-season list from current_season_teams for which we fetch squads.
-    // We loop over these current-season teams and attempt to ingest any missing players.
-    const teams = await getCurrentTeamsFromDb();
+export async function runFetchPlayers() {
+  const failures = [];
 
-    console.log(`Syncing players for ${teams.length} current teams`);
+  // --------------------------------------------------------------------------
+  // Step 1: Load the current-season teams we are going to process
+  // --------------------------------------------------------------------------
+  // teams is the current-season list from current_season_teams for which we fetch squads.
+  // We loop over these current-season teams and attempt to ingest any missing players.
+  const teams = await getCurrentTeamsFromDb();
 
-    // --------------------------------------------------------------------------
-    // Step 2: Load an in-memory lookup of existing players
-    // --------------------------------------------------------------------------
-    // existingPlayersMap is a Map where:
-    //   key   = API player id (the id returned by Sofascore or your external provider)
-    //   value = an object containing DB-known fields (e.g., team_id)
-    //
-    // Why do this?
-    // - Prevents us from re-querying the DB for every single player inside loops.
-    // - Makes "does this player already exist?" an O(1) lookup.
-    const existingPlayersMap = await getExistingPlayersMapFromDb();
+  console.log(`Syncing players for ${teams.length} current teams`);
 
-    // --------------------------------------------------------------------------
-    // Step 3: Process each team one by one
-    // --------------------------------------------------------------------------
-    for (const team of teams) {
-      // We'll store the squad's player IDs here.
-      // Default is empty; if the API call fails, we skip this team.
-      let squadPlayerIds = [];
+  // --------------------------------------------------------------------------
+  // Step 2: Load an in-memory lookup of existing players
+  // --------------------------------------------------------------------------
+  // existingPlayersMap is a Map where:
+  //   key   = API player id (the id returned by Sofascore or your external provider)
+  //   value = an object containing DB-known fields (e.g., team_id)
+  //
+  // Why do this?
+  // - Prevents us from re-querying the DB for every single player inside loops.
+  // - Makes "does this player already exist?" an O(1) lookup.
+  const existingPlayersMap = await getExistingPlayersMapFromDb();
 
-      try {
-        // ----------------------------------------------------------------------
-        // Step 3a: Fetch the squad for this team
-        // ----------------------------------------------------------------------
-        // This typically calls an endpoint like:
-        //   /team/{teamId}/squad
-        // and returns a list of player IDs.
-        console.log(
-          `\n🏟️ Processing ${team.team_name ?? "unknown team"} | db:${team.team_id} | api:${team.team_api_id}`,
-        );
+  // --------------------------------------------------------------------------
+  // Step 3: Process each team one by one
+  // --------------------------------------------------------------------------
+  for (const team of teams) {
+    // We'll store the squad's player IDs here.
+    // Default is empty; if the API call fails, we skip this team.
+    let squadPlayerIds = [];
 
-        squadPlayerIds = await fetchSquadPlayerIds(team.team_api_id);
-      } catch (err) {
-        // If squad fetch fails, log and continue to next team.
-        // We don't want one broken team to kill the whole run.
-        console.error(
-          `❌ Error fetching squad for team ${team.team_name ?? team.team_api_id}:`,
-          // If Axios error, err.response.data is often most informative.
-          err.response?.data || err.message,
-        );
-        continue; // Skip this team and move on.
-      }
+    try {
+      // ----------------------------------------------------------------------
+      // Step 3a: Fetch the squad for this team
+      // ----------------------------------------------------------------------
+      // This typically calls an endpoint like:
+      //   /team/{teamId}/squad
+      // and returns a list of player IDs.
+      console.log(
+        `\n🏟️ Processing ${team.team_name ?? "unknown team"} | db:${team.team_id} | api:${team.team_api_id}`,
+      );
 
-      // ------------------------------------------------------------------------
-      // Step 4: Process each player in the squad
-      // ------------------------------------------------------------------------
-      for (const playerId of squadPlayerIds) {
-        // Lookup whether this API playerId already exists in DB (via local cache).
-        const existing = existingPlayersMap.get(playerId);
-
-        // If the player is already known, we do nothing (in this snippet).
-        // Note: You could also add "update existing players" logic here later
-        // (e.g., refresh details if stale).
-        if (!existing) {
-          // Player does NOT exist in DB yet -> ingest the player and positions
-          try {
-            // ------------------------------------------------------------------
-            // Step 4a: Fetch player details from API and map them to DB format
-            // ------------------------------------------------------------------
-            // fetchPlayerDetailAndMap should:
-            // - call the API player details endpoint
-            // - convert the API response to your DB schema format
-            // - extract positions into an array (positionCodes)
-            const result = await fetchPlayerDetailAndMap(playerId);
-
-            // If the API returned nothing / mapping failed, skip this player.
-            if (!result) continue;
-
-            const { row, positionCodes } = result;
-
-            // ------------------------------------------------------------------
-            // Step 4b: Assign primary team_id based on the current team loop
-            // ------------------------------------------------------------------
-            // We treat the "teamId we're currently processing" as the player's
-            // "primary team" (at least for initial ingestion).
-            //
-            // This is useful because squad endpoints implicitly define membership.
-            // Even if the player details endpoint has team info, your ingestion rule
-            // here is: "current squad team is the authoritative team_id".
-            row.team_id = team.team_id;
-
-            // ------------------------------------------------------------------
-            // Step 4c: Upsert the player row into DB
-            // ------------------------------------------------------------------
-            // upsertPlayer(row) should insert if missing, update if exists,
-            // and return the player's DB primary key (playerDbId).
-            //
-            // Why return DB id?
-            // Because join tables typically reference internal DB primary keys,
-            // not external API IDs.
-            const playerDbId = await upsertPlayer(row);
-
-            // Helpful logging for debugging ingestion + position linking.
-            console.log(
-              "Upserting position: Player DB ID:",
-              playerDbId,
-              "Position Codes:",
-              positionCodes,
-            );
-
-            // ------------------------------------------------------------------
-            // Step 4d: Upsert player's positions in the join table
-            // ------------------------------------------------------------------
-            // This usually means:
-            // - Ensure each position exists in "positions" table
-            // - Then link (playerDbId, positionId) in "player_positions" join table
-            //
-            // positionCodes should be an array (even if the API returns a single position).
-            await upsertPlayerPositions(playerDbId, positionCodes);
-
-            // ------------------------------------------------------------------
-            // Step 4e: Update local cache so we don't process same player again
-            // ------------------------------------------------------------------
-            // This matters if:
-            // - the same player appears in multiple squads due to data issues
-            // - current_season_teams contains duplicates (shouldn't, but still)
-            // - you later add logic that revisits players
-            existingPlayersMap.set(playerId, {
-              team_id: row.team_id,
-            });
-
-            // ------------------------------------------------------------------
-            // Step 4f: Throttle to respect API limits / avoid bursts
-            // ------------------------------------------------------------------
-            // If THROTTLE_MS is 0, no delay occurs.
-            // If positive, wait between player requests.
-            if (THROTTLE_MS > 0) await delay(THROTTLE_MS);
-          } catch (err) {
-            // If anything fails for this player (API mapping, DB write, etc.),
-            // log and continue with the next player.
-            console.error(
-              `❌ Error processing new player ${playerId}:`,
-              err.response?.data || err.message,
-            );
-          }
-
-          // Continue to next player (explicit, though the loop will do it anyway).
-          continue;
-        }
-
-        // If existing is truthy, this player is already in DB.
-        // Current behavior: do nothing (skip).
-        // You can later expand with refresh logic here if you want.
-      }
+      squadPlayerIds = await fetchSquadPlayerIds(team.team_api_id);
+    } catch (err) {
+      // If squad fetch fails, log and continue to next team.
+      // We don't want one broken team to kill the whole run.
+      failures.push({ team, error: err });
+      console.error(
+        `❌ Error fetching squad for team ${team.team_name ?? team.team_api_id}:`,
+        // If Axios error, err.response.data is often most informative.
+        err.response?.data || err.message,
+      );
+      continue; // Skip this team and move on.
     }
 
-    // --------------------------------------------------------------------------
-    // Step 5: Done
-    // --------------------------------------------------------------------------
-    console.log("\n🎉 Done for all current-season teams & players!");
-  } catch (e) {
+    // ------------------------------------------------------------------------
+    // Step 4: Process each player in the squad
+    // ------------------------------------------------------------------------
+    for (const playerId of squadPlayerIds) {
+      // Lookup whether this API playerId already exists in DB (via local cache).
+      const existing = existingPlayersMap.get(playerId);
+
+      // If the player is already known, we do nothing (in this snippet).
+      // Note: You could also add "update existing players" logic here later
+      // (e.g., refresh details if stale).
+      if (!existing) {
+        // Player does NOT exist in DB yet -> ingest the player and positions
+        try {
+          // ------------------------------------------------------------------
+          // Step 4a: Fetch player details from API and map them to DB format
+          // ------------------------------------------------------------------
+          // fetchPlayerDetailAndMap should:
+          // - call the API player details endpoint
+          // - convert the API response to your DB schema format
+          // - extract positions into an array (positionCodes)
+          const result = await fetchPlayerDetailAndMap(playerId);
+
+          // If the API returned nothing / mapping failed, skip this player.
+          if (!result) continue;
+
+          const { row, positionCodes } = result;
+
+          // ------------------------------------------------------------------
+          // Step 4b: Assign primary team_id based on the current team loop
+          // ------------------------------------------------------------------
+          // We treat the "teamId we're currently processing" as the player's
+          // "primary team" (at least for initial ingestion).
+          //
+          // This is useful because squad endpoints implicitly define membership.
+          // Even if the player details endpoint has team info, your ingestion rule
+          // here is: "current squad team is the authoritative team_id".
+          row.team_id = team.team_id;
+
+          // ------------------------------------------------------------------
+          // Step 4c: Upsert the player row into DB
+          // ------------------------------------------------------------------
+          // upsertPlayer(row) should insert if missing, update if exists,
+          // and return the player's DB primary key (playerDbId).
+          //
+          // Why return DB id?
+          // Because join tables typically reference internal DB primary keys,
+          // not external API IDs.
+          const playerDbId = await upsertPlayer(row);
+
+          // Helpful logging for debugging ingestion + position linking.
+          console.log(
+            "Upserting position: Player DB ID:",
+            playerDbId,
+            "Position Codes:",
+            positionCodes,
+          );
+
+          // ------------------------------------------------------------------
+          // Step 4d: Upsert player's positions in the join table
+          // ------------------------------------------------------------------
+          // This usually means:
+          // - Ensure each position exists in "positions" table
+          // - Then link (playerDbId, positionId) in "player_positions" join table
+          //
+          // positionCodes should be an array (even if the API returns a single position).
+          await upsertPlayerPositions(playerDbId, positionCodes);
+
+          // ------------------------------------------------------------------
+          // Step 4e: Update local cache so we don't process same player again
+          // ------------------------------------------------------------------
+          // This matters if:
+          // - the same player appears in multiple squads due to data issues
+          // - current_season_teams contains duplicates (shouldn't, but still)
+          // - you later add logic that revisits players
+          existingPlayersMap.set(playerId, {
+            team_id: row.team_id,
+          });
+
+          // ------------------------------------------------------------------
+          // Step 4f: Throttle to respect API limits / avoid bursts
+          // ------------------------------------------------------------------
+          // If THROTTLE_MS is 0, no delay occurs.
+          // If positive, wait between player requests.
+          if (THROTTLE_MS > 0) await delay(THROTTLE_MS);
+        } catch (err) {
+          failures.push({ playerId, team, error: err });
+          // If anything fails for this player (API mapping, DB write, etc.),
+          // log and continue with the next player.
+          console.error(
+            `❌ Error processing new player ${playerId}:`,
+            err.response?.data || err.message,
+          );
+        }
+
+        // Continue to next player (explicit, though the loop will do it anyway).
+        continue;
+      }
+
+      // If existing is truthy, this player is already in DB.
+      // Current behavior: do nothing (skip).
+      // You can later expand with refresh logic here if you want.
+    }
+  }
+
+  if (failures.length > 0) {
+    throw new Error(`Players sync failed for ${failures.length} item(s).`);
+  }
+
+  // --------------------------------------------------------------------------
+  // Step 5: Done
+  // --------------------------------------------------------------------------
+  console.log("\n🎉 Done for all current-season teams & players!");
+}
+
+const currentFilePath = fileURLToPath(import.meta.url);
+
+if (process.argv[1] === currentFilePath) {
+  try {
+    await runFetchPlayers();
+  } catch (error) {
     // Catch truly fatal errors that happen outside per-team/per-player try/catch.
     // Example: getCurrentTeamsFromDb() fails, DB is down, config missing, etc.
-    console.error("❌ Fatal Error:", e.response?.data || e.message);
+    console.error("❌ Fatal Error:", error.response?.data || error.message);
+    process.exitCode = 1;
   }
-})();
+}

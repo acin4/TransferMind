@@ -1,6 +1,7 @@
 import { client } from "../lib/client.js";
 import { saveJSON } from "../lib/utils.js";
 import { supabase } from "../lib/supabaseClient.js";
+import { fileURLToPath } from "url";
 
 const THROTTLE_MS = 300;
 const PAGE_SIZE = 1000;
@@ -257,6 +258,7 @@ async function fetchAndStoreStandings(tournamentId, seasonId) {
 
     if (error) {
       console.error("❌ Supabase upsert error:", error.message);
+      throw error;
     } else {
       console.log(
         `   ✅ Successfully updated ${rowsToUpsert.length} standings rows.`,
@@ -267,33 +269,57 @@ async function fetchAndStoreStandings(tournamentId, seasonId) {
       "❌ Error processing standings:",
       err.response?.data || err.message,
     );
+    throw err;
   }
 }
 
 /**
  * Main Runner
  */
-(async () => {
-  try {
-    const mode = parseMode(process.argv.slice(2));
-
-    console.log(`🚀 Starting Standings Sync (${mode} mode)...`);
-    console.log(
-      mode === "init"
-        ? "Mode detail: init fetches standings for all DB seasons."
-        : "Mode detail: refresh fetches standings only for current seasons.",
+export async function runFetchStandings({ mode = "refresh" } = {}) {
+  if (!VALID_MODES.has(mode)) {
+    throw new Error(
+      `Invalid standings sync mode "${mode}". Use "refresh" or "init".`,
     );
+  }
 
-    const pairs = await getTournamentSeasonPairsForMode(mode);
+  console.log(`🚀 Starting Standings Sync (${mode} mode)...`);
+  console.log(
+    mode === "init"
+      ? "Mode detail: init fetches standings for all DB seasons."
+      : "Mode detail: refresh fetches standings only for current seasons.",
+  );
 
-    for (const { tournamentId, seasonId } of pairs) {
+  const pairs = await getTournamentSeasonPairsForMode(mode);
+  const failures = [];
+
+  for (const { tournamentId, seasonId } of pairs) {
+    try {
       await fetchAndStoreStandings(tournamentId, seasonId);
-
-      if (THROTTLE_MS > 0) await delay(THROTTLE_MS);
+    } catch (error) {
+      failures.push({ tournamentId, seasonId, error });
     }
 
-    console.log("\n🎉 Done fetching standings!");
-  } catch (e) {
-    console.error("❌ Fatal Error:", e);
+    if (THROTTLE_MS > 0) await delay(THROTTLE_MS);
   }
-})();
+
+  if (failures.length > 0) {
+    throw new Error(
+      `Standings sync failed for ${failures.length} tournament/season pair(s).`,
+    );
+  }
+
+  console.log("\n🎉 Done fetching standings!");
+}
+
+const currentFilePath = fileURLToPath(import.meta.url);
+
+if (process.argv[1] === currentFilePath) {
+  try {
+    const mode = parseMode(process.argv.slice(2));
+    await runFetchStandings({ mode });
+  } catch (error) {
+    console.error("❌ Fatal Error:", error);
+    process.exitCode = 1;
+  }
+}

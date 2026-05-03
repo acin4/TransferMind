@@ -13,6 +13,7 @@ import {
 } from "../lib/utils.js";
 // Supabase client (PostgreSQL connection via Supabase SDK)
 import { supabase } from "../lib/supabaseClient.js";
+import { fileURLToPath } from "url";
 
 // ==============================================================================
 // GLOBAL CONFIGURATION
@@ -339,6 +340,7 @@ async function fetchAndSaveTeamStats(row) {
 
       if (error) {
         console.error(`❌ DB Error (Team ${team_id}):`, error.message);
+        throw error;
       } else {
         console.log(`✅ Saved (no stats): Team ${team_id}`);
       }
@@ -634,6 +636,7 @@ async function fetchAndSaveTeamStats(row) {
 
     if (error) {
       console.error(`❌ DB Error (Team ${team_id}):`, error.message);
+      throw error;
     } else {
       console.log(`✅ Saved: Team ${team_id}`);
     }
@@ -644,6 +647,7 @@ async function fetchAndSaveTeamStats(row) {
     } else {
       console.error(`❌ Error for Team ${team_id}:`, err.message);
     }
+    throw err;
   }
 }
 
@@ -662,29 +666,51 @@ async function fetchAndSaveTeamStats(row) {
  *    - upsert into DB
  *    - wait THROTTLE_MS
  */
-(async () => {
-  try {
-    const mode = parseMode(process.argv.slice(2));
-
-    console.log(`🚀 Starting Team Stats Fetch (${mode} mode)...`);
-    console.log(
-      mode === "init"
-        ? "Mode detail: init fetches team stats for all standings-backed DB seasons."
-        : "Mode detail: refresh fetches team stats only for current seasons.",
+export async function runFetchAllTeamStats({ mode = "refresh" } = {}) {
+  if (!VALID_MODES.has(mode)) {
+    throw new Error(
+      `Invalid team stats sync mode "${mode}". Use "refresh" or "init".`,
     );
+  }
 
-    const rows = await getTargetDataForMode(mode);
+  console.log(`🚀 Starting Team Stats Fetch (${mode} mode)...`);
+  console.log(
+    mode === "init"
+      ? "Mode detail: init fetches team stats for all standings-backed DB seasons."
+      : "Mode detail: refresh fetches team stats only for current seasons.",
+  );
 
-    // Sequential processing (safe for rate limits)
-    // You could later upgrade this to a concurrency pool if needed.
-    for (const row of rows) {
+  const rows = await getTargetDataForMode(mode);
+  const failures = [];
+
+  // Sequential processing (safe for rate limits)
+  // You could later upgrade this to a concurrency pool if needed.
+  for (const row of rows) {
+    try {
       await fetchAndSaveTeamStats(row);
-      await delay(THROTTLE_MS);
+    } catch (error) {
+      failures.push({ row, error });
     }
 
-    console.log("\n🎉 ALL DONE!");
-  } catch (e) {
-    // Any thrown error from fetchAllRows / getTargetData ends up here
-    console.error("❌ Fatal Error:", e.message);
+    await delay(THROTTLE_MS);
   }
-})();
+
+  if (failures.length > 0) {
+    throw new Error(`Team stats sync failed for ${failures.length} row(s).`);
+  }
+
+  console.log("\n🎉 ALL DONE!");
+}
+
+const currentFilePath = fileURLToPath(import.meta.url);
+
+if (process.argv[1] === currentFilePath) {
+  try {
+    const mode = parseMode(process.argv.slice(2));
+    await runFetchAllTeamStats({ mode });
+  } catch (error) {
+    // Any thrown error from fetchAllRows / getTargetData ends up here
+    console.error("❌ Fatal Error:", error.message);
+    process.exitCode = 1;
+  }
+}

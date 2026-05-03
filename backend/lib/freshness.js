@@ -16,6 +16,7 @@ export const ENTITY_TYPES = {
   TOURNAMENTS: "tournaments",
   SEASONS: "seasons",
   STANDINGS: "standings",
+  TEAM_LOGOS: "team_logos",
   PLAYER_STATS: "player_stats",
   TEAM_STATS: "team_stats",
 };
@@ -54,6 +55,7 @@ export function makeEntityKey(entityType, params = {}) {
     case ENTITY_TYPES.TEAMS:
     case ENTITY_TYPES.TOURNAMENTS:
     case ENTITY_TYPES.SEASONS:
+    case ENTITY_TYPES.TEAM_LOGOS:
       // allow custom keys if you ever want to segment, otherwise default "all"
       return keyFromParts(entityType, params);
 

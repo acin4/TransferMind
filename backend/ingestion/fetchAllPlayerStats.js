@@ -8,6 +8,7 @@ import { client } from "../lib/client.js";
 import { saveJSON, truncateNumericStatFields } from "../lib/utils.js";
 // Supabase client (PostgreSQL connection via Supabase SDK)
 import { supabase } from "../lib/supabaseClient.js";
+import { fileURLToPath } from "url";
 
 // ==============================================================================
 // GLOBAL CONFIGURATION
@@ -271,6 +272,7 @@ async function fetchAndSaveStats(row) {
 
       if (error) {
         console.error(`❌ DB Error (${player.name}):`, error.message);
+        throw error;
       } else {
         console.log(
           `✅ Saved current-season identifiers only (no stats): ${player.name}`,
@@ -472,6 +474,7 @@ async function fetchAndSaveStats(row) {
 
     if (error) {
       console.error(`❌ DB Error (${player.name}):`, error.message);
+      throw error;
     } else {
       console.log(`✅ Saved current-season stats: ${player.name}`);
     }
@@ -482,6 +485,7 @@ async function fetchAndSaveStats(row) {
     } else {
       console.error(`❌ Error for ${player.name}:`, err.message);
     }
+    throw err;
   }
 }
 
@@ -497,22 +501,39 @@ async function fetchAndSaveStats(row) {
  *     node fetchAllPlayerStats.js
  * - Prevents global variable pollution
  */
-(async () => {
-  try {
-    console.log("🚀 Starting current-season player stats fetch...");
+export async function runFetchAllPlayerStats() {
+  console.log("🚀 Starting current-season player stats fetch...");
 
-    // Build all valid current-season API requests
-    const rows = await getTargetData();
+  // Build all valid current-season API requests
+  const rows = await getTargetData();
+  const failures = [];
 
-    // Sequential processing (safe for rate limits)
-    // You could later upgrade this to a concurrency pool if needed.
-    for (const row of rows) {
+  // Sequential processing (safe for rate limits)
+  // You could later upgrade this to a concurrency pool if needed.
+  for (const row of rows) {
+    try {
       await fetchAndSaveStats(row);
-      await delay(THROTTLE_MS); // Throttle to avoid rate limits
+    } catch (error) {
+      failures.push({ row, error });
     }
 
-    console.log("\n🎉 Current-season player stats fetch complete!");
-  } catch (e) {
-    console.error("❌ Fatal Error:", e.message);
+    await delay(THROTTLE_MS); // Throttle to avoid rate limits
   }
-})();
+
+  if (failures.length > 0) {
+    throw new Error(`Player stats sync failed for ${failures.length} row(s).`);
+  }
+
+  console.log("\n🎉 Current-season player stats fetch complete!");
+}
+
+const currentFilePath = fileURLToPath(import.meta.url);
+
+if (process.argv[1] === currentFilePath) {
+  try {
+    await runFetchAllPlayerStats();
+  } catch (error) {
+    console.error("❌ Fatal Error:", error.message);
+    process.exitCode = 1;
+  }
+}
