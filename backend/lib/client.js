@@ -27,6 +27,8 @@ dotenv.config({ path: path.join(__dirname, "..", ".env") });
 
 // === Read environment variables ===
 const { API_BASE, RAPIDAPI_KEY, RAPIDAPI_HOST } = process.env;
+export const INGESTION_REQUEST_TIMEOUT_MS = 45000;
+const RETRYABLE_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
 
 // Check if all required environment variables are defined
 if (!API_BASE || !RAPIDAPI_KEY || !RAPIDAPI_HOST) {
@@ -43,7 +45,7 @@ if (!API_BASE || !RAPIDAPI_KEY || !RAPIDAPI_HOST) {
 // === Create a preconfigured Axios instance ===
 export const client = axios.create({
   baseURL: API_BASE, // base URL for all API calls
-  timeout: 20000, // 20s timeout for each request
+  timeout: INGESTION_REQUEST_TIMEOUT_MS, // shared timeout for each ingestion request
   headers: {
     "X-RapidAPI-Key": RAPIDAPI_KEY, // your RapidAPI authentication key
     "X-RapidAPI-Host": RAPIDAPI_HOST, // the host header required by RapidAPI
@@ -59,6 +61,21 @@ function requestDurationMs(config) {
 
 function requestEndpoint(config) {
   return config?.url || "unknown";
+}
+
+function isTimeoutError(error) {
+  if (error.code === "ERR_CANCELED") return false;
+
+  return (
+    error.code === "ECONNABORTED" ||
+    error.code === "ETIMEDOUT" ||
+    error.message?.toLowerCase().includes("timeout")
+  );
+}
+
+function isRetryableError(error) {
+  const status = error.response?.status;
+  return RETRYABLE_STATUS_CODES.has(status) || isTimeoutError(error);
 }
 
 client.interceptors.request.use((config) => {
@@ -102,8 +119,7 @@ client.interceptors.response.use(
   // On error, handle retry logic for certain HTTP codes
   async (error) => {
     const cfg = error.config || {}; // original request config
-    const status = error.response?.status; // HTTP status code
-    const shouldRetry = [429, 500, 502, 503, 504].includes(status); // retryable codes
+    const shouldRetry = isRetryableError(error);
 
     // Initialize retry counter if not already set
     cfg.__retryCount = cfg.__retryCount || 0;

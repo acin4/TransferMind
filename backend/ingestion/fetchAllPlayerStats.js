@@ -222,7 +222,6 @@ async function fetchAndSaveStats(row) {
         tournamentId: tournament_api_id,
         seasonId: season_api_id,
       },
-      timeout: 10000, // 10 seconds timeout to avoid hanging
     });
 
     // Debug log so you can validate behavior while running
