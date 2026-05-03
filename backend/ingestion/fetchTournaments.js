@@ -64,17 +64,25 @@ async function fetchAndStoreTournament(tournamentId) {
   }
 
   console.log("✅ Inserted/updated tournament", t.id, t.name);
+  return { upserted: 1 };
 }
 
 export async function runFetchTournaments() {
   const tournamentIds = await getTournamentIdsFromDb();
   const failures = [];
+  const summary = {
+    targets: tournamentIds.length,
+    upserted: 0,
+    failed: 0,
+  };
 
   for (const tournamentId of tournamentIds) {
     try {
-      await fetchAndStoreTournament(tournamentId);
+      const result = await fetchAndStoreTournament(tournamentId);
+      summary.upserted += result?.upserted ?? 0;
     } catch (error) {
       failures.push({ tournamentId, error });
+      summary.failed += 1;
       console.error(
         `❌ Error fetching tournament ${tournamentId}:`,
         error.response?.data || error.message || error,
@@ -83,12 +91,15 @@ export async function runFetchTournaments() {
   }
 
   if (failures.length > 0) {
-    throw new Error(
+    const error = new Error(
       `Tournament sync failed for ${failures.length} tournament(s).`,
     );
+    error.summary = summary;
+    throw error;
   }
 
   console.log("\n🎉 Done for all tournaments!");
+  return summary;
 }
 
 const currentFilePath = fileURLToPath(import.meta.url);

@@ -143,6 +143,7 @@ async function fetchAndStoreTeamDetails(teamId) {
     }
 
     console.log(`   ✅ Upserted team ${teamId} (${row.name ?? "unknown"})`);
+    return { upserted: 1 };
   } catch (err) {
     console.error(
       `❌ Error fetching team ${teamId}:`,
@@ -159,19 +160,27 @@ export async function runFetchTeams() {
   console.log("🚀 Starting Teams Sync from standings table...");
 
   const missingTeamIds = await getMissingTeamIdsFromDb();
+  const summary = {
+    targets: missingTeamIds.length,
+    upserted: 0,
+    skipped: 0,
+    failed: 0,
+  };
 
   if (missingTeamIds.length === 0) {
     console.log("✅ No missing teams. Everything is already synced.");
-    return;
+    return summary;
   }
 
   const failures = [];
 
   for (const teamId of missingTeamIds) {
     try {
-      await fetchAndStoreTeamDetails(teamId);
+      const result = await fetchAndStoreTeamDetails(teamId);
+      summary.upserted += result?.upserted ?? 0;
     } catch (error) {
       failures.push({ teamId, error });
+      summary.failed += 1;
     }
 
     if (THROTTLE_MS > 0) {
@@ -180,10 +189,13 @@ export async function runFetchTeams() {
   }
 
   if (failures.length > 0) {
-    throw new Error(`Teams sync failed for ${failures.length} team(s).`);
+    const error = new Error(`Teams sync failed for ${failures.length} team(s).`);
+    error.summary = summary;
+    throw error;
   }
 
   console.log("\n🎉 Done fetching missing teams!");
+  return summary;
 }
 
 const currentFilePath = fileURLToPath(import.meta.url);

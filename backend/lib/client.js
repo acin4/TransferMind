@@ -6,6 +6,7 @@ import fs from "fs";
 import axios from "axios";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
+import { logApiRequest } from "./ingestionLogger.js";
 
 // === Fix __dirname in ES modules ===
 const __filename = fileURLToPath(import.meta.url);
@@ -33,7 +34,7 @@ if (!API_BASE || !RAPIDAPI_KEY || !RAPIDAPI_HOST) {
     "❌ Missing env vars. Expected in .env:\n" +
       "API_BASE=https://sofascore.p.rapidapi.com\n" +
       "RAPIDAPI_KEY=YOUR_KEY\n" +
-      "RAPIDAPI_HOST=sofascore.p.rapidapi.com"
+      "RAPIDAPI_HOST=sofascore.p.rapidapi.com",
   );
   // Exit the process if any variable is missing
   process.exit(1);
@@ -49,6 +50,49 @@ export const client = axios.create({
     Accept: "application/json", // expect JSON responses
   },
 });
+
+function requestDurationMs(config) {
+  return config?.__requestStartedAt
+    ? Date.now() - config.__requestStartedAt
+    : null;
+}
+
+function requestEndpoint(config) {
+  return config?.url || "unknown";
+}
+
+client.interceptors.request.use((config) => {
+  config.__requestStartedAt = Date.now();
+  return config;
+});
+
+client.interceptors.response.use(
+  (res) => {
+    void logApiRequest({
+      endpoint: requestEndpoint(res.config),
+      params: res.config?.params ?? {},
+      statusCode: res.status ?? null,
+      success: true,
+      durationMs: requestDurationMs(res.config),
+    });
+
+    return res;
+  },
+  (error) => {
+    const cfg = error.config || {};
+
+    void logApiRequest({
+      endpoint: requestEndpoint(cfg),
+      params: cfg.params ?? {},
+      statusCode: error.response?.status ?? null,
+      success: false,
+      durationMs: requestDurationMs(cfg),
+      errorMessage: error.message,
+    });
+
+    return Promise.reject(error);
+  },
+);
 
 // === Add a response interceptor for automatic retries ===
 client.interceptors.response.use(
@@ -84,5 +128,5 @@ client.interceptors.response.use(
 
     // If not retryable or max retries reached, propagate the error
     return Promise.reject(error);
-  }
+  },
 );

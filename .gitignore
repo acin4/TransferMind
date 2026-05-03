@@ -45,3 +45,14 @@ backend/.cache/
 
 # local Supabase state
 .supabase/
+
+# --- Data dumps / local files ---
+data/raw/
+data/derived/
+data/tmp/
+data/*.db
+ingestion/data/
+*.sqlite
+*.sqlite3
+*.bak
+*.zip

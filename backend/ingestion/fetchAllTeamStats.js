@@ -344,7 +344,11 @@ async function fetchAndSaveTeamStats(row) {
       } else {
         console.log(`✅ Saved (no stats): Team ${team_id}`);
       }
-      return;
+      return {
+        upserted: 1,
+        skeletonRows: 1,
+        noDataRows: 1,
+      };
     }
 
     // ==========================================================
@@ -640,6 +644,12 @@ async function fetchAndSaveTeamStats(row) {
     } else {
       console.log(`✅ Saved: Team ${team_id}`);
     }
+
+    return {
+      upserted: 1,
+      skeletonRows: 0,
+      noDataRows: 0,
+    };
   } catch (err) {
     // Timeouts are common when calling external APIs, so we separate them for clearer logs.
     if (err.code === "ECONNABORTED" || err.message.includes("timeout")) {
@@ -682,24 +692,41 @@ export async function runFetchAllTeamStats({ mode = "refresh" } = {}) {
 
   const rows = await getTargetDataForMode(mode);
   const failures = [];
+  const summary = {
+    mode,
+    targets: rows.length,
+    upserted: 0,
+    failed: 0,
+    skeletonRows: 0,
+    noDataRows: 0,
+  };
 
   // Sequential processing (safe for rate limits)
   // You could later upgrade this to a concurrency pool if needed.
   for (const row of rows) {
     try {
-      await fetchAndSaveTeamStats(row);
+      const result = await fetchAndSaveTeamStats(row);
+      summary.upserted += result?.upserted ?? 0;
+      summary.skeletonRows += result?.skeletonRows ?? 0;
+      summary.noDataRows += result?.noDataRows ?? 0;
     } catch (error) {
       failures.push({ row, error });
+      summary.failed += 1;
     }
 
     await delay(THROTTLE_MS);
   }
 
   if (failures.length > 0) {
-    throw new Error(`Team stats sync failed for ${failures.length} row(s).`);
+    const error = new Error(
+      `Team stats sync failed for ${failures.length} row(s).`,
+    );
+    error.summary = summary;
+    throw error;
   }
 
   console.log("\n🎉 ALL DONE!");
+  return summary;
 }
 
 const currentFilePath = fileURLToPath(import.meta.url);

@@ -34,7 +34,7 @@ async function fetchAndStoreSeasonsForTournament(tournamentId) {
 
   if (!seasons.length) {
     console.log("⚠️ No seasons found in response");
-    return;
+    return { upserted: 0, skipped: 1, fetched: 0, selected: 0 };
   }
   const selectedSeasons = seasons.slice(0, SEASONS_PER_TOURNAMENT);
   console.log(
@@ -73,16 +73,36 @@ async function fetchAndStoreSeasonsForTournament(tournamentId) {
   console.log(
     `✅ Inserted/updated ${rowsForInsert.length} seasons into Supabase`,
   );
+
+  return {
+    upserted: rowsForInsert.length,
+    skipped: 0,
+    fetched: seasons.length,
+    selected: selectedSeasons.length,
+  };
 }
 
 export async function runFetchSeasons() {
   const failures = [];
+  const summary = {
+    targets: TOURNAMENT_IDS.length,
+    upserted: 0,
+    skipped: 0,
+    failed: 0,
+    fetched: 0,
+    selected: 0,
+  };
 
   for (const tournamentId of TOURNAMENT_IDS) {
     try {
-      await fetchAndStoreSeasonsForTournament(tournamentId);
+      const result = await fetchAndStoreSeasonsForTournament(tournamentId);
+      summary.upserted += result?.upserted ?? 0;
+      summary.skipped += result?.skipped ?? 0;
+      summary.fetched += result?.fetched ?? 0;
+      summary.selected += result?.selected ?? 0;
     } catch (error) {
       failures.push({ tournamentId, error });
+      summary.failed += 1;
       console.error(
         `❌ Error fetching seasons for tournament ${tournamentId}:`,
         error.response?.data || error.message || error,
@@ -91,10 +111,15 @@ export async function runFetchSeasons() {
   }
 
   if (failures.length > 0) {
-    throw new Error(`Seasons sync failed for ${failures.length} tournament(s).`);
+    const error = new Error(
+      `Seasons sync failed for ${failures.length} tournament(s).`,
+    );
+    error.summary = summary;
+    throw error;
   }
 
   console.log("\n🎉 Done for all tournaments!");
+  return summary;
 }
 
 const currentFilePath = fileURLToPath(import.meta.url);

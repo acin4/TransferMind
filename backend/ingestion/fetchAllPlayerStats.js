@@ -278,7 +278,11 @@ async function fetchAndSaveStats(row) {
           `✅ Saved current-season identifiers only (no stats): ${player.name}`,
         );
       }
-      return;
+      return {
+        upserted: 1,
+        skeletonRows: 1,
+        noDataRows: 1,
+      };
     }
 
     // ==========================================================
@@ -478,6 +482,12 @@ async function fetchAndSaveStats(row) {
     } else {
       console.log(`✅ Saved current-season stats: ${player.name}`);
     }
+
+    return {
+      upserted: 1,
+      skeletonRows: 0,
+      noDataRows: 0,
+    };
   } catch (err) {
     // Handle timeouts separately
     if (err.code === "ECONNABORTED" || err.message.includes("timeout")) {
@@ -507,24 +517,40 @@ export async function runFetchAllPlayerStats() {
   // Build all valid current-season API requests
   const rows = await getTargetData();
   const failures = [];
+  const summary = {
+    targets: rows.length,
+    upserted: 0,
+    failed: 0,
+    skeletonRows: 0,
+    noDataRows: 0,
+  };
 
   // Sequential processing (safe for rate limits)
   // You could later upgrade this to a concurrency pool if needed.
   for (const row of rows) {
     try {
-      await fetchAndSaveStats(row);
+      const result = await fetchAndSaveStats(row);
+      summary.upserted += result?.upserted ?? 0;
+      summary.skeletonRows += result?.skeletonRows ?? 0;
+      summary.noDataRows += result?.noDataRows ?? 0;
     } catch (error) {
       failures.push({ row, error });
+      summary.failed += 1;
     }
 
     await delay(THROTTLE_MS); // Throttle to avoid rate limits
   }
 
   if (failures.length > 0) {
-    throw new Error(`Player stats sync failed for ${failures.length} row(s).`);
+    const error = new Error(
+      `Player stats sync failed for ${failures.length} row(s).`,
+    );
+    error.summary = summary;
+    throw error;
   }
 
   console.log("\n🎉 Current-season player stats fetch complete!");
+  return summary;
 }
 
 const currentFilePath = fileURLToPath(import.meta.url);

@@ -363,6 +363,16 @@ export async function runFetchPlayers() {
   // teams is the current-season list from current_season_teams for which we fetch squads.
   // We loop over these current-season teams and attempt to ingest any missing players.
   const teams = await getCurrentTeamsFromDb();
+  const summary = {
+    targets: teams.length,
+    upserted: 0,
+    skipped: 0,
+    failed: 0,
+    squadsFetched: 0,
+    playersDiscovered: 0,
+    existingSkipped: 0,
+    noPayloadSkipped: 0,
+  };
 
   console.log(`Syncing players for ${teams.length} current teams`);
 
@@ -398,10 +408,13 @@ export async function runFetchPlayers() {
       );
 
       squadPlayerIds = await fetchSquadPlayerIds(team.team_api_id);
+      summary.squadsFetched += 1;
+      summary.playersDiscovered += squadPlayerIds.length;
     } catch (err) {
       // If squad fetch fails, log and continue to next team.
       // We don't want one broken team to kill the whole run.
       failures.push({ team, error: err });
+      summary.failed += 1;
       console.error(
         `❌ Error fetching squad for team ${team.team_name ?? team.team_api_id}:`,
         // If Axios error, err.response.data is often most informative.
@@ -433,7 +446,11 @@ export async function runFetchPlayers() {
           const result = await fetchPlayerDetailAndMap(playerId);
 
           // If the API returned nothing / mapping failed, skip this player.
-          if (!result) continue;
+          if (!result) {
+            summary.skipped += 1;
+            summary.noPayloadSkipped += 1;
+            continue;
+          }
 
           const { row, positionCodes } = result;
 
@@ -487,6 +504,7 @@ export async function runFetchPlayers() {
           existingPlayersMap.set(playerId, {
             team_id: row.team_id,
           });
+          summary.upserted += 1;
 
           // ------------------------------------------------------------------
           // Step 4f: Throttle to respect API limits / avoid bursts
@@ -496,6 +514,7 @@ export async function runFetchPlayers() {
           if (THROTTLE_MS > 0) await delay(THROTTLE_MS);
         } catch (err) {
           failures.push({ playerId, team, error: err });
+          summary.failed += 1;
           // If anything fails for this player (API mapping, DB write, etc.),
           // log and continue with the next player.
           console.error(
@@ -511,17 +530,24 @@ export async function runFetchPlayers() {
       // If existing is truthy, this player is already in DB.
       // Current behavior: do nothing (skip).
       // You can later expand with refresh logic here if you want.
+      summary.skipped += 1;
+      summary.existingSkipped += 1;
     }
   }
 
   if (failures.length > 0) {
-    throw new Error(`Players sync failed for ${failures.length} item(s).`);
+    const error = new Error(
+      `Players sync failed for ${failures.length} item(s).`,
+    );
+    error.summary = summary;
+    throw error;
   }
 
   // --------------------------------------------------------------------------
   // Step 5: Done
   // --------------------------------------------------------------------------
   console.log("\n🎉 Done for all current-season teams & players!");
+  return summary;
 }
 
 const currentFilePath = fileURLToPath(import.meta.url);

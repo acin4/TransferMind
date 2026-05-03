@@ -85,6 +85,13 @@ async function updateTeamLogo(teamId, url) {
 export async function runFetchTeamLogos() {
   const teams = await getTeamsWithoutLogo();
   const failures = [];
+  const summary = {
+    targets: teams.length,
+    upserted: 0,
+    skipped: 0,
+    failed: 0,
+    notFoundSkipped: 0,
+  };
 
   console.log(`Found ${teams.length} teams without logos.`);
 
@@ -99,16 +106,20 @@ export async function runFetchTeamLogos() {
       await updateTeamLogo(teamId, publicUrl);
 
       console.log(`Saved logo for ${team.name ?? "Unknown"} (${teamId}).`);
+      summary.upserted += 1;
     } catch (error) {
       if (error.response?.status === 404) {
         console.warn(
           `No logo available for ${team.name ?? "Unknown"} (${teamId}).`,
         );
+        summary.skipped += 1;
+        summary.notFoundSkipped += 1;
         await delay(THROTTLE_MS);
         continue;
       }
 
       failures.push({ teamId, error });
+      summary.failed += 1;
       console.error(
         `Failed logo import for ${team.name ?? "Unknown"} (${teamId}):`,
         error.message,
@@ -119,10 +130,15 @@ export async function runFetchTeamLogos() {
   }
 
   if (failures.length > 0) {
-    throw new Error(`Team logo sync failed for ${failures.length} team(s).`);
+    const error = new Error(
+      `Team logo sync failed for ${failures.length} team(s).`,
+    );
+    error.summary = summary;
+    throw error;
   }
 
   console.log("Done.");
+  return summary;
 }
 
 const currentFilePath = fileURLToPath(import.meta.url);

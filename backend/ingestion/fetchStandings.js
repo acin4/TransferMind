@@ -208,7 +208,7 @@ async function fetchAndStoreStandings(tournamentId, seasonId) {
 
     if (totalStandings.length === 0) {
       console.log("   ⚠️ No standings rows found.");
-      return;
+      return { upserted: 0, skipped: 1, standingsTables: 0 };
     }
 
     console.log(`   ➡️ Found ${totalStandings.length} standings tables.`);
@@ -264,6 +264,12 @@ async function fetchAndStoreStandings(tournamentId, seasonId) {
         `   ✅ Successfully updated ${rowsToUpsert.length} standings rows.`,
       );
     }
+
+    return {
+      upserted: rowsToUpsert.length,
+      skipped: 0,
+      standingsTables: totalStandings.length,
+    };
   } catch (err) {
     console.error(
       "❌ Error processing standings:",
@@ -292,24 +298,39 @@ export async function runFetchStandings({ mode = "refresh" } = {}) {
 
   const pairs = await getTournamentSeasonPairsForMode(mode);
   const failures = [];
+  const summary = {
+    mode,
+    targets: pairs.length,
+    upserted: 0,
+    skipped: 0,
+    failed: 0,
+    standingsTables: 0,
+  };
 
   for (const { tournamentId, seasonId } of pairs) {
     try {
-      await fetchAndStoreStandings(tournamentId, seasonId);
+      const result = await fetchAndStoreStandings(tournamentId, seasonId);
+      summary.upserted += result?.upserted ?? 0;
+      summary.skipped += result?.skipped ?? 0;
+      summary.standingsTables += result?.standingsTables ?? 0;
     } catch (error) {
       failures.push({ tournamentId, seasonId, error });
+      summary.failed += 1;
     }
 
     if (THROTTLE_MS > 0) await delay(THROTTLE_MS);
   }
 
   if (failures.length > 0) {
-    throw new Error(
+    const error = new Error(
       `Standings sync failed for ${failures.length} tournament/season pair(s).`,
     );
+    error.summary = summary;
+    throw error;
   }
 
   console.log("\n🎉 Done fetching standings!");
+  return summary;
 }
 
 const currentFilePath = fileURLToPath(import.meta.url);
