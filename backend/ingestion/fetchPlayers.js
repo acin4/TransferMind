@@ -30,10 +30,10 @@ const positionService = createPositionService(supabase);
 // ==============================================================================
 
 /**
- * Reads all team API ids from the "teams" table.
+ * Reads current-season team ids from the "current_season_teams" view.
  *
  * Why this exists:
- * - This script needs a list of teams to iterate over
+ * - This script needs a current-season list of teams to iterate over
  * - For each team, it calls /teams/get-squad to discover player ids
  *
  * Notes:
@@ -71,7 +71,7 @@ async function getCurrentTeamsFromDb() {
   const teams = [...uniqueTeams.values()];
 
   console.log(
-    "Current teams from DB:",
+    "Current-season teams from DB:",
     teams.map((t) => ({
       team_id: t.team_id,
       team_api_id: t.team_api_id,
@@ -327,7 +327,7 @@ async function upsertPlayerPositions(playerDbId, positionCodes) {
 // 7) MAIN RUNNER
 // ------------------------------------------------------------------------------
 // What this block does (high level):
-// 1) Loads the list of team IDs we want to process from the database.
+// 1) Loads the list of current-season team IDs we want to process from the database.
 // 2) Loads a local in-memory "cache" (Map) of players that already exist in our DB.
 // 3) For each team:
 //    - Fetches the squad player IDs from the API.
@@ -342,7 +342,7 @@ async function upsertPlayerPositions(playerDbId, positionCodes) {
 // 4) Continues safely even if individual teams/players fail (best-effort ingestion).
 //
 // Important assumptions:
-// - getTeamIdsFromDb(): returns array of team IDs that exist in your DB.
+// - getCurrentTeamsFromDb(): returns current-season team rows from current_season_teams.
 // - getExistingPlayersMapFromDb(): returns Map keyed by API player ID -> { team_id, ... }.
 // - fetchSquadPlayerIds(teamId): calls API endpoint for that team's squad, returns array of API player IDs.
 // - fetchPlayerDetailAndMap(playerId): calls API endpoint for player details and returns:
@@ -358,10 +358,10 @@ async function upsertPlayerPositions(playerDbId, positionCodes) {
   // (e.g., DB connection errors, misconfigured env vars, etc.)
   try {
     // --------------------------------------------------------------------------
-    // Step 1: Load all teams we are going to process
+    // Step 1: Load the current-season teams we are going to process
     // --------------------------------------------------------------------------
-    // TEAM_IDS is the list of team IDs (from DB) for which we want to fetch squads.
-    // We loop over these teams and attempt to ingest any missing players.
+    // teams is the current-season list from current_season_teams for which we fetch squads.
+    // We loop over these current-season teams and attempt to ingest any missing players.
     const teams = await getCurrentTeamsFromDb();
 
     console.log(`Syncing players for ${teams.length} current teams`);
@@ -481,7 +481,7 @@ async function upsertPlayerPositions(playerDbId, positionCodes) {
             // ------------------------------------------------------------------
             // This matters if:
             // - the same player appears in multiple squads due to data issues
-            // - TEAM_IDS contains duplicates (shouldn't, but still)
+            // - current_season_teams contains duplicates (shouldn't, but still)
             // - you later add logic that revisits players
             existingPlayersMap.set(playerId, {
               team_id: row.team_id,
@@ -515,10 +515,10 @@ async function upsertPlayerPositions(playerDbId, positionCodes) {
     // --------------------------------------------------------------------------
     // Step 5: Done
     // --------------------------------------------------------------------------
-    console.log("\n🎉 Done for all teams & players!");
+    console.log("\n🎉 Done for all current-season teams & players!");
   } catch (e) {
     // Catch truly fatal errors that happen outside per-team/per-player try/catch.
-    // Example: getTeamIdsFromDb() fails, DB is down, config missing, etc.
+    // Example: getCurrentTeamsFromDb() fails, DB is down, config missing, etc.
     console.error("❌ Fatal Error:", e.response?.data || e.message);
   }
 })();
