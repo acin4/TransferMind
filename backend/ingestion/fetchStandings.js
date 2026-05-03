@@ -2,38 +2,185 @@ import { client } from "../lib/client.js";
 import { saveJSON } from "../lib/utils.js";
 import { supabase } from "../lib/supabaseClient.js";
 
-// Ρύθμιση καθυστέρησης για να μην μπλοκαριστείς
 const THROTTLE_MS = 300;
+const PAGE_SIZE = 1000;
+const VALID_MODES = new Set(["refresh", "init"]);
+
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
-/**
- * 1. Φέρνουμε τα ζευγάρια Tournament + Season από τη βάση
- * για να ξέρουμε για ποια πρωταθλήματα θα ζητήσουμε βαθμολογίες.
- */
-async function getTournamentSeasonPairsFromDb() {
-  const { data, error } = await supabase
-    .from("seasons")
-    .select("api_id, tournament_id")
-    .not("api_id", "is", null)
-    .not("tournament_id", "is", null);
+function parseMode(argv) {
+  let mode = null;
+  let modeProvided = false;
 
-  if (error) {
-    console.error("❌ Supabase error (getTournamentSeasonPairsFromDb):", error);
-    throw error;
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+
+    if (arg === "--mode") {
+      modeProvided = true;
+      mode = argv[i + 1];
+      break;
+    }
+
+    if (arg.startsWith("--mode=")) {
+      modeProvided = true;
+      mode = arg.slice("--mode=".length);
+      break;
+    }
+
+    if (
+      arg === "refresh" ||
+      arg === "init" ||
+      arg === "--refresh" ||
+      arg === "--init"
+    ) {
+      modeProvided = true;
+      mode = arg.replace(/^--/, "");
+      break;
+    }
   }
 
-  // api_id στον πίνακα seasons = seasonId στο API
-  const pairs = data.map((row) => ({
-    tournamentId: row.tournament_id,
-    seasonId: row.api_id,
-  }));
+  if (!modeProvided) return "refresh";
 
-  console.log(`Found ${pairs.length} active seasons/tournaments in DB.`);
+  if (!VALID_MODES.has(mode)) {
+    throw new Error(
+      `Invalid standings sync mode "${mode}". Use "refresh", "init", or "--mode <mode>".`,
+    );
+  }
+
+  return mode;
+}
+
+async function fetchAllRows(buildQuery) {
+  const allRows = [];
+  let from = 0;
+
+  while (true) {
+    const { data, error } = await buildQuery().range(
+      from,
+      from + PAGE_SIZE - 1,
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data || data.length === 0) break;
+
+    allRows.push(...data);
+
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+
+  return allRows;
+}
+
+/**
+ * Init mode: fetch every season present in the DB.
+ *
+ * seasons.api_id is the external API season id.
+ * seasons.tournament_id has historically stored either an external API
+ * tournament id or an internal DB tournament id, so resolve both forms.
+ */
+async function getAllTournamentSeasonPairsFromDb() {
+  const [seasons, tournaments] = await Promise.all([
+    fetchAllRows(() =>
+      supabase
+        .from("seasons")
+        .select("id, api_id, tournament_id")
+        .not("api_id", "is", null)
+        .not("tournament_id", "is", null),
+    ),
+    fetchAllRows(() =>
+      supabase
+        .from("tournaments")
+        .select("id, api_id")
+        .not("api_id", "is", null),
+    ),
+  ]);
+
+  const tournamentApiIds = new Set(
+    tournaments.map((tournament) => tournament.api_id).filter(Boolean),
+  );
+  const tournamentApiIdByDbId = new Map(
+    tournaments.map((tournament) => [tournament.id, tournament.api_id]),
+  );
+
+  const unconfirmedTournamentRefs = [];
+  const pairsByKey = new Map();
+
+  for (const season of seasons) {
+    const rawTournamentRef = season.tournament_id;
+    let tournamentApiId = null;
+
+    if (tournamentApiIds.has(rawTournamentRef)) {
+      tournamentApiId = rawTournamentRef;
+    } else if (tournamentApiIdByDbId.has(rawTournamentRef)) {
+      tournamentApiId = tournamentApiIdByDbId.get(rawTournamentRef);
+    } else {
+      tournamentApiId = rawTournamentRef;
+      unconfirmedTournamentRefs.push(rawTournamentRef);
+    }
+
+    const pair = {
+      tournamentId: tournamentApiId,
+      seasonId: season.api_id,
+      seasonDbId: season.id,
+    };
+
+    pairsByKey.set(`${pair.tournamentId}:${pair.seasonId}`, pair);
+  }
+
+  const pairs = [...pairsByKey.values()];
+
+  if (unconfirmedTournamentRefs.length > 0) {
+    console.warn(
+      `⚠️ Using ${unconfirmedTournamentRefs.length} stored tournament refs as API ids because they were not found in tournaments.`,
+    );
+  }
+
+  console.log(`Found ${pairs.length} DB seasons/tournaments for init mode.`);
   return pairs;
 }
 
 /**
- * 2. Fetch Standings & Upsert
+ * Refresh mode: fetch only current seasons from the current-scope view.
+ *
+ * current_tournament_seasons exposes internal DB ids and external API ids.
+ * The API call and standings table use the external API ids.
+ */
+async function getCurrentTournamentSeasonPairsFromDb() {
+  const currentSeasons = await fetchAllRows(() =>
+    supabase
+      .from("current_tournament_seasons")
+      .select("tournament_id, season_id, tournament_api_id, season_api_id")
+      .not("tournament_api_id", "is", null)
+      .not("season_api_id", "is", null),
+  );
+
+  const pairs = currentSeasons.map((row) => ({
+    tournamentId: row.tournament_api_id,
+    seasonId: row.season_api_id,
+    tournamentDbId: row.tournament_id,
+    seasonDbId: row.season_id,
+  }));
+
+  console.log(
+    `Found ${pairs.length} current seasons/tournaments for refresh mode.`,
+  );
+  return pairs;
+}
+
+async function getTournamentSeasonPairsForMode(mode) {
+  if (mode === "init") {
+    return getAllTournamentSeasonPairsFromDb();
+  }
+
+  return getCurrentTournamentSeasonPairsFromDb();
+}
+
+/**
+ * Fetch Standings & Upsert
  */
 async function fetchAndStoreStandings(tournamentId, seasonId) {
   console.log(`\n📊 Standings for T: ${tournamentId}, S: ${seasonId}...`);
@@ -79,7 +226,8 @@ async function fetchAndStoreStandings(tournamentId, seasonId) {
           api_id: r.id,
           team_id: r.team?.id,
 
-          // parent tournament + season requested from API
+          // External API ids requested from the football API.
+          // standings_with_team_info maps these back to internal DB ids.
           tournament_id: tournamentId,
           season_id: seasonId,
 
@@ -123,18 +271,24 @@ async function fetchAndStoreStandings(tournamentId, seasonId) {
 }
 
 /**
- * 3. Main Runner
+ * Main Runner
  */
 (async () => {
   try {
-    const pairs = await getTournamentSeasonPairsFromDb();
+    const mode = parseMode(process.argv.slice(2));
 
-    console.log("🚀 Starting Standings Sync...");
+    console.log(`🚀 Starting Standings Sync (${mode} mode)...`);
+    console.log(
+      mode === "init"
+        ? "Mode detail: init fetches standings for all DB seasons."
+        : "Mode detail: refresh fetches standings only for current seasons.",
+    );
+
+    const pairs = await getTournamentSeasonPairsForMode(mode);
 
     for (const { tournamentId, seasonId } of pairs) {
       await fetchAndStoreStandings(tournamentId, seasonId);
 
-      // Καθυστέρηση
       if (THROTTLE_MS > 0) await delay(THROTTLE_MS);
     }
 
