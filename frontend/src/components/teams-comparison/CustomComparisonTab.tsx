@@ -31,6 +31,12 @@ import {
   filterTeamStatItemsByCategory,
   type StatCategoryFilterId,
 } from "../../utils/statCategories";
+import {
+  ALL_COUNTRIES_TAB,
+  COUNTRY_FILTER_TABS,
+  filterItemsByCountry,
+  type CountryFilterTab,
+} from "../../utils/countryFilters";
 import SearchableCheckboxPanel from "./SearchableCheckboxPanel";
 import StatCategoryFilterTabs from "./StatCategoryFilterTabs";
 import SegmentedTabs from "../ui/SegmentedTabs";
@@ -45,18 +51,6 @@ const SERIES_COLORS = [
   "#ef4444",
   "#f43f5e",
 ];
-const ALL_COUNTRIES_TAB = "ALL";
-const COUNTRY_FILTER_TABS = [
-  ALL_COUNTRIES_TAB,
-  "ENGLAND",
-  "GERMANY",
-  "GREECE",
-  "ITALY",
-  "SPAIN",
-] as const;
-
-type CountryFilterTab = (typeof COUNTRY_FILTER_TABS)[number];
-
 type CustomComparisonTabProps = {
   entries: TeamSeasonStatEntry[];
   statKeys: TeamStatKey[];
@@ -136,15 +130,7 @@ export default function CustomComparisonTab({
   );
 
   const countryFilteredEntryOptions = useMemo(() => {
-    if (selectedCountryFilter === ALL_COUNTRIES_TAB) {
-      return entryOptions;
-    }
-
-    const selectedCountry = normalizeCountryValue(selectedCountryFilter);
-
-    return entryOptions.filter(
-      (entry) => normalizeCountryValue(entry.country) === selectedCountry,
-    );
+    return filterItemsByCountry(entryOptions, selectedCountryFilter);
   }, [entryOptions, selectedCountryFilter]);
 
   const statOptions = useMemo(
@@ -497,11 +483,6 @@ function getEntryStageKey(entry: TeamSeasonStatEntry) {
     .filter(Boolean);
 
   return stageParts.length > 0 ? stageParts.join("::") : null;
-}
-
-function normalizeCountryValue(value: string | null | undefined) {
-  const country = value?.trim();
-  return country ? country.toLocaleLowerCase() : null;
 }
 
 function toNumericStatValue(value: number | null | undefined) {

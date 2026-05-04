@@ -177,10 +177,14 @@ export type TeamComparisonMatrixRequest = {
   statKeys: TeamStatKey[];
 };
 
-export type TeamClusterRequest = {
+export type TeamClusterEntryRequest = {
+  teamId: number;
   tournamentId: number;
   seasonId: number;
-  teamIds: number[];
+};
+
+export type TeamClusterRequest = {
+  teamSeasonEntries: TeamClusterEntryRequest[];
   statKeys: TeamStatKey[];
 };
 
@@ -203,8 +207,14 @@ export type TeamClusterStat = {
 };
 
 export type TeamClusterMatrixRow = {
+  entryId: string;
   teamId: number;
   teamName: string;
+  teamLogo: string | null;
+  tournamentId: number;
+  tournamentName: string | null;
+  seasonId: number;
+  seasonName: string | null;
   rawStats: Partial<Record<TeamStatKey, number>>;
   normalizedStats: Partial<Record<TeamStatKey, number>>;
 };
@@ -217,8 +227,7 @@ export type TeamClusterElbowPoint = {
 
 export type TeamClusterElbowPayload = {
   context: {
-    tournamentId: number;
-    seasonId: number;
+    selectedEntryCount: number;
   };
   rows: TeamClusterMatrixRow[];
   stats: TeamClusterStat[];
@@ -240,8 +249,7 @@ export type TeamClusterCentroid = {
 
 export type TeamClusterRunPayload = {
   context: {
-    tournamentId: number;
-    seasonId: number;
+    selectedEntryCount: number;
   };
   k: number;
   iterations: number;

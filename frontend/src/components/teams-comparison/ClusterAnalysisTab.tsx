@@ -13,6 +13,7 @@ import {
   calculateTeamClusterElbow,
   runTeamClusters,
   type TeamClusterAssignment,
+  type TeamClusterEntryRequest,
   type TeamClusterElbowPayload,
   type TeamClusterElbowPoint,
   type TeamClusterRunPayload,
@@ -30,22 +31,19 @@ import {
   filterTeamStatItemsByCategory,
   type StatCategoryFilterId,
 } from "../../utils/statCategories";
+import {
+  ALL_COUNTRIES_TAB,
+  COUNTRY_FILTER_TABS,
+  filterItemsByCountry,
+  type CountryFilterTab,
+} from "../../utils/countryFilters";
 import SearchableCheckboxPanel from "./SearchableCheckboxPanel";
 import StatCategoryFilterTabs from "./StatCategoryFilterTabs";
+import SegmentedTabs from "../ui/SegmentedTabs";
 
 type ClusterAnalysisTabProps = {
   entries: TeamSeasonStatEntry[];
   statKeys: TeamStatKey[];
-};
-
-type TournamentOption = {
-  id: number;
-  name: string;
-};
-
-type SeasonOption = {
-  id: number;
-  name: string;
 };
 
 const CLUSTER_COLORS = [
@@ -65,12 +63,10 @@ export default function ClusterAnalysisTab({
   entries,
   statKeys: supportedStatKeys,
 }: ClusterAnalysisTabProps) {
-  const [selectedTournamentId, setSelectedTournamentId] = useState<number | null>(
-    null,
-  );
-  const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null);
-  const [selectedTeamIdValues, setSelectedTeamIdValues] = useState<string[]>([]);
+  const [selectedEntryIds, setSelectedEntryIds] = useState<string[]>([]);
   const [selectedStatKeys, setSelectedStatKeys] = useState<TeamStatKey[]>([]);
+  const [selectedCountryFilter, setSelectedCountryFilter] =
+    useState<CountryFilterTab>(ALL_COUNTRIES_TAB);
   const [selectedStatCategory, setSelectedStatCategory] =
     useState<StatCategoryFilterId>(ALL_STAT_CATEGORIES);
   const [maxK, setMaxK] = useState(8);
@@ -83,85 +79,29 @@ export default function ClusterAnalysisTab({
   const [loadingClusters, setLoadingClusters] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
 
-  const supportedStatKeySet = useMemo(
-    () => new Set(supportedStatKeys),
-    [supportedStatKeys],
+  const clusterEntries = useMemo(
+    () => entries.filter(hasClusterEntryIds),
+    [entries],
   );
 
-  const tournamentOptions = useMemo<TournamentOption[]>(() => {
-    const optionsById = new Map<number, TournamentOption>();
-
-    entries.forEach((entry) => {
-      if (entry.tournamentId == null) {
-        return;
-      }
-
-      if (!optionsById.has(entry.tournamentId)) {
-        optionsById.set(entry.tournamentId, {
-          id: entry.tournamentId,
-          name: entry.tournamentName ?? "Unknown league",
-        });
-      }
-    });
-
-    return Array.from(optionsById.values()).sort((a, b) =>
-      a.name.localeCompare(b.name),
-    );
-  }, [entries]);
-
-  const seasonOptions = useMemo<SeasonOption[]>(() => {
-    if (selectedTournamentId == null) {
-      return [];
-    }
-
-    const optionsById = new Map<number, SeasonOption>();
-
-    entries
-      .filter((entry) => entry.tournamentId === selectedTournamentId)
-      .forEach((entry) => {
-        if (!optionsById.has(entry.seasonId)) {
-          optionsById.set(entry.seasonId, {
-            id: entry.seasonId,
-            name: entry.seasonName,
-          });
-        }
-      });
-
-    return Array.from(optionsById.values()).sort((a, b) =>
-      a.name.localeCompare(b.name),
-    );
-  }, [entries, selectedTournamentId]);
-
-  const contextEntries = useMemo(
+  const entryOptions = useMemo(
     () =>
-      entries.filter(
-        (entry) =>
-          entry.tournamentId === selectedTournamentId &&
-          entry.seasonId === selectedSeasonId,
-      ),
-    [entries, selectedSeasonId, selectedTournamentId],
-  );
-
-  const selectedTeamIds = useMemo(
-    () => selectedTeamIdValues.map((value) => Number(value)),
-    [selectedTeamIdValues],
-  );
-
-  const maxAllowedK = Math.max(2, Math.min(20, selectedTeamIds.length));
-
-  const teamOptions = useMemo(
-    () =>
-      contextEntries
+      clusterEntries
         .map((entry) => ({
-          value: String(entry.teamId),
-          label: entry.teamName || `Team ${entry.teamId}`,
-          helperText: entry.label || `Team ${entry.teamId}`,
-          kind: "team" as const,
+          value: entry.id,
+          label: entry.teamName || entry.label,
+          helperText: [
+            entry.seasonName || `Season ${entry.seasonId}`,
+            entry.tournamentName ?? "Unknown league",
+          ].join(" • "),
+          kind: "team-season" as const,
           logoUrl: entry.teamLogo,
-          tagLabel: entry.teamName || `Team ${entry.teamId}`,
+          country: entry.country ?? null,
+          seasonLabel: entry.seasonName,
+          tagLabel: entry.teamName || entry.label,
+          tagHelperText: entry.seasonName,
           searchFields: [
             entry.teamName,
-            entry.teamId,
             entry.label,
             entry.seasonName,
             entry.seasonId,
@@ -172,38 +112,49 @@ export default function ClusterAnalysisTab({
             entry.groupName,
             entry.standingGroupId,
             entry.stageTournamentId,
+            entry.country,
           ],
         }))
-        .filter(
-          (option) =>
-            option &&
-            option.value &&
-            typeof option.label === "string" &&
-            option.label.trim().length > 0,
-        )
         .sort((a, b) => safeCompareLabels(a.label, b.label)),
-    [contextEntries],
+    [clusterEntries],
   );
 
+  const countryFilteredEntryOptions = useMemo(() => {
+    return filterItemsByCountry(entryOptions, selectedCountryFilter);
+  }, [entryOptions, selectedCountryFilter]);
+
+  const entriesById = useMemo(
+    () => new Map(clusterEntries.map((entry) => [entry.id, entry])),
+    [clusterEntries],
+  );
+
+  const selectedEntries = useMemo(
+    () =>
+      selectedEntryIds
+        .map((entryId) => entriesById.get(entryId))
+        .filter((entry): entry is ClusterTeamSeasonEntry => Boolean(entry)),
+    [entriesById, selectedEntryIds],
+  );
+
+  const selectedTeamSeasonEntries = useMemo<TeamClusterEntryRequest[]>(
+    () =>
+      selectedEntries.map((entry) => ({
+        teamId: entry.teamId,
+        tournamentId: entry.tournamentId,
+        seasonId: entry.seasonId,
+      })),
+    [selectedEntries],
+  );
+
+  const maxAllowedK = Math.max(2, Math.min(20, selectedEntries.length));
+
   const availableStatKeys = useMemo(() => {
-    const statKeySet = new Set<TeamStatKey>();
-
-    contextEntries.forEach((entry) => {
-      Object.entries(entry.stats).forEach(([statKey, value]) => {
-        const typedStatKey = statKey as TeamStatKey;
-
-        if (value != null && supportedStatKeySet.has(typedStatKey)) {
-          statKeySet.add(typedStatKey);
-        }
-      });
-    });
-
-    return Array.from(statKeySet)
+    return supportedStatKeys
       .filter((statKey) => Boolean(statKey))
       .sort((a, b) =>
         safeCompareLabels(getSafeStatLabel(a), getSafeStatLabel(b)),
       );
-  }, [contextEntries, supportedStatKeySet]);
+  }, [supportedStatKeys]);
 
   const availableStatKeySet = useMemo(
     () => new Set(availableStatKeys),
@@ -241,16 +192,8 @@ export default function ClusterAnalysisTab({
   }, [selectedStatCategory, statOptions]);
 
   const validationMessage = useMemo(() => {
-    if (selectedTournamentId == null) {
-      return "Select a competition.";
-    }
-
-    if (selectedSeasonId == null) {
-      return "Select a season.";
-    }
-
-    if (selectedTeamIds.length < 3) {
-      return "Select at least three teams.";
+    if (selectedEntries.length < 3) {
+      return "Select at least three team-season entries.";
     }
 
     if (cleanedSelectedStatKeys.length < 2) {
@@ -260,32 +203,15 @@ export default function ClusterAnalysisTab({
     return null;
   }, [
     cleanedSelectedStatKeys.length,
-    selectedSeasonId,
-    selectedTeamIds.length,
-    selectedTournamentId,
+    selectedEntries.length,
   ]);
 
   useEffect(() => {
-    if (
-      selectedTournamentId == null ||
-      !tournamentOptions.some((option) => option.id === selectedTournamentId)
-    ) {
-      setSelectedTournamentId(tournamentOptions[0]?.id ?? null);
-    }
-  }, [selectedTournamentId, tournamentOptions]);
-
-  useEffect(() => {
-    if (
-      selectedSeasonId == null ||
-      !seasonOptions.some((option) => option.id === selectedSeasonId)
-    ) {
-      setSelectedSeasonId(seasonOptions[0]?.id ?? null);
-    }
-  }, [seasonOptions, selectedSeasonId]);
-
-  useEffect(() => {
-    setSelectedTeamIdValues([]);
-  }, [selectedSeasonId, selectedTournamentId]);
+    const availableEntryIds = new Set(clusterEntries.map((entry) => entry.id));
+    setSelectedEntryIds((current) =>
+      current.filter((entryId) => availableEntryIds.has(entryId)),
+    );
+  }, [clusterEntries]);
 
   useEffect(() => {
     if (!areStatKeyArraysEqual(selectedStatKeys, cleanedSelectedStatKeys)) {
@@ -302,23 +228,17 @@ export default function ClusterAnalysisTab({
     setClusterResult(null);
     setSelectedK(null);
     setRequestError(null);
-  }, [
-    cleanedSelectedStatKeys,
-    maxK,
-    selectedSeasonId,
-    selectedTeamIdValues,
-    selectedTournamentId,
-  ]);
+  }, [cleanedSelectedStatKeys, maxK, selectedEntryIds]);
 
   useEffect(() => {
     setClusterResult(null);
   }, [selectedK]);
 
-  const toggleTeam = (teamId: string) => {
-    setSelectedTeamIdValues((current) =>
-      current.includes(teamId)
-        ? current.filter((value) => value !== teamId)
-        : [...current, teamId],
+  const toggleEntry = (entryId: string) => {
+    setSelectedEntryIds((current) =>
+      current.includes(entryId)
+        ? current.filter((value) => value !== entryId)
+        : [...current, entryId],
     );
   };
 
@@ -354,15 +274,23 @@ export default function ClusterAnalysisTab({
     );
   };
 
-  const buildRequestPayload = () => {
-    if (selectedTournamentId == null || selectedSeasonId == null) {
-      return null;
-    }
+  const selectVisibleEntries = (visibleEntryIds: string[]) => {
+    setSelectedEntryIds((current) => [
+      ...current,
+      ...visibleEntryIds.filter((entryId) => !current.includes(entryId)),
+    ]);
+  };
 
+  const clearVisibleEntries = (visibleEntryIds: string[]) => {
+    const visibleEntryIdSet = new Set(visibleEntryIds);
+    setSelectedEntryIds((current) =>
+      current.filter((entryId) => !visibleEntryIdSet.has(entryId)),
+    );
+  };
+
+  const buildRequestPayload = () => {
     return {
-      tournamentId: selectedTournamentId,
-      seasonId: selectedSeasonId,
-      teamIds: selectedTeamIds,
+      teamSeasonEntries: selectedTeamSeasonEntries,
       statKeys: cleanedSelectedStatKeys,
     };
   };
@@ -370,7 +298,7 @@ export default function ClusterAnalysisTab({
   const handleCalculateElbow = async () => {
     const payload = buildRequestPayload();
 
-    if (!payload || validationMessage) {
+    if (validationMessage) {
       setRequestError(validationMessage ?? "Complete the clustering inputs.");
       return;
     }
@@ -398,7 +326,7 @@ export default function ClusterAnalysisTab({
   const handleRunClusters = async () => {
     const payload = buildRequestPayload();
 
-    if (!payload || selectedK == null) {
+    if (selectedK == null) {
       setRequestError("Calculate elbow data and choose K first.");
       return;
     }
@@ -452,30 +380,12 @@ export default function ClusterAnalysisTab({
             Cluster Analysis
           </h3>
           <p className="text-xs font-black uppercase tracking-widest text-slate-500 mt-3 max-w-4xl">
-            Rows are selected teams. Columns are selected statistics. Each
+            Rows are selected team-seasons. Columns are selected statistics. Each
             statistic column is Min-Max normalized to 0-1 before K-Means.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
-          <SelectField
-            label="Competition"
-            value={selectedTournamentId ?? ""}
-            onChange={(value) => setSelectedTournamentId(Number(value))}
-            options={tournamentOptions.map((option) => ({
-              value: option.id,
-              label: option.name,
-            }))}
-          />
-          <SelectField
-            label="Season"
-            value={selectedSeasonId ?? ""}
-            onChange={(value) => setSelectedSeasonId(Number(value))}
-            options={seasonOptions.map((option) => ({
-              value: option.id,
-              label: option.name,
-            }))}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,220px)_minmax(0,1fr)] gap-4 mb-6">
           <SelectField
             label="Max K"
             value={maxK}
@@ -494,7 +404,7 @@ export default function ClusterAnalysisTab({
               Matrix
             </p>
             <p className="mt-2 text-sm font-black text-white">
-              {selectedTeamIds.length} rows x {cleanedSelectedStatKeys.length} columns
+              {selectedEntries.length} rows x {cleanedSelectedStatKeys.length} columns
             </p>
           </div>
         </div>
@@ -503,14 +413,27 @@ export default function ClusterAnalysisTab({
           <SearchableCheckboxPanel
             title="Teams"
             subtitle="Dataset rows"
-            items={teamOptions}
-            selectedValues={selectedTeamIdValues}
-            onToggle={toggleTeam}
-            onSelectAll={() =>
-              setSelectedTeamIdValues(teamOptions.map((option) => option.value))
+            items={countryFilteredEntryOptions}
+            selectionItems={entryOptions}
+            selectedValues={selectedEntryIds}
+            onToggle={toggleEntry}
+            onSelectVisible={selectVisibleEntries}
+            onClearVisible={clearVisibleEntries}
+            controls={
+              <SegmentedTabs
+                items={COUNTRY_FILTER_TABS.map((country) => ({
+                  value: country,
+                  label: country,
+                }))}
+                value={selectedCountryFilter}
+                onChange={setSelectedCountryFilter}
+                className="flex flex-wrap gap-2 overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/40 p-1.5"
+                buttonClassName="shrink-0 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap"
+                activeClassName="bg-blue-600 text-white shadow-[0_0_18px_rgba(37,99,235,0.25)]"
+                inactiveClassName="text-slate-400 hover:bg-slate-800/70 hover:text-slate-100"
+              />
             }
-            onClear={() => setSelectedTeamIdValues([])}
-            searchPlaceholder="Search teams..."
+            searchPlaceholder="Search team or season..."
           />
           <SearchableCheckboxPanel
             title="Statistics"
@@ -651,7 +574,7 @@ export default function ClusterAnalysisTab({
         <section className="bg-slate-900/50 border border-slate-800 rounded-[2.5rem] p-6 md:p-8 shadow-2xl">
           <div className="mb-6">
             <h4 className="text-lg font-black uppercase tracking-tight text-white">
-              Clustered Teams
+              Clustered Entries
             </h4>
             <p className="text-xs font-black uppercase tracking-widest text-slate-500 mt-3">
               Final K-Means used normalized 0-1 values only. Raw values are
@@ -679,7 +602,7 @@ export default function ClusterAnalysisTab({
                     Cluster {cluster.clusterId}
                   </h5>
                   <span className="rounded-xl border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-blue-400">
-                    {cluster.members.length} teams
+                    {cluster.members.length} entries
                   </span>
                 </div>
 
@@ -691,13 +614,18 @@ export default function ClusterAnalysisTab({
                 <div className="mt-5 space-y-4">
                   {cluster.members.map((assignment) => (
                     <div
-                      key={assignment.teamId}
+                      key={assignment.entryId}
                       className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4"
                     >
                       <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                        <p className="text-sm font-black uppercase tracking-widest text-white">
-                          {assignment.teamName}
-                        </p>
+                        <div>
+                          <p className="text-sm font-black uppercase tracking-widest text-white">
+                            {assignment.teamName}
+                          </p>
+                          <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                            {formatAssignmentContext(assignment)}
+                          </p>
+                        </div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                           Distance {assignment.distanceToCentroid.toFixed(3)}
                         </p>
@@ -907,7 +835,7 @@ function ParallelCoordinatesPlot({
             Normalized 0-1 team-stat profiles grouped by cluster.
           </p>
           <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-blue-300">
-            Showing {renderedPathCount} of {assignmentCount} teams
+            Showing {renderedPathCount} of {assignmentCount} entries
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -1003,7 +931,7 @@ function ParallelCoordinatesPlot({
 
             return (
               <path
-                key={`${row.assignment.teamId}-${row.index}-path`}
+                key={`${row.assignment.entryId}-${row.index}-path`}
                 d={row.path}
                 fill="none"
                 stroke={getClusterColor(row.assignment.clusterId)}
@@ -1018,7 +946,7 @@ function ParallelCoordinatesPlot({
               >
                 <title>
                   {overlapRows.length > 1
-                    ? `${overlapRows.length} teams overlap: ${overlapRows
+                    ? `${overlapRows.length} entries overlap: ${overlapRows
                         .map(
                           (overlapRow) =>
                             `${overlapRow.assignment.teamName} (Cluster ${overlapRow.assignment.clusterId})`,
@@ -1049,7 +977,7 @@ function ParallelCoordinatesPlot({
 
               return (
                 <circle
-                  key={`${row.assignment.teamId}-${row.index}-${statKey}`}
+                  key={`${row.assignment.entryId}-${row.index}-${statKey}`}
                   cx={getX(index) + markerOffsetX}
                   cy={getY(row.assignment.normalizedStats[statKey])}
                   r={isActive ? 4.75 : 3}
@@ -1073,7 +1001,7 @@ function ParallelCoordinatesPlot({
             <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm font-black uppercase tracking-widest text-white">
                 {activeOverlapCount > 1
-                  ? `${activeOverlapCount} teams overlap`
+                  ? `${activeOverlapCount} entries overlap`
                   : activeRow.assignment.teamName}
               </p>
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
@@ -1090,13 +1018,18 @@ function ParallelCoordinatesPlot({
             <div className="mt-3 space-y-4">
               {activeOverlapRows.map((row) => (
                 <div
-                  key={`${row.assignment.teamId}-${row.index}-details`}
+                  key={`${row.assignment.entryId}-${row.index}-details`}
                   className="rounded-2xl border border-slate-800 bg-slate-950/45 p-3"
                 >
                   <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-xs font-black uppercase tracking-widest text-white">
-                      {row.assignment.teamName}
-                    </p>
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-widest text-white">
+                        {row.assignment.teamName}
+                      </p>
+                      <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                        {formatAssignmentContext(row.assignment)}
+                      </p>
+                    </div>
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                       Cluster {row.assignment.clusterId}
                     </p>
@@ -1168,6 +1101,20 @@ function ElbowTooltip({
   );
 }
 
+type ClusterTeamSeasonEntry = TeamSeasonStatEntry & {
+  tournamentId: number;
+};
+
+function hasClusterEntryIds(
+  entry: TeamSeasonStatEntry,
+): entry is ClusterTeamSeasonEntry {
+  return (
+    Number.isInteger(entry.teamId) &&
+    Number.isInteger(entry.tournamentId) &&
+    Number.isInteger(entry.seasonId)
+  );
+}
+
 function sanitizeSelectedStatKeys(
   statKeys: TeamStatKey[],
   availableStatKeys: Set<TeamStatKey>,
@@ -1201,6 +1148,13 @@ function getErrorMessage(error: unknown) {
 
 function getSafeStatLabel(statKey: TeamStatKey) {
   return getTeamStatMeta(statKey)?.label ?? String(statKey);
+}
+
+function formatAssignmentContext(assignment: TeamClusterAssignment) {
+  return [
+    assignment.seasonName || `Season ${assignment.seasonId}`,
+    assignment.tournamentName ?? "Unknown league",
+  ].join(" • ");
 }
 
 function getClusterColor(clusterId: number) {

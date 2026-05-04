@@ -23,8 +23,8 @@ Files:
 2. `GET /api/teams`
 3. `GET /api/teams/comparison-dataset`
 4. `POST /api/teams/comparison-dataset` with `tournamentId`, `seasonId`, `teamIds`, and `statKeys` returns the backend-normalized Teams Comparison matrix.
-5. `POST /api/teams/clustering/elbow` with `tournamentId`, `seasonId`, `teamIds`, `statKeys`, and optional `maxK` returns Min-Max normalized matrix rows plus global Elbow Method inertia values.
-6. `POST /api/teams/clustering/run` with `tournamentId`, `seasonId`, `teamIds`, `statKeys`, and `k` returns final K-Means cluster assignments, centroids, distances, and warnings.
+5. `POST /api/teams/clustering/elbow` with `teamSeasonEntries`, `statKeys`, and optional `maxK` returns Min-Max normalized matrix rows plus global Elbow Method inertia values.
+6. `POST /api/teams/clustering/run` with `teamSeasonEntries`, `statKeys`, and `k` returns final K-Means cluster assignments, centroids, distances, and warnings. Each team-season entry is identified by internal `teamId`, `tournamentId`, and `seasonId`.
 7. `GET /api/players`
 8. `GET /api/tournaments/current-seasons`
 9. `GET /api/teams/:id`

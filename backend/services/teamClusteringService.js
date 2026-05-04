@@ -1,7 +1,7 @@
 import { HttpError } from "../lib/http.js";
 import { runPythonKMeans } from "../lib/pythonKMeansClient.js";
 import { getTeamStatMetadata } from "../lib/teamStatsMetadata.js";
-import { listTeamComparisonRowsByContext } from "../repositories/teamRepository.js";
+import { listTeamComparisonRowsByEntries } from "../repositories/teamRepository.js";
 
 const MAX_CLUSTER_K = 20;
 const MAX_ITERATIONS = 100;
@@ -17,18 +17,6 @@ function parsePositiveIntegerField(value, fieldName) {
   return parsed;
 }
 
-function parsePositiveIntegerArray(value, fieldName) {
-  if (!Array.isArray(value) || value.length === 0) {
-    throw new HttpError(400, `${fieldName} must be a non-empty array.`);
-  }
-
-  const parsedValues = value.map((item, index) =>
-    parsePositiveIntegerField(item, `${fieldName}[${index}]`),
-  );
-
-  return [...new Set(parsedValues)];
-}
-
 function parseStatKeys(value) {
   if (!Array.isArray(value) || value.length === 0) {
     throw new HttpError(400, "statKeys must be a non-empty array.");
@@ -38,7 +26,14 @@ function parseStatKeys(value) {
     ...new Set(
       value.map((item) => String(item ?? "").trim()).filter(Boolean),
     ),
-  ].filter((statKey) => getTeamStatMetadata(statKey));
+  ];
+  const invalidStatKeys = statKeys.filter(
+    (statKey) => !getTeamStatMetadata(statKey),
+  );
+
+  if (invalidStatKeys.length > 0) {
+    throw new HttpError(400, "One or more selected statistics are not allowed.");
+  }
 
   if (statKeys.length < 2) {
     throw new HttpError(400, "Select at least two statistics.");
@@ -47,23 +42,48 @@ function parseStatKeys(value) {
   return statKeys;
 }
 
+function parseTeamSeasonEntries(value) {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new HttpError(400, "teamSeasonEntries must be a non-empty array.");
+  }
+
+  const entries = [];
+  const seenEntryKeys = new Set();
+
+  value.forEach((item, index) => {
+    const teamId = parsePositiveIntegerField(
+      item?.teamId,
+      `teamSeasonEntries[${index}].teamId`,
+    );
+    const tournamentId = parsePositiveIntegerField(
+      item?.tournamentId,
+      `teamSeasonEntries[${index}].tournamentId`,
+    );
+    const seasonId = parsePositiveIntegerField(
+      item?.seasonId,
+      `teamSeasonEntries[${index}].seasonId`,
+    );
+    const entryKey = buildEntryId({ teamId, tournamentId, seasonId });
+
+    if (!seenEntryKeys.has(entryKey)) {
+      seenEntryKeys.add(entryKey);
+      entries.push({ teamId, tournamentId, seasonId });
+    }
+  });
+
+  return entries;
+}
+
 function parseClusterBasePayload(payload) {
-  const tournamentId = parsePositiveIntegerField(
-    payload?.tournamentId,
-    "tournamentId",
-  );
-  const seasonId = parsePositiveIntegerField(payload?.seasonId, "seasonId");
-  const teamIds = parsePositiveIntegerArray(payload?.teamIds, "teamIds");
+  const teamSeasonEntries = parseTeamSeasonEntries(payload?.teamSeasonEntries);
   const statKeys = parseStatKeys(payload?.statKeys);
 
-  if (teamIds.length < 3) {
-    throw new HttpError(400, "Select at least three teams.");
+  if (teamSeasonEntries.length < 3) {
+    throw new HttpError(400, "Select at least three team-season entries.");
   }
 
   return {
-    tournamentId,
-    seasonId,
-    teamIds,
+    teamSeasonEntries,
     statKeys,
   };
 }
@@ -95,7 +115,7 @@ function parseSelectedK(value, validRowCount) {
   if (k > maxAllowedK) {
     throw new HttpError(
       400,
-      `k must be at most ${maxAllowedK} for the selected teams.`,
+      `k must be at most ${maxAllowedK} for the selected entries.`,
     );
   }
 
@@ -170,6 +190,10 @@ function calculateSuggestedK(elbowPoints) {
   return bestPoint.k;
 }
 
+function buildEntryId(row) {
+  return `${row.teamId}:${row.tournamentId}:${row.seasonId}`;
+}
+
 function toClusterRow(row, statKeys) {
   const rawStats = Object.fromEntries(
     statKeys.map((statKey) => [
@@ -179,8 +203,18 @@ function toClusterRow(row, statKeys) {
   );
 
   return {
+    entryId: buildEntryId({
+      teamId: row.team_id,
+      tournamentId: row.tournament_id,
+      seasonId: row.season_id,
+    }),
     teamId: row.team_id,
     teamName: row.team_name,
+    teamLogo: row.team_logo ?? null,
+    tournamentId: row.tournament_id,
+    tournamentName: row.tournament_name ?? null,
+    seasonId: row.season_id,
+    seasonName: row.season_name ?? null,
     rawStats,
   };
 }
@@ -197,7 +231,7 @@ function buildNormalizedMatrix(rows, statKeys) {
 
       if (min === max) {
         warnings.push(
-          `${getTeamStatMetadata(statKey).label} is constant across the selected teams; its normalized column was set to 0.`,
+          `${getTeamStatMetadata(statKey).label} is constant across the selected entries; its normalized column was set to 0.`,
         );
       }
 
@@ -229,8 +263,14 @@ function buildNormalizedMatrix(rows, statKeys) {
     );
 
     return {
+      entryId: row.entryId,
       teamId: row.teamId,
       teamName: row.teamName,
+      teamLogo: row.teamLogo,
+      tournamentId: row.tournamentId,
+      tournamentName: row.tournamentName,
+      seasonId: row.seasonId,
+      seasonName: row.seasonName,
       rawStats: row.rawStats,
       normalizedStats,
       vector: statKeys.map((statKey) => normalizedStats[statKey]),
@@ -245,32 +285,37 @@ function buildNormalizedMatrix(rows, statKeys) {
 }
 
 async function buildClusterDataset(payload) {
-  const { tournamentId, seasonId, teamIds, statKeys } =
+  const { teamSeasonEntries, statKeys } =
     parseClusterBasePayload(payload);
-  const rows = await listTeamComparisonRowsByContext({
-    tournamentId,
-    seasonId,
-    teamIds,
-  });
+  const rows = await listTeamComparisonRowsByEntries(teamSeasonEntries);
 
-  if (rows.length !== teamIds.length) {
+  if (rows.length !== teamSeasonEntries.length) {
     throw new HttpError(
       400,
-      "All selected teams must belong to the selected competition and season.",
+      "One or more selected team-season entries do not exist.",
     );
   }
 
-  const rowsByTeamId = new Map(rows.map((row) => [row.team_id, row]));
-  const orderedRows = teamIds.map((teamId) => rowsByTeamId.get(teamId));
+  const rowsByEntryId = new Map(
+    rows.map((row) => [
+      buildEntryId({
+        teamId: row.team_id,
+        tournamentId: row.tournament_id,
+        seasonId: row.season_id,
+      }),
+      row,
+    ]),
+  );
+  const orderedRows = teamSeasonEntries.map((entry) =>
+    rowsByEntryId.get(buildEntryId(entry)),
+  );
   const { matrixRows, columnStats, warnings } = buildNormalizedMatrix(
     orderedRows,
     statKeys,
   );
 
   return {
-    tournamentId,
-    seasonId,
-    teamIds,
+    teamSeasonEntries,
     statKeys,
     rows: matrixRows,
     columnStats,
@@ -302,7 +347,7 @@ export async function calculateTeamClusterElbow(payload) {
   if (maxK < 2) {
     throw new HttpError(
       400,
-      "Select at least three teams to calculate elbow values.",
+      "Select at least three team-season entries to calculate elbow values.",
     );
   }
 
@@ -322,8 +367,7 @@ export async function calculateTeamClusterElbow(payload) {
 
   return {
     context: {
-      tournamentId: dataset.tournamentId,
-      seasonId: dataset.seasonId,
+      selectedEntryCount: dataset.rows.length,
     },
     rows: dataset.rows.map(({ vector, ...row }) => row),
     stats: buildStatsMetadata(dataset.statKeys, dataset.columnStats),
@@ -350,8 +394,14 @@ export async function runTeamClusters(payload) {
     const centroid = result.centroids[clusterIndex] ?? [];
 
     return {
+      entryId: row.entryId,
       teamId: row.teamId,
       teamName: row.teamName,
+      teamLogo: row.teamLogo,
+      tournamentId: row.tournamentId,
+      tournamentName: row.tournamentName,
+      seasonId: row.seasonId,
+      seasonName: row.seasonName,
       clusterId: clusterIndex + 1,
       distanceToCentroid: Number(distance(row.vector, centroid).toFixed(6)),
       rawStats: row.rawStats,
@@ -370,8 +420,7 @@ export async function runTeamClusters(payload) {
 
   return {
     context: {
-      tournamentId: dataset.tournamentId,
-      seasonId: dataset.seasonId,
+      selectedEntryCount: dataset.rows.length,
     },
     k,
     iterations: result.iterations,
