@@ -32,8 +32,11 @@ export type PlayerListItem = {
   name: string;
   team_id?: number | string | null;
   team_name?: string | null;
+  team_logo?: string | null;
+  teamLogo?: string | null;
   tournament_name?: string | null;
   tournamentName?: string | null;
+  position?: string | null;
   height?: number | string | null;
   player_stats?: PlayerListStat[] | null;
   [key: string]: unknown;
@@ -449,6 +452,8 @@ export const runTeamClusters = async (
 // ==========================================
 // 4. ΠΡΟΦΙΛ ΠΑΙΚΤΗ (PlayerProfile)
 // ==========================================
-export const getPlayer = async (id: string | number) => {
+export const getPlayer = async (
+  id: string | number,
+): Promise<PlayerListItem> => {
   return request(`/api/players/${id}`);
 };

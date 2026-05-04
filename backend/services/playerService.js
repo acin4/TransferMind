@@ -1,6 +1,7 @@
 import { HttpError } from "../lib/http.js";
 import {
   getPlayerById,
+  getLatestPlayerStatsByPlayerReferences,
   listPlayers,
   listPlayersByTeamReferences,
   listPlayersByTeamSeasonReferences,
@@ -10,32 +11,48 @@ import {
   listTeamMappings,
   listTeamSeasonsById,
 } from "../repositories/teamRepository.js";
+import { listPlayerPositionsByPlayerIds } from "../repositories/searchRepository.js";
 
 function buildTeamMaps(teamRows) {
   const teamByInternalId = new Map();
   const teamIdByAnyReference = new Map();
+  const teamByAnyReference = new Map();
 
   for (const team of teamRows) {
     teamByInternalId.set(team.id, team);
     teamIdByAnyReference.set(String(team.id), team.id);
+    teamByAnyReference.set(String(team.id), team);
 
     if (team.api_id !== null && team.api_id !== undefined) {
       teamIdByAnyReference.set(String(team.api_id), team.id);
+      teamByAnyReference.set(String(team.api_id), team);
     }
   }
 
-  return { teamByInternalId, teamIdByAnyReference };
+  return { teamByInternalId, teamIdByAnyReference, teamByAnyReference };
 }
 
-function sanitizePlayer(player, teamMaps) {
+function resolveTeamByReference(teamMaps, reference) {
+  if (reference === null || reference === undefined) {
+    return null;
+  }
+
+  return teamMaps.teamByAnyReference.get(String(reference)) ?? null;
+}
+
+function sanitizePlayer(player, teamMaps, options = {}) {
   if (!player) {
     return null;
   }
 
   const { teamByInternalId, teamIdByAnyReference } = teamMaps;
+  const teamReference = options.teamReference ?? player.team_id;
   const normalizedTeamId =
-    teamIdByAnyReference.get(String(player.team_id)) ?? null;
-  const team = teamByInternalId.get(normalizedTeamId) ?? null;
+    teamIdByAnyReference.get(String(teamReference)) ?? null;
+  const team =
+    resolveTeamByReference(teamMaps, teamReference) ??
+    teamByInternalId.get(normalizedTeamId) ??
+    null;
   const { api_id, ...rest } = player;
 
   return {
@@ -43,7 +60,25 @@ function sanitizePlayer(player, teamMaps) {
     team_id: normalizedTeamId,
     team_name: team?.name ?? null,
     tournament_name: team?.tournament_name ?? null,
+    team_logo: team?.logo_url ?? null,
   };
+}
+
+function sanitizePlayerStats(stats) {
+  if (!stats) {
+    return null;
+  }
+
+  const {
+    id,
+    player_id,
+    team_id,
+    tournament_id,
+    season_id,
+    ...publicStats
+  } = stats;
+
+  return publicStats;
 }
 
 function selectDefaultSeason(seasons) {
@@ -68,7 +103,9 @@ export async function getTeamSquad(teamId, seasonId, options = {}) {
     buildTeamMaps(await listTeamMappings({ includeTournament: true }));
   const players = await listTeamSquadPlayers(team, seasonId);
 
-  return players.map((player) => sanitizePlayer(player, teamMaps));
+  return players.map((player) =>
+    sanitizePlayer(player, teamMaps, { teamReference: team.id }),
+  );
 }
 
 export async function getPlayerTeamSquads() {
@@ -115,15 +152,25 @@ export async function getPlayers(teamId, seasonId) {
 }
 
 export async function getPlayer(id) {
-  const [player, teamRows] = await Promise.all([
-    getPlayerById(id),
-    listTeamMappings({ includeTournament: true }),
-  ]);
+  const player = await getPlayerById(id);
 
   if (!player) {
     return null;
   }
 
+  const [teamRows, playerStats] = await Promise.all([
+    listTeamMappings({ includeTournament: true }),
+    getLatestPlayerStatsByPlayerReferences(player),
+  ]);
+  const positionsByPlayerId = await listPlayerPositionsByPlayerIds([player.id]);
   const teamMaps = buildTeamMaps(teamRows);
-  return sanitizePlayer(player, teamMaps);
+  const sanitizedPlayer = sanitizePlayer(player, teamMaps, {
+    teamReference: playerStats?.team_id ?? player.team_id,
+  });
+
+  return {
+    ...sanitizedPlayer,
+    position: positionsByPlayerId.get(player.id) ?? null,
+    player_stats: playerStats ? [sanitizePlayerStats(playerStats)] : [],
+  };
 }
