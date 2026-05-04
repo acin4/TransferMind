@@ -48,6 +48,7 @@ type SearchableCheckboxPanelProps = {
   title: string;
   subtitle: string;
   items: CheckboxItem[];
+  selectionItems?: CheckboxItem[];
   selectedValues: string[];
   onToggle: (value: string) => void;
   onSelectAll?: () => void;
@@ -63,6 +64,7 @@ export default function SearchableCheckboxPanel({
   title,
   subtitle,
   items,
+  selectionItems,
   selectedValues,
   onToggle,
   onSelectAll,
@@ -85,10 +87,10 @@ export default function SearchableCheckboxPanel({
     () =>
       selectedValues
         .map((selectedValue) =>
-          items.find((item) => item.value === selectedValue),
+          (selectionItems ?? items).find((item) => item.value === selectedValue),
         )
         .filter((item): item is CheckboxItem => Boolean(item)),
-    [items, selectedValues],
+    [items, selectedValues, selectionItems],
   );
 
   return (

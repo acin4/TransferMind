@@ -25,7 +25,13 @@ import {
   getTeamStatMeta,
   type TeamStatKey,
 } from "../../teamStatsConfig";
+import {
+  ALL_STAT_CATEGORIES,
+  filterTeamStatItemsByCategory,
+  type StatCategoryFilterId,
+} from "../../utils/statCategories";
 import SearchableCheckboxPanel from "./SearchableCheckboxPanel";
+import StatCategoryFilterTabs from "./StatCategoryFilterTabs";
 
 type ClusterAnalysisTabProps = {
   entries: TeamSeasonStatEntry[];
@@ -65,6 +71,8 @@ export default function ClusterAnalysisTab({
   const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null);
   const [selectedTeamIdValues, setSelectedTeamIdValues] = useState<string[]>([]);
   const [selectedStatKeys, setSelectedStatKeys] = useState<TeamStatKey[]>([]);
+  const [selectedStatCategory, setSelectedStatCategory] =
+    useState<StatCategoryFilterId>(ALL_STAT_CATEGORIES);
   const [maxK, setMaxK] = useState(8);
   const [selectedK, setSelectedK] = useState<number | null>(null);
   const [elbowResult, setElbowResult] =
@@ -228,6 +236,10 @@ export default function ClusterAnalysisTab({
     [availableStatKeys],
   );
 
+  const categoryFilteredStatOptions = useMemo(() => {
+    return filterTeamStatItemsByCategory(statOptions, selectedStatCategory);
+  }, [selectedStatCategory, statOptions]);
+
   const validationMessage = useMemo(() => {
     if (selectedTournamentId == null) {
       return "Select a competition.";
@@ -321,6 +333,24 @@ export default function ClusterAnalysisTab({
       current.includes(typedStatKey)
         ? current.filter((value) => value !== typedStatKey)
         : [...current, typedStatKey],
+    );
+  };
+
+  const selectVisibleStats = (visibleStatKeys: string[]) => {
+    const visibleTypedStatKeys = visibleStatKeys.filter((statKey) =>
+      availableStatKeySet.has(statKey as TeamStatKey),
+    ) as TeamStatKey[];
+
+    setSelectedStatKeys((current) => [
+      ...current,
+      ...visibleTypedStatKeys.filter((statKey) => !current.includes(statKey)),
+    ]);
+  };
+
+  const clearVisibleStats = (visibleStatKeys: string[]) => {
+    const visibleStatKeySet = new Set(visibleStatKeys);
+    setSelectedStatKeys((current) =>
+      current.filter((statKey) => !visibleStatKeySet.has(statKey)),
     );
   };
 
@@ -485,11 +515,18 @@ export default function ClusterAnalysisTab({
           <SearchableCheckboxPanel
             title="Statistics"
             subtitle="Dataset columns"
-            items={statOptions}
+            items={categoryFilteredStatOptions}
+            selectionItems={statOptions}
             selectedValues={cleanedSelectedStatKeys}
             onToggle={toggleStat}
-            onSelectAll={() => setSelectedStatKeys(availableStatKeys)}
-            onClear={() => setSelectedStatKeys([])}
+            onSelectVisible={selectVisibleStats}
+            onClearVisible={clearVisibleStats}
+            controls={
+              <StatCategoryFilterTabs
+                value={selectedStatCategory}
+                onChange={setSelectedStatCategory}
+              />
+            }
             searchPlaceholder="Search statistics..."
           />
         </div>

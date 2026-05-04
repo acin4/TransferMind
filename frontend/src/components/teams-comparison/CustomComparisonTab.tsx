@@ -26,7 +26,13 @@ import {
   isNegativeTeamStat,
   type TeamStatKey,
 } from "../../teamStatsConfig";
+import {
+  ALL_STAT_CATEGORIES,
+  filterTeamStatItemsByCategory,
+  type StatCategoryFilterId,
+} from "../../utils/statCategories";
 import SearchableCheckboxPanel from "./SearchableCheckboxPanel";
+import StatCategoryFilterTabs from "./StatCategoryFilterTabs";
 import SegmentedTabs from "../ui/SegmentedTabs";
 
 const SERIES_COLORS = [
@@ -93,6 +99,8 @@ export default function CustomComparisonTab({
   const [selectedStatKeys, setSelectedStatKeys] = useState<TeamStatKey[]>([]);
   const [selectedCountryFilter, setSelectedCountryFilter] =
     useState<CountryFilterTab>(ALL_COUNTRIES_TAB);
+  const [selectedStatCategory, setSelectedStatCategory] =
+    useState<StatCategoryFilterId>(ALL_STAT_CATEGORIES);
 
   const entryOptions = useMemo(
     () =>
@@ -151,6 +159,10 @@ export default function CustomComparisonTab({
       })),
     [statKeys],
   );
+
+  const categoryFilteredStatOptions = useMemo(() => {
+    return filterTeamStatItemsByCategory(statOptions, selectedStatCategory);
+  }, [selectedStatCategory, statOptions]);
 
   const selectedEntries = useMemo(
     () => entries.filter((entry) => selectedEntryIds.includes(entry.id)),
@@ -282,6 +294,22 @@ export default function CustomComparisonTab({
     );
   };
 
+  const selectVisibleStats = (visibleStatKeys: string[]) => {
+    const visibleTypedStatKeys = visibleStatKeys as TeamStatKey[];
+
+    setSelectedStatKeys((current) => [
+      ...current,
+      ...visibleTypedStatKeys.filter((statKey) => !current.includes(statKey)),
+    ]);
+  };
+
+  const clearVisibleStats = (visibleStatKeys: string[]) => {
+    const visibleStatKeySet = new Set(visibleStatKeys);
+    setSelectedStatKeys((current) =>
+      current.filter((statKey) => !visibleStatKeySet.has(statKey)),
+    );
+  };
+
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[360px_minmax(0,1fr)] gap-6">
       <div className="space-y-6">
@@ -314,11 +342,18 @@ export default function CustomComparisonTab({
         <SearchableCheckboxPanel
           title="Statistics"
           subtitle="Pick one or more team stats"
-          items={statOptions}
+          items={categoryFilteredStatOptions}
+          selectionItems={statOptions}
           selectedValues={selectedStatKeys}
           onToggle={toggleStat}
-          onSelectAll={() => setSelectedStatKeys(statKeys)}
-          onClear={() => setSelectedStatKeys([])}
+          onSelectVisible={selectVisibleStats}
+          onClearVisible={clearVisibleStats}
+          controls={
+            <StatCategoryFilterTabs
+              value={selectedStatCategory}
+              onChange={setSelectedStatCategory}
+            />
+          }
           searchPlaceholder="Search statistic..."
           maxHeightClassName="max-h-[320px]"
         />
