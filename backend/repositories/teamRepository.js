@@ -360,15 +360,23 @@ function mergeRowsById(...rowGroups) {
   return [...rowsById.values()];
 }
 
-function buildRowByReference(rows) {
+function buildRowByReference(rows, referenceType = "any") {
   const rowsByReference = new Map();
 
   for (const row of rows ?? []) {
-    if (row?.id !== null && row?.id !== undefined) {
+    if (
+      referenceType !== "api" &&
+      row?.id !== null &&
+      row?.id !== undefined
+    ) {
       rowsByReference.set(String(row.id), row);
     }
 
-    if (row?.api_id !== null && row?.api_id !== undefined) {
+    if (
+      referenceType !== "internal" &&
+      row?.api_id !== null &&
+      row?.api_id !== undefined
+    ) {
       rowsByReference.set(String(row.api_id), row);
     }
   }
@@ -386,11 +394,18 @@ function seasonBelongsToTournament(season, tournament) {
     .some((reference) => String(reference) === String(season.tournament_id));
 }
 
-function pickSeasonByReference(seasons, seasonReference, tournament) {
+function pickSeasonByReference(
+  seasons,
+  seasonReference,
+  tournament,
+  referenceType = "any",
+) {
   const candidates = (seasons ?? []).filter(
     (season) =>
-      String(season.id) === String(seasonReference) ||
-      String(season.api_id) === String(seasonReference),
+      (referenceType !== "api" &&
+        String(season.id) === String(seasonReference)) ||
+      (referenceType !== "internal" &&
+        String(season.api_id) === String(seasonReference)),
   );
 
   return (
@@ -400,11 +415,37 @@ function pickSeasonByReference(seasons, seasonReference, tournament) {
   );
 }
 
-async function listTournamentsByReferences(references) {
+async function listTournamentsByReferences(references, referenceType = "any") {
   const ids = uniqueReferences(references);
 
   if (ids.length === 0) {
     return [];
+  }
+
+  if (referenceType === "internal") {
+    const { data, error } = await supabase
+      .from("tournaments")
+      .select("id, api_id, name, country")
+      .in("id", ids);
+
+    if (error) {
+      throw error;
+    }
+
+    return data ?? [];
+  }
+
+  if (referenceType === "api") {
+    const { data, error } = await supabase
+      .from("tournaments")
+      .select("id, api_id, name, country")
+      .in("api_id", ids);
+
+    if (error) {
+      throw error;
+    }
+
+    return data ?? [];
   }
 
   const [byInternalId, byApiId] = await Promise.all([
@@ -429,11 +470,37 @@ async function listTournamentsByReferences(references) {
   return mergeRowsById(byInternalId.data ?? [], byApiId.data ?? []);
 }
 
-async function listSeasonsByReferences(references) {
+async function listSeasonsByReferences(references, referenceType = "any") {
   const ids = uniqueReferences(references);
 
   if (ids.length === 0) {
     return [];
+  }
+
+  if (referenceType === "internal") {
+    const { data, error } = await supabase
+      .from("seasons")
+      .select("id, api_id, name, year, tournament_id, is_current")
+      .in("id", ids);
+
+    if (error) {
+      throw error;
+    }
+
+    return data ?? [];
+  }
+
+  if (referenceType === "api") {
+    const { data, error } = await supabase
+      .from("seasons")
+      .select("id, api_id, name, year, tournament_id, is_current")
+      .in("api_id", ids);
+
+    if (error) {
+      throw error;
+    }
+
+    return data ?? [];
   }
 
   const [byInternalId, byApiId] = await Promise.all([
@@ -718,13 +785,19 @@ async function listTeamStatsByApiReferences(references) {
 async function buildStatsSeasonRowsForTeams(teams, statsRows) {
   return buildSeasonRowsFromSource(teams, statsRows, {
     getTeamRowReferences: getTeamApiReferences,
+    tournamentReferenceType: "api",
+    seasonReferenceType: "api",
   });
 }
 
 async function buildSeasonRowsFromSource(
   teams,
   sourceRows,
-  { getTeamRowReferences = getTeamReferences } = {},
+  {
+    getTeamRowReferences = getTeamReferences,
+    tournamentReferenceType = "any",
+    seasonReferenceType = "any",
+  } = {},
 ) {
   const teamsByReference = buildTeamByReference(teams, getTeamRowReferences);
   const seasonReferences = uniqueReferences(
@@ -742,18 +815,26 @@ async function buildSeasonRowsFromSource(
     (sourceRows ?? []).map((row) => row.tournament_id),
   );
   const [tournaments, seasons] = await Promise.all([
-    listTournamentsByReferences(tournamentReferences),
-    listSeasonsByReferences(seasonReferences),
+    listTournamentsByReferences(tournamentReferences, tournamentReferenceType),
+    listSeasonsByReferences(seasonReferences, seasonReferenceType),
   ]);
 
-  const tournamentsByReference = buildRowByReference(tournaments);
+  const tournamentsByReference = buildRowByReference(
+    tournaments,
+    tournamentReferenceType,
+  );
 
   const rows = (sourceRows ?? [])
     .map((row) => {
       const team = teamsByReference.get(String(row.team_id));
       const tournament =
         tournamentsByReference.get(String(row.tournament_id)) ?? null;
-      const season = pickSeasonByReference(seasons, row.season_id, tournament);
+      const season = pickSeasonByReference(
+        seasons,
+        row.season_id,
+        tournament,
+        seasonReferenceType,
+      );
 
       if (!team || !season) {
         return null;
@@ -827,6 +908,8 @@ async function listPlayerStatsSeasonRowsForTeams(teams) {
 
   return buildSeasonRowsFromSource(teams, data ?? [], {
     getTeamRowReferences: getTeamInternalReferences,
+    tournamentReferenceType: "internal",
+    seasonReferenceType: "internal",
   });
 }
 
