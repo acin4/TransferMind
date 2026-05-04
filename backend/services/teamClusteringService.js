@@ -1,8 +1,9 @@
 import { HttpError } from "../lib/http.js";
+import { runPythonKMeans } from "../lib/pythonKMeansClient.js";
 import { getTeamStatMetadata } from "../lib/teamStatsMetadata.js";
 import { listTeamComparisonRowsByContext } from "../repositories/teamRepository.js";
 
-const DEFAULT_MAX_K = 8;
+const MAX_CLUSTER_K = 20;
 const MAX_ITERATIONS = 100;
 const KMEANS_SEED = 42;
 
@@ -68,26 +69,33 @@ function parseClusterBasePayload(payload) {
 }
 
 function parseMaxK(value, validRowCount) {
-  const requested = value == null ? DEFAULT_MAX_K : Number(value);
+  const maxAllowedK = Math.min(validRowCount, MAX_CLUSTER_K);
+
+  if (value == null) {
+    return maxAllowedK;
+  }
+
+  const requested = Number(value);
 
   if (!Number.isInteger(requested) || requested < 2) {
     throw new HttpError(400, "maxK must be an integer of at least 2.");
   }
 
-  return Math.min(requested, DEFAULT_MAX_K, validRowCount - 1);
+  return Math.min(requested, maxAllowedK);
 }
 
 function parseSelectedK(value, validRowCount) {
   const k = parsePositiveIntegerField(value, "k");
+  const maxAllowedK = Math.min(validRowCount, MAX_CLUSTER_K);
 
   if (k < 2) {
     throw new HttpError(400, "k must be at least 2.");
   }
 
-  if (k >= validRowCount) {
+  if (k > maxAllowedK) {
     throw new HttpError(
       400,
-      "k must be less than the number of selected teams.",
+      `k must be at most ${maxAllowedK} for the selected teams.`,
     );
   }
 
@@ -122,163 +130,6 @@ function squaredDistance(a, b) {
 
 function distance(a, b) {
   return Math.sqrt(squaredDistance(a, b));
-}
-
-function createSeededRandom(seed) {
-  let state = seed >>> 0;
-
-  return () => {
-    state = (1664525 * state + 1013904223) >>> 0;
-    return state / 2 ** 32;
-  };
-}
-
-function weightedChoice(weights, random) {
-  const total = weights.reduce((sum, value) => sum + value, 0);
-
-  if (total <= 0) {
-    return 0;
-  }
-
-  let threshold = random() * total;
-
-  for (let index = 0; index < weights.length; index += 1) {
-    threshold -= weights[index];
-
-    if (threshold <= 0) {
-      return index;
-    }
-  }
-
-  return weights.length - 1;
-}
-
-function createInitialCentroids(points, k) {
-  const random = createSeededRandom(KMEANS_SEED);
-  const firstIndex = Math.floor(random() * points.length);
-  const selectedIndexes = new Set([firstIndex]);
-  const centroids = [[...points[firstIndex]]];
-
-  while (centroids.length < k) {
-    const weights = points.map((point, index) => {
-      if (selectedIndexes.has(index)) {
-        return 0;
-      }
-
-      return Math.min(
-        ...centroids.map((centroid) => squaredDistance(point, centroid)),
-      );
-    });
-    let nextIndex = weightedChoice(weights, random);
-
-    if (selectedIndexes.has(nextIndex)) {
-      nextIndex = points.findIndex((_, index) => !selectedIndexes.has(index));
-    }
-
-    if (nextIndex === -1) {
-      break;
-    }
-
-    selectedIndexes.add(nextIndex);
-    centroids.push([...points[nextIndex]]);
-  }
-
-  while (centroids.length < k) {
-    centroids.push([...points[centroids.length % points.length]]);
-  }
-
-  return centroids;
-}
-
-function assignPoints(points, centroids) {
-  return points.map((point) => {
-    let nearestCentroidIndex = 0;
-    let nearestDistance = Number.POSITIVE_INFINITY;
-
-    centroids.forEach((centroid, index) => {
-      const currentDistance = squaredDistance(point, centroid);
-
-      if (currentDistance < nearestDistance) {
-        nearestDistance = currentDistance;
-        nearestCentroidIndex = index;
-      }
-    });
-
-    return nearestCentroidIndex;
-  });
-}
-
-function recomputeCentroids(points, assignments, centroids, k) {
-  const dimensions = points[0]?.length ?? 0;
-
-  return Array.from({ length: k }, (_, clusterIndex) => {
-    const clusterPoints = points.filter(
-      (_, pointIndex) => assignments[pointIndex] === clusterIndex,
-    );
-
-    if (clusterPoints.length === 0) {
-      const farthestPoint = points.reduce(
-        (best, point) => {
-          const nearestDistance = Math.min(
-            ...centroids.map((centroid) => squaredDistance(point, centroid)),
-          );
-
-          return nearestDistance > best.distance
-            ? { point, distance: nearestDistance }
-            : best;
-        },
-        { point: centroids[clusterIndex] ?? Array(dimensions).fill(0), distance: -1 },
-      );
-
-      return [...farthestPoint.point];
-    }
-
-    return Array.from({ length: dimensions }, (_, dimensionIndex) => {
-      const total = clusterPoints.reduce(
-        (sum, point) => sum + (point[dimensionIndex] ?? 0),
-        0,
-      );
-
-      return total / clusterPoints.length;
-    });
-  });
-}
-
-function haveAssignmentsChanged(previous, next) {
-  return previous.length !== next.length
-    ? true
-    : previous.some((value, index) => value !== next[index]);
-}
-
-function runKMeans(points, k) {
-  let centroids = createInitialCentroids(points, k);
-  let assignments = Array(points.length).fill(-1);
-  let iterations = 0;
-
-  for (let iteration = 0; iteration < MAX_ITERATIONS; iteration += 1) {
-    iterations = iteration + 1;
-    const nextAssignments = assignPoints(points, centroids);
-
-    if (!haveAssignmentsChanged(assignments, nextAssignments) && iteration > 0) {
-      assignments = nextAssignments;
-      break;
-    }
-
-    assignments = nextAssignments;
-    centroids = recomputeCentroids(points, assignments, centroids, k);
-  }
-
-  const inertia = points.reduce((total, point, pointIndex) => {
-    const centroid = centroids[assignments[pointIndex]] ?? centroids[0];
-    return total + squaredDistance(point, centroid);
-  }, 0);
-
-  return {
-    assignments,
-    centroids,
-    inertia,
-    iterations,
-  };
 }
 
 function calculateSuggestedK(elbowPoints) {
@@ -456,16 +307,18 @@ export async function calculateTeamClusterElbow(payload) {
   }
 
   const points = dataset.rows.map((row) => row.vector);
-  const elbow = Array.from({ length: maxK }, (_, index) => {
-    const k = index + 1;
-    const result = runKMeans(points, k);
-
-    return {
-      k,
-      inertia: Number(result.inertia.toFixed(6)),
-      iterations: result.iterations,
-    };
+  const result = await runPythonKMeans({
+    mode: "elbow",
+    points,
+    maxK,
+    randomState: KMEANS_SEED,
+    maxIter: MAX_ITERATIONS,
   });
+  const elbow = result.elbow.map((point) => ({
+    k: point.k,
+    inertia: Number(point.inertia.toFixed(6)),
+    iterations: point.iterations,
+  }));
 
   return {
     context: {
@@ -485,7 +338,13 @@ export async function runTeamClusters(payload) {
   const dataset = await buildClusterDataset(payload);
   const k = parseSelectedK(payload?.k, dataset.rows.length);
   const points = dataset.rows.map((row) => row.vector);
-  const result = runKMeans(points, k);
+  const result = await runPythonKMeans({
+    mode: "cluster",
+    points,
+    k,
+    randomState: KMEANS_SEED,
+    maxIter: MAX_ITERATIONS,
+  });
   const assignments = dataset.rows.map((row, index) => {
     const clusterIndex = result.assignments[index] ?? 0;
     const centroid = result.centroids[clusterIndex] ?? [];
