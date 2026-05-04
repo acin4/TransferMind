@@ -269,6 +269,7 @@ function buildTeamComparisonSeasons(rows) {
       tournament_id: row.tournament_db_id ?? null,
       tournament_api_id: row.tournament_id ?? null,
       tournament_name: row.tournament_name?.trim() || null,
+      country: normalizeCountry(row.tournament_country),
       is_current: Boolean(row.is_current),
     };
     const existingSeason = seasonsByContext.get(nextSeason.key);
@@ -277,7 +278,8 @@ function buildTeamComparisonSeasons(rows) {
       !existingSeason ||
       (nextSeason.is_current && !existingSeason.is_current) ||
       (!existingSeason.season_name && nextSeason.season_name) ||
-      (!existingSeason.tournament_name && nextSeason.tournament_name)
+      (!existingSeason.tournament_name && nextSeason.tournament_name) ||
+      (!existingSeason.country && nextSeason.country)
     ) {
       seasonsByContext.set(nextSeason.key, nextSeason);
     }
@@ -1398,6 +1400,7 @@ export async function listTeamsComparisonDatasetRows() {
         team_api_id: team.api_id ?? null,
         team_name: team.name,
         team_logo: team.logo_url ?? null,
+        country: season.country ?? null,
         tournament_id: season.tournament_id,
         tournament_api_id: season.tournament_api_id,
         tournament_name: season.tournament_name,

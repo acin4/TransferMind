@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   Activity,
   BadgeAlert,
@@ -52,6 +52,9 @@ type SearchableCheckboxPanelProps = {
   onToggle: (value: string) => void;
   onSelectAll?: () => void;
   onClear?: () => void;
+  onSelectVisible?: (visibleValues: string[]) => void;
+  onClearVisible?: (visibleValues: string[]) => void;
+  controls?: ReactNode;
   searchPlaceholder: string;
   maxHeightClassName?: string;
 };
@@ -64,6 +67,9 @@ export default function SearchableCheckboxPanel({
   onToggle,
   onSelectAll,
   onClear,
+  onSelectVisible,
+  onClearVisible,
+  controls,
   searchPlaceholder,
   maxHeightClassName = "max-h-[340px]",
 }: SearchableCheckboxPanelProps) {
@@ -97,19 +103,27 @@ export default function SearchableCheckboxPanel({
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
-          {onSelectAll ? (
+          {onSelectAll || onSelectVisible ? (
             <button
               type="button"
-              onClick={onSelectAll}
+              onClick={() =>
+                onSelectVisible
+                  ? onSelectVisible(filteredItems.map((item) => item.value))
+                  : onSelectAll?.()
+              }
               className="px-3 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[10px] font-black uppercase tracking-widest text-blue-400 hover:bg-blue-500/20 transition-colors"
             >
               All
             </button>
           ) : null}
-          {onClear ? (
+          {onClear || onClearVisible ? (
             <button
               type="button"
-              onClick={onClear}
+              onClick={() =>
+                onClearVisible
+                  ? onClearVisible(filteredItems.map((item) => item.value))
+                  : onClear?.()
+              }
               className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:text-white transition-colors"
             >
               Clear
@@ -117,6 +131,8 @@ export default function SearchableCheckboxPanel({
           ) : null}
         </div>
       </div>
+
+      {controls ? <div className="mb-4">{controls}</div> : null}
 
       {selectedItems.length > 0 ? (
         <div className="mb-4 flex flex-wrap gap-2">

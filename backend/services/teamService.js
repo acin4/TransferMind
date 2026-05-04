@@ -207,6 +207,7 @@ function toComparisonEntry(row) {
     teamId: row.team_id,
     teamName: row.team_name,
     teamLogo: row.team_logo ?? null,
+    country: row.country ?? null,
     seasonId: row.season_id,
     seasonName,
     tournamentId: row.tournament_id ?? null,

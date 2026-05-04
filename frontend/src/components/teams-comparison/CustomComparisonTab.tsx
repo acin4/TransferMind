@@ -27,6 +27,7 @@ import {
   type TeamStatKey,
 } from "../../teamStatsConfig";
 import SearchableCheckboxPanel from "./SearchableCheckboxPanel";
+import SegmentedTabs from "../ui/SegmentedTabs";
 
 const SERIES_COLORS = [
   "#3b82f6",
@@ -38,6 +39,17 @@ const SERIES_COLORS = [
   "#ef4444",
   "#f43f5e",
 ];
+const ALL_COUNTRIES_TAB = "ALL";
+const COUNTRY_FILTER_TABS = [
+  ALL_COUNTRIES_TAB,
+  "ENGLAND",
+  "GERMANY",
+  "GREECE",
+  "ITALY",
+  "SPAIN",
+] as const;
+
+type CountryFilterTab = (typeof COUNTRY_FILTER_TABS)[number];
 
 type CustomComparisonTabProps = {
   entries: TeamSeasonStatEntry[];
@@ -79,6 +91,8 @@ export default function CustomComparisonTab({
 }: CustomComparisonTabProps) {
   const [selectedEntryIds, setSelectedEntryIds] = useState<string[]>([]);
   const [selectedStatKeys, setSelectedStatKeys] = useState<TeamStatKey[]>([]);
+  const [selectedCountryFilter, setSelectedCountryFilter] =
+    useState<CountryFilterTab>(ALL_COUNTRIES_TAB);
 
   const entryOptions = useMemo(
     () =>
@@ -91,6 +105,7 @@ export default function CustomComparisonTab({
         ].join(" • "),
         kind: "team-season" as const,
         logoUrl: entry.teamLogo,
+        country: entry.country ?? null,
         seasonLabel: entry.seasonName,
         tagLabel: entry.teamName || entry.label,
         tagHelperText: entry.seasonName,
@@ -106,10 +121,23 @@ export default function CustomComparisonTab({
           entry.groupName,
           entry.standingGroupId,
           entry.stageTournamentId,
+          entry.country,
         ],
       })),
     [entries],
   );
+
+  const countryFilteredEntryOptions = useMemo(() => {
+    if (selectedCountryFilter === ALL_COUNTRIES_TAB) {
+      return entryOptions;
+    }
+
+    const selectedCountry = normalizeCountryValue(selectedCountryFilter);
+
+    return entryOptions.filter(
+      (entry) => normalizeCountryValue(entry.country) === selectedCountry,
+    );
+  }, [entryOptions, selectedCountryFilter]);
 
   const statOptions = useMemo(
     () =>
@@ -240,17 +268,45 @@ export default function CustomComparisonTab({
     );
   };
 
+  const selectVisibleEntries = (visibleEntryIds: string[]) => {
+    setSelectedEntryIds((current) => [
+      ...current,
+      ...visibleEntryIds.filter((entryId) => !current.includes(entryId)),
+    ]);
+  };
+
+  const clearVisibleEntries = (visibleEntryIds: string[]) => {
+    const visibleEntryIdSet = new Set(visibleEntryIds);
+    setSelectedEntryIds((current) =>
+      current.filter((entryId) => !visibleEntryIdSet.has(entryId)),
+    );
+  };
+
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[360px_minmax(0,1fr)] gap-6">
       <div className="space-y-6">
         <SearchableCheckboxPanel
           title="Team + Season Entries"
           subtitle="Select one or more entries"
-          items={entryOptions}
+          items={countryFilteredEntryOptions}
           selectedValues={selectedEntryIds}
           onToggle={toggleEntry}
-          onSelectAll={() => setSelectedEntryIds(entryOptions.map((item) => item.value))}
-          onClear={() => setSelectedEntryIds([])}
+          onSelectVisible={selectVisibleEntries}
+          onClearVisible={clearVisibleEntries}
+          controls={
+            <SegmentedTabs
+              items={COUNTRY_FILTER_TABS.map((country) => ({
+                value: country,
+                label: country,
+              }))}
+              value={selectedCountryFilter}
+              onChange={setSelectedCountryFilter}
+              className="flex flex-wrap gap-2 overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/40 p-1.5"
+              buttonClassName="shrink-0 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap"
+              activeClassName="bg-blue-600 text-white shadow-[0_0_18px_rgba(37,99,235,0.25)]"
+              inactiveClassName="text-slate-400 hover:bg-slate-800/70 hover:text-slate-100"
+            />
+          }
           searchPlaceholder="Search team or season..."
           maxHeightClassName="max-h-[360px]"
         />
@@ -406,6 +462,11 @@ function getEntryStageKey(entry: TeamSeasonStatEntry) {
     .filter(Boolean);
 
   return stageParts.length > 0 ? stageParts.join("::") : null;
+}
+
+function normalizeCountryValue(value: string | null | undefined) {
+  const country = value?.trim();
+  return country ? country.toLocaleLowerCase() : null;
 }
 
 function toNumericStatValue(value: number | null | undefined) {
