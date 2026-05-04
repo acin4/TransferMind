@@ -1146,17 +1146,74 @@ export async function listTeamSeasonsById(teamId, preferredTournamentApiId = nul
   return seasons;
 }
 
-export async function listTeamMappings() {
+export async function listTeamMappings({ includeTournament = false } = {}) {
   const { data, error } = await supabase
     .from("teams")
-    .select("id, api_id, name")
+    .select(
+      includeTournament
+        ? "id, api_id, name, tournament_id"
+        : "id, api_id, name",
+    )
     .order("id", { ascending: true });
 
   if (error) {
     throw error;
   }
 
-  return data ?? [];
+  const teams = data ?? [];
+
+  if (!includeTournament) {
+    return teams;
+  }
+
+  const teamTournamentApiIds = [
+    ...new Set(teams.map((team) => team.tournament_id).filter(Boolean)),
+  ];
+  let fallbackTournamentByApiId = new Map();
+
+  if (teamTournamentApiIds.length > 0) {
+    const { data: tournaments, error: tournamentsError } = await supabase
+      .from("tournaments")
+      .select("id, api_id, name")
+      .in("api_id", teamTournamentApiIds);
+
+    if (tournamentsError) {
+      throw tournamentsError;
+    }
+
+    fallbackTournamentByApiId = new Map(
+      (tournaments ?? []).map((tournament) => [
+        tournament.api_id,
+        tournament,
+      ]),
+    );
+  }
+
+  const [statsSeasonRows, playerStatsSeasonRows] = await Promise.all([
+    listStatsSeasonRowsForTeams(teams),
+    listPlayerStatsSeasonRowsForTeams(teams),
+  ]);
+  const summaryByTeamId = buildParticipationSummary([
+    ...statsSeasonRows,
+    ...playerStatsSeasonRows,
+  ]);
+
+  return teams.map((team) => {
+    const participation = summaryByTeamId.get(team.id);
+    const fallbackTournament = fallbackTournamentByApiId.get(team.tournament_id);
+
+    return {
+      id: team.id,
+      api_id: team.api_id,
+      name: team.name,
+      tournament_id:
+        participation?.tournament_db_id ?? fallbackTournament?.id ?? null,
+      tournament_name:
+        participation?.tournament_name?.trim() ||
+        fallbackTournament?.name?.trim() ||
+        null,
+    };
+  });
 }
 
 export async function listTeamMappingsByReferences(teamReferences) {

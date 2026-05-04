@@ -23,23 +23,28 @@ function buildTeamMaps(teamRows) {
   return { teamByInternalId, teamIdByAnyReference };
 }
 
-function sanitizePlayer(player, teamIdByAnyReference) {
+function sanitizePlayer(player, teamMaps) {
   if (!player) {
     return null;
   }
 
-  const normalizedTeamId = teamIdByAnyReference.get(String(player.team_id)) ?? null;
+  const { teamByInternalId, teamIdByAnyReference } = teamMaps;
+  const normalizedTeamId =
+    teamIdByAnyReference.get(String(player.team_id)) ?? null;
+  const team = teamByInternalId.get(normalizedTeamId) ?? null;
   const { api_id, ...rest } = player;
 
   return {
     ...rest,
     team_id: normalizedTeamId,
+    team_name: team?.name ?? null,
+    tournament_name: team?.tournament_name ?? null,
   };
 }
 
 export async function getPlayers(teamId, seasonId) {
-  const teamRows = await listTeamMappings();
-  const { teamIdByAnyReference } = buildTeamMaps(teamRows);
+  const teamRows = await listTeamMappings({ includeTournament: true });
+  const teamMaps = buildTeamMaps(teamRows);
 
   if (teamId !== undefined) {
     const team = await getTeamById(teamId);
@@ -53,23 +58,23 @@ export async function getPlayers(teamId, seasonId) {
         ? await listPlayersByTeamReferences(team.id, team.api_id)
         : await listPlayersByTeamSeasonReferences(team, seasonId);
 
-    return players.map((player) => sanitizePlayer(player, teamIdByAnyReference));
+    return players.map((player) => sanitizePlayer(player, teamMaps));
   }
 
   const players = await listPlayers();
-  return players.map((player) => sanitizePlayer(player, teamIdByAnyReference));
+  return players.map((player) => sanitizePlayer(player, teamMaps));
 }
 
 export async function getPlayer(id) {
   const [player, teamRows] = await Promise.all([
     getPlayerById(id),
-    listTeamMappings(),
+    listTeamMappings({ includeTournament: true }),
   ]);
 
   if (!player) {
     return null;
   }
 
-  const { teamIdByAnyReference } = buildTeamMaps(teamRows);
-  return sanitizePlayer(player, teamIdByAnyReference);
+  const teamMaps = buildTeamMaps(teamRows);
+  return sanitizePlayer(player, teamMaps);
 }

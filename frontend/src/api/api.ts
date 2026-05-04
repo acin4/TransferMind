@@ -31,6 +31,9 @@ export type PlayerListItem = {
   id: number | string;
   name: string;
   team_id?: number | string | null;
+  team_name?: string | null;
+  tournament_name?: string | null;
+  tournamentName?: string | null;
   height?: number | string | null;
   player_stats?: PlayerListStat[] | null;
   [key: string]: unknown;
