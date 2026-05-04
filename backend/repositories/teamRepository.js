@@ -1649,3 +1649,229 @@ export async function listTeamComparisonRowsByContext({
         : null,
   }));
 }
+
+export async function listTeamComparisonRowsByEntries(teamSeasonEntries) {
+  const teamIds = uniqueReferences(
+    teamSeasonEntries.map((entry) => entry.teamId),
+  );
+  const tournamentIds = uniqueReferences(
+    teamSeasonEntries.map((entry) => entry.tournamentId),
+  );
+  const seasonIds = uniqueReferences(
+    teamSeasonEntries.map((entry) => entry.seasonId),
+  );
+
+  if (
+    teamIds.length === 0 ||
+    tournamentIds.length === 0 ||
+    seasonIds.length === 0
+  ) {
+    return [];
+  }
+
+  const [{ data: teams, error }, { data: participationRows, error: participationError }] =
+    await Promise.all([
+      getTeamsBaseQuery()
+        .in("id", teamIds)
+        .order("name", { ascending: true }),
+      supabase
+        .from("standings_with_team_info")
+        .select(PARTICIPATION_SELECT)
+        .in("team_db_id", teamIds)
+        .in("tournament_db_id", tournamentIds)
+        .in("season_db_id", seasonIds)
+        .not("team_db_id", "is", null)
+        .not("tournament_db_id", "is", null)
+        .not("season_db_id", "is", null),
+    ]);
+
+  if (error) {
+    throw error;
+  }
+
+  if (participationError) {
+    throw participationError;
+  }
+
+  const requestedEntryKeys = new Set(
+    teamSeasonEntries.map((entry) =>
+      buildInternalEntryKey(entry.teamId, entry.tournamentId, entry.seasonId),
+    ),
+  );
+  const teamsById = new Map((teams ?? []).map((team) => [team.id, team]));
+  const participationRowsWithStatsFallback = [
+    ...(participationRows ?? []).filter((row) =>
+      requestedEntryKeys.has(
+        buildInternalEntryKey(
+          row.team_db_id,
+          row.tournament_db_id,
+          row.season_db_id,
+        ),
+      ),
+    ),
+  ];
+  const foundEntryKeys = new Set(
+    participationRowsWithStatsFallback.map((row) =>
+      buildInternalEntryKey(
+        row.team_db_id,
+        row.tournament_db_id,
+        row.season_db_id,
+      ),
+    ),
+  );
+  const missingEntries = teamSeasonEntries.filter(
+    (entry) =>
+      !foundEntryKeys.has(
+        buildInternalEntryKey(entry.teamId, entry.tournamentId, entry.seasonId),
+      ),
+  );
+
+  if (missingEntries.length > 0) {
+    const [tournaments, seasons] = await Promise.all([
+      listTournamentsByReferences(tournamentIds, "internal"),
+      listSeasonsByReferences(seasonIds, "internal"),
+    ]);
+    const tournamentApiIdById = new Map(
+      tournaments
+        .filter((tournament) => tournament.api_id)
+        .map((tournament) => [tournament.id, tournament.api_id]),
+    );
+    const seasonApiIdById = new Map(
+      seasons
+        .filter((season) => season.api_id)
+        .map((season) => [season.id, season.api_id]),
+    );
+    const missingTeams = [
+      ...new Map(
+        missingEntries
+          .map((entry) => teamsById.get(entry.teamId))
+          .filter(Boolean)
+          .map((team) => [team.id, team]),
+      ).values(),
+    ];
+    const missingTeamReferences = uniqueReferences(
+      missingTeams.flatMap((team) => getTeamApiReferences(team)),
+    );
+    const missingTournamentReferences = uniqueReferences(
+      missingEntries.map((entry) => tournamentApiIdById.get(entry.tournamentId)),
+    );
+    const missingSeasonReferences = uniqueReferences(
+      missingEntries.map((entry) => seasonApiIdById.get(entry.seasonId)),
+    );
+
+    if (
+      missingTeamReferences.length > 0 &&
+      missingTournamentReferences.length > 0 &&
+      missingSeasonReferences.length > 0
+    ) {
+      const { data: statsRows, error: statsError } = await supabase
+        .from("team_stats")
+        .select("team_id, tournament_id, season_id")
+        .in("team_id", missingTeamReferences)
+        .in("tournament_id", missingTournamentReferences)
+        .in("season_id", missingSeasonReferences);
+
+      if (statsError) {
+        throw statsError;
+      }
+
+      const fallbackRows = await buildStatsSeasonRowsForTeams(
+        missingTeams,
+        statsRows ?? [],
+      );
+      participationRowsWithStatsFallback.push(
+        ...fallbackRows.filter((row) =>
+          requestedEntryKeys.has(
+            buildInternalEntryKey(
+              row.team_db_id,
+              row.tournament_db_id,
+              row.season_db_id,
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
+  const participationByEntryKey = new Map();
+
+  for (const row of dedupeParticipationRows(participationRowsWithStatsFallback)) {
+    const entryKey = buildInternalEntryKey(
+      row.team_db_id,
+      row.tournament_db_id,
+      row.season_db_id,
+    );
+
+    if (!participationByEntryKey.has(entryKey)) {
+      participationByEntryKey.set(entryKey, row);
+    }
+  }
+
+  const entries = [];
+  const statsReferences = [];
+
+  for (const selectedEntry of teamSeasonEntries) {
+    const team = teamsById.get(selectedEntry.teamId);
+    const participation = participationByEntryKey.get(
+      buildInternalEntryKey(
+        selectedEntry.teamId,
+        selectedEntry.tournamentId,
+        selectedEntry.seasonId,
+      ),
+    );
+
+    if (!team || !participation) {
+      continue;
+    }
+
+    const entry = {
+      team_id: team.id,
+      team_api_id: team.api_id ?? null,
+      team_name: team.name,
+      team_logo: team.logo_url ?? null,
+      tournament_id: participation.tournament_db_id ?? null,
+      tournament_api_id: participation.tournament_id ?? null,
+      tournament_name: participation.tournament_name?.trim() || null,
+      season_id: participation.season_db_id ?? null,
+      season_api_id: participation.season_id ?? null,
+      season_name: getSeasonLabel(participation),
+    };
+
+    entries.push(entry);
+
+    if (
+      entry.team_api_id &&
+      entry.tournament_api_id &&
+      entry.season_api_id
+    ) {
+      statsReferences.push({
+        teamId: entry.team_id,
+        teamApiId: entry.team_api_id,
+        tournamentId: entry.tournament_id,
+        tournamentApiId: entry.tournament_api_id,
+        seasonId: entry.season_id,
+        seasonApiId: entry.season_api_id,
+      });
+    }
+  }
+
+  const statsByReference = await listTeamStatsByApiReferences(statsReferences);
+
+  return entries.map((entry) => ({
+    ...entry,
+    stats:
+      entry.team_api_id && entry.tournament_api_id && entry.season_api_id
+        ? statsByReference.get(
+            buildStatsKey(
+              entry.team_api_id,
+              entry.tournament_api_id,
+              entry.season_api_id,
+            ),
+          ) ?? null
+        : null,
+  }));
+}
+
+function buildInternalEntryKey(teamId, tournamentId, seasonId) {
+  return `${teamId}:${tournamentId}:${seasonId}`;
+}

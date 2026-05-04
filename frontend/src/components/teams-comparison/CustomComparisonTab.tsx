@@ -31,6 +31,12 @@ import {
   filterTeamStatItemsByCategory,
   type StatCategoryFilterId,
 } from "../../utils/statCategories";
+import {
+  ALL_COUNTRIES_TAB,
+  COUNTRY_FILTER_TABS,
+  filterItemsByCountry,
+  type CountryFilterTab,
+} from "../../utils/countryFilters";
 import SearchableCheckboxPanel from "./SearchableCheckboxPanel";
 import StatCategoryFilterTabs from "./StatCategoryFilterTabs";
 import SegmentedTabs from "../ui/SegmentedTabs";
@@ -45,18 +51,6 @@ const SERIES_COLORS = [
   "#ef4444",
   "#f43f5e",
 ];
-const ALL_COUNTRIES_TAB = "ALL";
-const COUNTRY_FILTER_TABS = [
-  ALL_COUNTRIES_TAB,
-  "ENGLAND",
-  "GERMANY",
-  "GREECE",
-  "ITALY",
-  "SPAIN",
-] as const;
-
-type CountryFilterTab = (typeof COUNTRY_FILTER_TABS)[number];
-
 type CustomComparisonTabProps = {
   entries: TeamSeasonStatEntry[];
   statKeys: TeamStatKey[];
@@ -136,15 +130,7 @@ export default function CustomComparisonTab({
   );
 
   const countryFilteredEntryOptions = useMemo(() => {
-    if (selectedCountryFilter === ALL_COUNTRIES_TAB) {
-      return entryOptions;
-    }
-
-    const selectedCountry = normalizeCountryValue(selectedCountryFilter);
-
-    return entryOptions.filter(
-      (entry) => normalizeCountryValue(entry.country) === selectedCountry,
-    );
+    return filterItemsByCountry(entryOptions, selectedCountryFilter);
   }, [entryOptions, selectedCountryFilter]);
 
   const statOptions = useMemo(
@@ -196,8 +182,7 @@ export default function CustomComparisonTab({
           teamName: entry.teamName,
           values: Object.fromEntries(
             selectedStats.map((statKey) => {
-              const rawValue = toNumericStatValue(entry.stats[statKey]);
-
+              const rawValue = toNumericStatValue(entry.stats[statKey]) ?? null;
               return [
                 statKey,
                 {
@@ -258,9 +243,13 @@ export default function CustomComparisonTab({
   const readyForComparison =
     selectedEntries.length >= 1 && selectedStats.length >= 1;
   const shouldRenderBarChart =
-    readyForComparison && Boolean(comparisonPayload) && selectedStats.length <= 2;
+    readyForComparison &&
+    Boolean(comparisonPayload) &&
+    selectedStats.length <= 2;
   const shouldRenderRadarChart =
-    readyForComparison && Boolean(comparisonPayload) && selectedStats.length > 2;
+    readyForComparison &&
+    Boolean(comparisonPayload) &&
+    selectedStats.length > 2;
 
   const toggleEntry = (entryId: string) => {
     setSelectedEntryIds((current) =>
@@ -384,7 +373,10 @@ export default function CustomComparisonTab({
         ) : shouldRenderBarChart ? (
           <div className="h-[520px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 20 }}>
+              <BarChart
+                data={chartData}
+                margin={{ top: 20, right: 20, left: 0, bottom: 20 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                 <XAxis
                   dataKey="statLabel"
@@ -407,9 +399,7 @@ export default function CustomComparisonTab({
                 />
                 <Tooltip
                   content={
-                    <BarComparisonTooltip
-                      selectedEntries={displayEntries}
-                    />
+                    <BarComparisonTooltip selectedEntries={displayEntries} />
                   }
                 />
                 <Legend />
@@ -436,9 +426,7 @@ export default function CustomComparisonTab({
                 />
                 <Tooltip
                   content={
-                    <RadarComparisonTooltip
-                      selectedEntries={displayEntries}
-                    />
+                    <RadarComparisonTooltip selectedEntries={displayEntries} />
                   }
                 />
                 <Legend />
@@ -497,11 +485,6 @@ function getEntryStageKey(entry: TeamSeasonStatEntry) {
     .filter(Boolean);
 
   return stageParts.length > 0 ? stageParts.join("::") : null;
-}
-
-function normalizeCountryValue(value: string | null | undefined) {
-  const country = value?.trim();
-  return country ? country.toLocaleLowerCase() : null;
 }
 
 function toNumericStatValue(value: number | null | undefined) {
@@ -567,7 +550,12 @@ function BarComparisonTooltip({
   selectedEntries,
 }: {
   active?: boolean;
-  payload?: Array<{ value?: number; color?: string; dataKey?: string; payload?: Record<string, number | string | null> }>;
+  payload?: Array<{
+    value?: number;
+    color?: string;
+    dataKey?: string;
+    payload?: Record<string, number | string | null>;
+  }>;
   label?: string;
   selectedEntries: ComparisonDisplayEntry[];
 }) {
@@ -582,8 +570,13 @@ function BarComparisonTooltip({
       </p>
       <div className="space-y-3">
         {payload.map((item) => {
-          const entry = selectedEntries.find((candidate) => candidate.id === item.dataKey);
-          const rawValue = item.payload?.[`${item.dataKey}__raw`] as number | null | undefined;
+          const entry = selectedEntries.find(
+            (candidate) => candidate.id === item.dataKey,
+          );
+          const rawValue = item.payload?.[`${item.dataKey}__raw`] as
+            | number
+            | null
+            | undefined;
           const relativeScore =
             typeof item.value === "number" ? item.value : null;
           const interpretation =
@@ -595,7 +588,10 @@ function BarComparisonTooltip({
           }
 
           return (
-            <div key={entry.id} className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
+            <div
+              key={entry.id}
+              className="rounded-xl border border-slate-800 bg-slate-900/40 p-3"
+            >
               <div className="flex items-center gap-3">
                 <ComparisonTooltipLogo
                   logoUrl={entry.teamLogo}
@@ -612,9 +608,7 @@ function BarComparisonTooltip({
               <div className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-2">
                 Stat Name
               </div>
-              <div className="text-sm font-bold text-slate-200">
-                {label}
-              </div>
+              <div className="text-sm font-bold text-slate-200">{label}</div>
               <div className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-2">
                 Raw Number
               </div>
@@ -656,7 +650,12 @@ function RadarComparisonTooltip({
   selectedEntries,
 }: {
   active?: boolean;
-  payload?: Array<{ value?: number; color?: string; dataKey?: string; payload?: Record<string, number | string | null> }>;
+  payload?: Array<{
+    value?: number;
+    color?: string;
+    dataKey?: string;
+    payload?: Record<string, number | string | null>;
+  }>;
   label?: string;
   selectedEntries: ComparisonDisplayEntry[];
 }) {
@@ -673,8 +672,13 @@ function RadarComparisonTooltip({
       </p>
       <div className="space-y-3">
         {payload.map((item) => {
-          const entry = selectedEntries.find((candidate) => candidate.id === item.dataKey);
-          const rawValue = item.payload?.[`${item.dataKey}__raw`] as number | null | undefined;
+          const entry = selectedEntries.find(
+            (candidate) => candidate.id === item.dataKey,
+          );
+          const rawValue = item.payload?.[`${item.dataKey}__raw`] as
+            | number
+            | null
+            | undefined;
           const relativeScore =
             typeof item.value === "number" ? item.value : null;
           const interpretation =
@@ -685,7 +689,10 @@ function RadarComparisonTooltip({
           }
 
           return (
-            <div key={entry.id} className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
+            <div
+              key={entry.id}
+              className="rounded-xl border border-slate-800 bg-slate-900/40 p-3"
+            >
               <div className="flex items-center gap-3">
                 <ComparisonTooltipLogo
                   logoUrl={entry.teamLogo}
@@ -702,9 +709,7 @@ function RadarComparisonTooltip({
               <div className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-2">
                 Stat Name
               </div>
-              <div className="text-sm font-bold text-slate-200">
-                {label}
-              </div>
+              <div className="text-sm font-bold text-slate-200">{label}</div>
               <div className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-2">
                 Raw Number
               </div>
