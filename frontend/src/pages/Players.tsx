@@ -1,7 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ArrowLeft, ChevronRight, Search, Users } from "lucide-react";
-import type { PlayerListItem, PlayerTeamSquad } from "../api/api";
+import type {
+  PlayerListItem,
+  PlayerListStat,
+  PlayerTeamSquad,
+} from "../api/api";
 import { usePlayerTeamSquads } from "../hooks/usePlayerTeamSquads";
 import SegmentedTabs from "../components/ui/SegmentedTabs";
 import { filterAndRankSearchResults } from "../utils/search";
@@ -18,6 +22,10 @@ const TOURNAMENT_TABS = [
   "Bundesliga",
   "Serie A",
 ] as const;
+
+const SEARCH_DEBOUNCE_MS = 250;
+const TEAM_PAGE_SIZE = 24;
+const PLAYER_PAGE_SIZE = 36;
 
 type TournamentTab = (typeof TOURNAMENT_TABS)[number];
 
@@ -55,6 +63,11 @@ export default function Players() {
       ? initialLocationState.selectedTeamKey
       : null,
   );
+  const debouncedPlayerSearchQuery = useDebouncedValue(
+    playerSearchQuery,
+    SEARCH_DEBOUNCE_MS,
+  );
+  const searchQuery = playerSearchQuery.trim() ? debouncedPlayerSearchQuery : "";
 
   const tournamentFilteredSquads = useMemo(
     () =>
@@ -68,10 +81,10 @@ export default function Players() {
     () =>
       filterAndRankSearchResults(
         tournamentFilteredSquads,
-        playerSearchQuery,
+        searchQuery,
         getTeamSearchFields,
       ),
-    [playerSearchQuery, tournamentFilteredSquads],
+    [searchQuery, tournamentFilteredSquads],
   );
 
   const selectedSquad = useMemo(
@@ -87,11 +100,11 @@ export default function Players() {
       selectedSquad
         ? filterAndRankSearchResults(
             selectedSquad.players,
-            playerSearchQuery,
+            searchQuery,
             getPlayerSearchFields,
           )
         : [],
-    [playerSearchQuery, selectedSquad],
+    [searchQuery, selectedSquad],
   );
 
   if (isLoading) {
@@ -136,6 +149,7 @@ export default function Players() {
 
       {selectedSquad ? (
         <SelectedSquadView
+          key={`${getTeamSquadKey(selectedSquad)}:${searchQuery}`}
           squad={selectedSquad}
           players={searchedPlayers}
           selectedTournament={selectedTournament}
@@ -146,6 +160,7 @@ export default function Players() {
         />
       ) : (
         <TeamSquadsView
+          key={`${selectedTournament}:${searchQuery}`}
           squads={searchedTeamSquads}
           onSelectSquad={(squad) => {
             setSelectedTeamKey(getTeamSquadKey(squad));
@@ -164,6 +179,17 @@ function TeamSquadsView({
   squads: PlayerTeamSquad[];
   onSelectSquad: (squad: PlayerTeamSquad) => void;
 }) {
+  const [visibleCount, setVisibleCount] = useState(TEAM_PAGE_SIZE);
+  const visibleSquads = useMemo(
+    () => squads.slice(0, visibleCount),
+    [squads, visibleCount],
+  );
+  const hiddenCount = Math.max(squads.length - visibleSquads.length, 0);
+
+  useEffect(() => {
+    setVisibleCount(TEAM_PAGE_SIZE);
+  }, [squads]);
+
   if (squads.length === 0) {
     return (
       <div className="mt-10 text-center p-12 bg-slate-900/20 border-2 border-dashed border-slate-800 rounded-[3rem] font-black uppercase tracking-widest text-slate-500">
@@ -173,42 +199,62 @@ function TeamSquadsView({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-      {squads.map((squad) => (
-        <button
-          key={getTeamSquadKey(squad)}
-          type="button"
-          onClick={() => onSelectSquad(squad)}
-          className="group flex items-center justify-between rounded-2xl border border-slate-800 bg-gradient-to-br from-gray-900 to-gray-800 p-5 text-left text-white shadow-lg transition hover:border-blue-500 hover:bg-slate-800/70"
-        >
-          <div className="flex min-w-0 items-center gap-4">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-slate-950/70 text-blue-400">
-              {squad.teamLogo ? (
-                <img
-                  src={squad.teamLogo}
-                  alt={`${squad.teamName} logo`}
-                  className="h-full w-full object-contain p-1.5"
-                />
-              ) : (
-                <Users size={18} />
-              )}
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {visibleSquads.map((squad) => (
+          <button
+            key={getTeamSquadKey(squad)}
+            type="button"
+            onClick={() => onSelectSquad(squad)}
+            className="group flex items-center justify-between rounded-2xl border border-slate-800 bg-gradient-to-br from-gray-900 to-gray-800 p-5 text-left text-white shadow-lg transition hover:border-blue-500 hover:bg-slate-800/70"
+          >
+            <div className="flex min-w-0 items-center gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-slate-950/70 text-blue-400">
+                {squad.teamLogo ? (
+                  <img
+                    src={squad.teamLogo}
+                    alt={`${squad.teamName} logo`}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-full w-full object-contain p-1.5"
+                  />
+                ) : (
+                  <Users size={18} />
+                )}
+              </div>
+              <div className="min-w-0">
+                <h2 className="truncate text-lg font-black uppercase leading-tight group-hover:text-blue-400">
+                  {squad.teamName}
+                </h2>
+                <p className="mt-1 text-xs font-bold uppercase tracking-widest text-slate-500">
+                  {squad.players.length} players
+                </p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <h2 className="truncate text-lg font-black uppercase leading-tight group-hover:text-blue-400">
-                {squad.teamName}
-              </h2>
-              <p className="mt-1 text-xs font-bold uppercase tracking-widest text-slate-500">
-                {squad.players.length} players
-              </p>
-            </div>
-          </div>
-          <ChevronRight
-            size={18}
-            className="shrink-0 text-slate-600 transition group-hover:text-blue-400"
-          />
-        </button>
-      ))}
-    </div>
+            <ChevronRight
+              size={18}
+              className="shrink-0 text-slate-600 transition group-hover:text-blue-400"
+            />
+          </button>
+        ))}
+      </div>
+
+      {hiddenCount > 0 && (
+        <div className="mt-6 flex justify-center">
+          <button
+            type="button"
+            onClick={() =>
+              setVisibleCount((count) =>
+                Math.min(count + TEAM_PAGE_SIZE, squads.length),
+              )
+            }
+            className="rounded-xl border border-slate-800 bg-slate-900/70 px-5 py-3 text-xs font-black uppercase tracking-widest text-slate-300 transition hover:border-blue-500 hover:text-blue-400"
+          >
+            Load more teams ({hiddenCount} left)
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -224,6 +270,24 @@ function SelectedSquadView({
   onBack: () => void;
 }) {
   const squadKey = getTeamSquadKey(squad);
+  const [visibleCount, setVisibleCount] = useState(PLAYER_PAGE_SIZE);
+  const visiblePlayers = useMemo(
+    () => players.slice(0, visibleCount),
+    [players, visibleCount],
+  );
+  const visiblePlayerCards = useMemo(
+    () =>
+      visiblePlayers.map((player) => ({
+        player,
+        stats: getPlayerStats(player),
+      })),
+    [visiblePlayers],
+  );
+  const hiddenCount = Math.max(players.length - visiblePlayers.length, 0);
+
+  useEffect(() => {
+    setVisibleCount(PLAYER_PAGE_SIZE);
+  }, [players, squadKey]);
 
   return (
     <>
@@ -243,6 +307,8 @@ function SelectedSquadView({
                 <img
                   src={squad.teamLogo}
                   alt={`${squad.teamName} logo`}
+                  loading="lazy"
+                  decoding="async"
                   className="h-full w-full object-contain p-1"
                 />
               </span>
@@ -255,17 +321,36 @@ function SelectedSquadView({
       </div>
 
       {players.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {players.map((player) => (
-            <PlayerCard
-              key={player.id}
-              player={player}
-              squad={squad}
-              squadKey={squadKey}
-              selectedTournament={selectedTournament}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {visiblePlayerCards.map(({ player, stats }) => (
+              <PlayerCard
+                key={player.id}
+                player={player}
+                stats={stats}
+                squad={squad}
+                squadKey={squadKey}
+                selectedTournament={selectedTournament}
+              />
+            ))}
+          </div>
+
+          {hiddenCount > 0 && (
+            <div className="mt-6 flex justify-center">
+              <button
+                type="button"
+                onClick={() =>
+                  setVisibleCount((count) =>
+                    Math.min(count + PLAYER_PAGE_SIZE, players.length),
+                  )
+                }
+                className="rounded-xl border border-slate-800 bg-slate-900/70 px-5 py-3 text-xs font-black uppercase tracking-widest text-slate-300 transition hover:border-blue-500 hover:text-blue-400"
+              >
+                Load more players ({hiddenCount} left)
+              </button>
+            </div>
+          )}
+        </>
       ) : (
         <div className="mt-10 text-center p-12 bg-slate-900/20 border-2 border-dashed border-slate-800 rounded-[3rem] font-black uppercase tracking-widest text-slate-500">
           No players found for this team.
@@ -277,17 +362,17 @@ function SelectedSquadView({
 
 function PlayerCard({
   player,
+  stats,
   squad,
   squadKey,
   selectedTournament,
 }: {
   player: PlayerListItem;
+  stats: PlayerListStat | null;
   squad: PlayerTeamSquad;
   squadKey: string;
   selectedTournament: TournamentTab;
 }) {
-  const stats = getPlayerStats(player);
-
   return (
     <Link
       key={player.id}
@@ -299,7 +384,7 @@ function PlayerCard({
         fromTeamKey: squadKey,
       }}
     >
-      <div className="bg-gradient-to-br from-gray-900 to-gray-800 text-white p-4 rounded-2xl shadow-lg hover:scale-105 transition">
+      <div className="rounded-2xl border border-slate-800 bg-gradient-to-br from-gray-900 to-gray-800 p-4 text-white shadow-lg transition hover:border-blue-500">
         <h2 className="text-lg font-semibold">{player.name}</h2>
 
         <p className="text-sm text-gray-400">Team: {squad.teamName}</p>
@@ -315,6 +400,20 @@ function PlayerCard({
       </div>
     </Link>
   );
+}
+
+function useDebouncedValue<T>(value: T, delayMs: number) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedValue(value);
+    }, delayMs);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [delayMs, value]);
+
+  return debouncedValue;
 }
 
 function getTeamSearchFields(squad: PlayerTeamSquad) {
