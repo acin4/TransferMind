@@ -26,13 +26,14 @@ Files:
 5. `POST /api/teams/clustering/elbow` with `tournamentId`, `seasonId`, `teamIds`, `statKeys`, and optional `maxK` returns Min-Max normalized matrix rows plus global Elbow Method inertia values.
 6. `POST /api/teams/clustering/run` with `tournamentId`, `seasonId`, `teamIds`, `statKeys`, and `k` returns final K-Means cluster assignments, centroids, distances, and warnings.
 7. `GET /api/players`
-8. `GET /api/tournaments/current-seasons`
-9. `GET /api/teams/:id`
-10. `GET /api/teams/:id/stats`
-11. `GET /api/players?teamId=:teamId`
-12. `GET /api/players/:id`
-13. `GET /api/standings?tournamentId=:tournamentId&seasonId=:seasonId` returns grouped standings with `selectedGroupKey`; each row includes `team_logo` when available.
-14. Error-case requests
+8. `GET /api/players/team-squads`
+9. `GET /api/tournaments/current-seasons`
+10. `GET /api/teams/:id`
+11. `GET /api/teams/:id/stats`
+12. `GET /api/players?teamId=:teamId`
+13. `GET /api/players/:id`
+14. `GET /api/standings?tournamentId=:tournamentId&seasonId=:seasonId` returns grouped standings with `selectedGroupKey`; each row includes `team_logo` when available.
+15. Error-case requests
 
 The seed requests save these environment variables automatically when data exists:
 

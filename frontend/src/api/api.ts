@@ -39,6 +39,17 @@ export type PlayerListItem = {
   [key: string]: unknown;
 };
 
+export type PlayerTeamSquad = {
+  teamId: number | string;
+  teamName: string;
+  teamLogo?: string | null;
+  tournamentId?: number | string | null;
+  tournamentName?: string | null;
+  seasonId?: number | string | null;
+  seasonName?: string | null;
+  players: PlayerListItem[];
+};
+
 export type TeamProfileData = TeamListItem & {
   tournament_id?: number | null;
   tournament_name?: string | null;
@@ -310,6 +321,10 @@ export const getPlayers = async (
 
   const suffix = params.toString() ? `?${params.toString()}` : "";
   return request(`/api/players${suffix}`);
+};
+
+export const getPlayerTeamSquads = async (): Promise<PlayerTeamSquad[]> => {
+  return request("/api/players/team-squads");
 };
 
 export const getSearchResults = async (

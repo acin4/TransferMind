@@ -5,7 +5,11 @@ import {
   listPlayersByTeamReferences,
   listPlayersByTeamSeasonReferences,
 } from "../repositories/playerRepository.js";
-import { getTeamById, listTeamMappings } from "../repositories/teamRepository.js";
+import {
+  getTeamById,
+  listTeamMappings,
+  listTeamSeasonsById,
+} from "../repositories/teamRepository.js";
 
 function buildTeamMaps(teamRows) {
   const teamByInternalId = new Map();
@@ -42,25 +46,70 @@ function sanitizePlayer(player, teamMaps) {
   };
 }
 
-export async function getPlayers(teamId, seasonId) {
-  const teamRows = await listTeamMappings({ includeTournament: true });
-  const teamMaps = buildTeamMaps(teamRows);
+function selectDefaultSeason(seasons) {
+  return seasons.find((season) => season.is_current) ?? seasons[0] ?? null;
+}
 
-  if (teamId !== undefined) {
-    const team = await getTeamById(teamId);
+async function listTeamSquadPlayers(team, seasonId) {
+  return seasonId === undefined
+    ? listPlayersByTeamReferences(team.id, team.api_id)
+    : listPlayersByTeamSeasonReferences(team, seasonId);
+}
 
-    if (!team) {
-      throw new HttpError(404, "Team not found.");
-    }
+export async function getTeamSquad(teamId, seasonId, options = {}) {
+  const team = options.team ?? (await getTeamById(teamId));
 
-    const players =
-      seasonId === undefined
-        ? await listPlayersByTeamReferences(team.id, team.api_id)
-        : await listPlayersByTeamSeasonReferences(team, seasonId);
-
-    return players.map((player) => sanitizePlayer(player, teamMaps));
+  if (!team) {
+    throw new HttpError(404, "Team not found.");
   }
 
+  const teamMaps =
+    options.teamMaps ??
+    buildTeamMaps(await listTeamMappings({ includeTournament: true }));
+  const players = await listTeamSquadPlayers(team, seasonId);
+
+  return players.map((player) => sanitizePlayer(player, teamMaps));
+}
+
+export async function getPlayerTeamSquads() {
+  const teamRows = await listTeamMappings({ includeTournament: true });
+  const teamMaps = buildTeamMaps(teamRows);
+  const squads = await Promise.all(
+    teamRows.map(async (team) => {
+      const seasons = await listTeamSeasonsById(
+        team.id,
+        team.tournament_api_id ?? null,
+      );
+      const selectedSeason = selectDefaultSeason(seasons);
+      const squad = await getTeamSquad(team.id, selectedSeason?.season_id, {
+        team,
+        teamMaps,
+      });
+
+      return {
+        teamId: team.id,
+        teamName: team.name,
+        teamLogo: team.logo_url ?? null,
+        tournamentId: selectedSeason?.tournament_id ?? team.tournament_id ?? null,
+        tournamentName:
+          selectedSeason?.tournament_name ?? team.tournament_name ?? null,
+        seasonId: selectedSeason?.season_id ?? null,
+        seasonName: selectedSeason?.season_name ?? null,
+        players: squad,
+      };
+    }),
+  );
+
+  return squads.filter((squad) => squad.players.length > 0);
+}
+
+export async function getPlayers(teamId, seasonId) {
+  if (teamId !== undefined) {
+    return getTeamSquad(teamId, seasonId);
+  }
+
+  const teamRows = await listTeamMappings({ includeTournament: true });
+  const teamMaps = buildTeamMaps(teamRows);
   const players = await listPlayers();
   return players.map((player) => sanitizePlayer(player, teamMaps));
 }

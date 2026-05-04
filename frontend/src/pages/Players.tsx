@@ -1,21 +1,24 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Search } from "lucide-react";
-import type { PlayerListItem } from "../api/api";
-import { usePlayers } from "../hooks/usePlayers";
+import { ArrowLeft, ChevronRight, Search, Users } from "lucide-react";
+import type { PlayerListItem, PlayerTeamSquad } from "../api/api";
+import { usePlayerTeamSquads } from "../hooks/usePlayerTeamSquads";
 import SegmentedTabs from "../components/ui/SegmentedTabs";
 import { filterAndRankSearchResults } from "../utils/search";
 
 const TOURNAMENT_TABS = [
+  "All",
   "Premier League",
   "Stoiximan Super League",
   "La Liga",
   "Bundesliga",
+  "Serie A",
 ] as const;
 
 type TournamentTab = (typeof TOURNAMENT_TABS)[number];
 
 const TOURNAMENT_ALIASES: Record<TournamentTab, string[]> = {
+  All: [],
   "Premier League": ["Premier League", "English Premier League"],
   "Stoiximan Super League": [
     "Stoiximan Super League",
@@ -24,30 +27,52 @@ const TOURNAMENT_ALIASES: Record<TournamentTab, string[]> = {
   ],
   "La Liga": ["La Liga", "LaLiga", "Primera Division"],
   Bundesliga: ["Bundesliga", "German Bundesliga"],
+  "Serie A": ["Serie A", "Italian Serie A"],
 };
 
 export default function Players() {
-  const { players, isLoading, error } = usePlayers();
+  const { squads, isLoading, error } = usePlayerTeamSquads();
   const [selectedTournament, setSelectedTournament] =
-    useState<TournamentTab>("Premier League");
+    useState<TournamentTab>("All");
   const [playerSearchQuery, setPlayerSearchQuery] = useState("");
+  const [selectedTeamKey, setSelectedTeamKey] = useState<string | null>(null);
 
-  const tournamentFilteredPlayers = useMemo(
+  const tournamentFilteredSquads = useMemo(
     () =>
-      players.filter((player) =>
-        playerBelongsToTournament(player, selectedTournament),
+      squads.filter((squad) =>
+        squadBelongsToTournament(squad, selectedTournament),
       ),
-    [players, selectedTournament],
+    [selectedTournament, squads],
   );
 
-  const filteredPlayers = useMemo(
+  const searchedTeamSquads = useMemo(
     () =>
       filterAndRankSearchResults(
-        tournamentFilteredPlayers,
+        tournamentFilteredSquads,
         playerSearchQuery,
-        getPlayerSearchFields,
+        getTeamSearchFields,
       ),
-    [playerSearchQuery, tournamentFilteredPlayers],
+    [playerSearchQuery, tournamentFilteredSquads],
+  );
+
+  const selectedSquad = useMemo(
+    () =>
+      tournamentFilteredSquads.find(
+        (squad) => getTeamSquadKey(squad) === selectedTeamKey,
+      ) ?? null,
+    [selectedTeamKey, tournamentFilteredSquads],
+  );
+
+  const searchedPlayers = useMemo(
+    () =>
+      selectedSquad
+        ? filterAndRankSearchResults(
+            selectedSquad.players,
+            playerSearchQuery,
+            getPlayerSearchFields,
+          )
+        : [],
+    [playerSearchQuery, selectedSquad],
   );
 
   if (isLoading) {
@@ -69,7 +94,7 @@ export default function Players() {
         <input
           value={playerSearchQuery}
           onChange={(event) => setPlayerSearchQuery(event.target.value)}
-          placeholder="Search players..."
+          placeholder={selectedSquad ? "Search players..." : "Search teams..."}
           className="w-full rounded-2xl border border-slate-800 bg-slate-950/70 py-3 pl-11 pr-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
         />
       </div>
@@ -81,61 +106,185 @@ export default function Players() {
             label: tournament,
           }))}
           value={selectedTournament}
-          onChange={setSelectedTournament}
+          onChange={(tournament) => {
+            setSelectedTournament(tournament);
+            setSelectedTeamKey(null);
+          }}
           className="flex gap-2 bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800 w-full md:w-max overflow-x-auto"
           buttonClassName="px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap"
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {filteredPlayers.map((p) => {
-          const stats = p.player_stats?.[0]; // take first stats row
-
-          return (
-            <Link key={p.id} to={`/player/${p.id}`}>
-              <div className="bg-gradient-to-br from-gray-900 to-gray-800 text-white p-4 rounded-2xl shadow-lg hover:scale-105 transition">
-                
-                <h2 className="text-lg font-semibold">{p.name}</h2>
-
-                <p className="text-sm text-gray-400">
-                  Team: {p.team_name ?? p.team_id ?? "-"}
-                </p>
-
-                <p className="text-sm">
-                  Height: {p.height ?? "-"} cm
-                </p>
-
-                {stats && (
-                  <div className="mt-3 text-sm">
-                    <p>⚽ Goals: {stats.goals}</p>
-                    <p>🎯 Assists: {stats.assists}</p>
-                  </div>
-                )}
-              </div>
-            </Link>
-          );
-        })}
-      </div>
-
-      {filteredPlayers.length === 0 && (
-        <div className="mt-10 text-center p-12 bg-slate-900/20 border-2 border-dashed border-slate-800 rounded-[3rem] font-black uppercase tracking-widest text-slate-500">
-          No players found for this tournament.
-        </div>
+      {selectedSquad ? (
+        <SelectedSquadView
+          squad={selectedSquad}
+          players={searchedPlayers}
+          onBack={() => {
+            setSelectedTeamKey(null);
+            setPlayerSearchQuery("");
+          }}
+        />
+      ) : (
+        <TeamSquadsView
+          squads={searchedTeamSquads}
+          onSelectSquad={(squad) => {
+            setSelectedTeamKey(getTeamSquadKey(squad));
+            setPlayerSearchQuery("");
+          }}
+        />
       )}
     </div>
   );
 }
 
+function TeamSquadsView({
+  squads,
+  onSelectSquad,
+}: {
+  squads: PlayerTeamSquad[];
+  onSelectSquad: (squad: PlayerTeamSquad) => void;
+}) {
+  if (squads.length === 0) {
+    return (
+      <div className="mt-10 text-center p-12 bg-slate-900/20 border-2 border-dashed border-slate-800 rounded-[3rem] font-black uppercase tracking-widest text-slate-500">
+        No teams found for this tournament.
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      {squads.map((squad) => (
+        <button
+          key={getTeamSquadKey(squad)}
+          type="button"
+          onClick={() => onSelectSquad(squad)}
+          className="group flex items-center justify-between rounded-2xl border border-slate-800 bg-gradient-to-br from-gray-900 to-gray-800 p-5 text-left text-white shadow-lg transition hover:border-blue-500 hover:bg-slate-800/70"
+        >
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-slate-950/70 text-blue-400">
+              {squad.teamLogo ? (
+                <img
+                  src={squad.teamLogo}
+                  alt={`${squad.teamName} logo`}
+                  className="h-full w-full object-contain p-1.5"
+                />
+              ) : (
+                <Users size={18} />
+              )}
+            </div>
+            <div className="min-w-0">
+              <h2 className="truncate text-lg font-black uppercase leading-tight group-hover:text-blue-400">
+                {squad.teamName}
+              </h2>
+              <p className="mt-1 text-xs font-bold uppercase tracking-widest text-slate-500">
+                {squad.players.length} players
+              </p>
+            </div>
+          </div>
+          <ChevronRight
+            size={18}
+            className="shrink-0 text-slate-600 transition group-hover:text-blue-400"
+          />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function SelectedSquadView({
+  squad,
+  players,
+  onBack,
+}: {
+  squad: PlayerTeamSquad;
+  players: PlayerListItem[];
+  onBack: () => void;
+}) {
+  return (
+    <>
+      <div className="mb-6 flex flex-wrap items-center gap-4">
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-2 text-xs font-black uppercase tracking-widest text-slate-300 transition hover:border-blue-500 hover:text-blue-400"
+        >
+          <ArrowLeft size={14} />
+          Back to teams
+        </button>
+        <div className="text-sm font-bold text-slate-400">
+          <span className="inline-flex items-center gap-2 text-white">
+            {squad.teamLogo ? (
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-blue-500/20 bg-slate-950/70">
+                <img
+                  src={squad.teamLogo}
+                  alt={`${squad.teamName} logo`}
+                  className="h-full w-full object-contain p-1"
+                />
+              </span>
+            ) : null}
+            {squad.teamName}
+          </span>
+          {" / "}
+          {squad.players.length} players
+        </div>
+      </div>
+
+      {players.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {players.map((player) => (
+            <PlayerCard key={player.id} player={player} teamName={squad.teamName} />
+          ))}
+        </div>
+      ) : (
+        <div className="mt-10 text-center p-12 bg-slate-900/20 border-2 border-dashed border-slate-800 rounded-[3rem] font-black uppercase tracking-widest text-slate-500">
+          No players found for this team.
+        </div>
+      )}
+    </>
+  );
+}
+
+function PlayerCard({
+  player,
+  teamName,
+}: {
+  player: PlayerListItem;
+  teamName: string;
+}) {
+  const stats = player.player_stats?.[0];
+
+  return (
+    <Link key={player.id} to={`/player/${player.id}`}>
+      <div className="bg-gradient-to-br from-gray-900 to-gray-800 text-white p-4 rounded-2xl shadow-lg hover:scale-105 transition">
+        <h2 className="text-lg font-semibold">{player.name}</h2>
+
+        <p className="text-sm text-gray-400">Team: {teamName}</p>
+
+        <p className="text-sm">Height: {player.height ?? "-"} cm</p>
+
+        {stats && (
+          <div className="mt-3 text-sm">
+            <p>Goals: {stats.goals}</p>
+            <p>Assists: {stats.assists}</p>
+          </div>
+        )}
+      </div>
+    </Link>
+  );
+}
+
+function getTeamSearchFields(squad: PlayerTeamSquad) {
+  return [
+    squad.teamName,
+    squad.tournamentName,
+    squad.seasonName,
+  ];
+}
+
 function getPlayerSearchFields(player: PlayerListItem) {
   return [
     player.name,
-    player.team_id,
-    getOptionalStringField(player, "teamName"),
-    getOptionalStringField(player, "team_name"),
-    getOptionalStringField(player, "league"),
-    getOptionalStringField(player, "league_name"),
-    getOptionalStringField(player, "tournamentName"),
-    getOptionalStringField(player, "tournament_name"),
     getOptionalStringField(player, "nationality"),
     getCountrySearchField(player.country),
     getOptionalStringField(player, "position"),
@@ -164,18 +313,17 @@ function getCountrySearchField(value: unknown) {
   return null;
 }
 
-function playerBelongsToTournament(
-  player: PlayerListItem,
+function squadBelongsToTournament(
+  squad: PlayerTeamSquad,
   selectedTournament: TournamentTab,
 ) {
-  const playerTournament = normalizeTournamentName(
-    getOptionalStringField(player, "tournament_name") ??
-      getOptionalStringField(player, "tournamentName") ??
-      getOptionalStringField(player, "league_name") ??
-      getOptionalStringField(player, "league"),
-  );
+  if (selectedTournament === "All") {
+    return true;
+  }
 
-  if (!playerTournament) {
+  const tournamentName = normalizeTournamentName(squad.tournamentName);
+
+  if (!tournamentName) {
     return false;
   }
 
@@ -183,10 +331,18 @@ function playerBelongsToTournament(
     .map(normalizeTournamentName)
     .some(
       (tournament) =>
-        tournament === playerTournament ||
-        tournament.includes(playerTournament) ||
-        playerTournament.includes(tournament),
+        tournament === tournamentName ||
+        tournament.includes(tournamentName) ||
+        tournamentName.includes(tournament),
     );
+}
+
+function getTeamSquadKey(squad: PlayerTeamSquad) {
+  return [
+    squad.teamId,
+    squad.tournamentId ?? "tournament:none",
+    squad.seasonId ?? "season:none",
+  ].join("::");
 }
 
 function normalizeTournamentName(value: unknown) {

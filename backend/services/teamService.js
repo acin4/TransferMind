@@ -1,5 +1,5 @@
 import { HttpError } from "../lib/http.js";
-import { getPlayers } from "./playerService.js";
+import { getTeamSquad } from "./playerService.js";
 import { dedupeStandingsRowsByTeam } from "./standingsGrouping.js";
 import { getStandingsRows } from "./standingsService.js";
 import {
@@ -437,7 +437,9 @@ export async function getTeamProfile(id, seasonId) {
   });
 
   const [squad, stats, standingsRows] = await Promise.all([
-    selectedSeason ? getPlayers(id, selectedSeason.season_id) : getPlayers(id),
+    selectedSeason
+      ? getTeamSquad(id, selectedSeason.season_id)
+      : getTeamSquad(id),
     selectedSeason ? getOptionalTeamStats(id, selectedSeason.season_id) : null,
     selectedSeason
       ? getOptionalStandings(team?.tournament_id, selectedSeason.season_id)

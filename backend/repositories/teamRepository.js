@@ -1151,7 +1151,7 @@ export async function listTeamMappings({ includeTournament = false } = {}) {
     .from("teams")
     .select(
       includeTournament
-        ? "id, api_id, name, tournament_id"
+        ? "id, api_id, name, tournament_id, logo_url"
         : "id, api_id, name",
     )
     .order("id", { ascending: true });
@@ -1206,8 +1206,14 @@ export async function listTeamMappings({ includeTournament = false } = {}) {
       id: team.id,
       api_id: team.api_id,
       name: team.name,
+      logo_url: team.logo_url ?? null,
       tournament_id:
         participation?.tournament_db_id ?? fallbackTournament?.id ?? null,
+      tournament_api_id:
+        participation?.tournament_id ??
+        fallbackTournament?.api_id ??
+        team.tournament_id ??
+        null,
       tournament_name:
         participation?.tournament_name?.trim() ||
         fallbackTournament?.name?.trim() ||
