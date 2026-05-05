@@ -1,6 +1,7 @@
 import type { ChangeEvent } from "react";
 import type {
   TeamClusterAssignment,
+  TeamClusterElbowPayload,
   TeamClusterElbowPoint,
   TeamClusterRunPayload,
 } from "../../api/api";
@@ -73,6 +74,15 @@ export type ClusterFilterControlsProps = {
   options: ClusterLegendItem[];
   value: ClusterFilterValue;
   onChange: (value: ClusterFilterValue) => void;
+};
+
+export type ElbowMethodPanelProps = {
+  elbowResult: TeamClusterElbowPayload;
+  selectedK: number | null;
+  kOptions: number[];
+  loadingClusters: boolean;
+  onSelectedKChange: (k: number | null) => void;
+  onRunClusters: () => void;
 };
 
 export type ElbowTooltipProps = {
