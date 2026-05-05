@@ -22,7 +22,6 @@ import {
   type TeamClusterAssignment,
   type TeamClusterEntryRequest,
   type TeamClusterElbowPayload,
-  type TeamClusterElbowPoint,
   type TeamClusterRunPayload,
 } from "../../api/api";
 import {
@@ -47,31 +46,38 @@ import {
 import SearchableCheckboxPanel from "./SearchableCheckboxPanel";
 import StatCategoryFilterTabs from "./StatCategoryFilterTabs";
 import SegmentedTabs from "../ui/SegmentedTabs";
-
-type ClusterAnalysisTabProps = {
-  entries: TeamSeasonStatEntry[];
-  statKeys: TeamStatKey[];
-};
-
-const CLUSTER_COLORS = [
-  "#38bdf8",
-  "#fb7185",
-  "#34d399",
-  "#fbbf24",
-  "#a78bfa",
-  "#f97316",
-  "#2dd4bf",
-  "#e879f9",
-  "#84cc16",
-  "#60a5fa",
-];
-
-const CHART_Y_TICKS = [0, 0.25, 0.5, 0.75, 1] as const;
-const CHART_MARGIN = { top: 28, right: 28, bottom: 86, left: 56 };
-const CLUSTER_AVERAGE_CHART_HEIGHT = 360;
-const PARALLEL_COORDINATES_CHART_HEIGHT = 420;
-const MIN_CHART_WIDTH = 760;
-const STAT_AXIS_WIDTH = 120;
+import {
+  CLUSTER_COLORS,
+  CHART_Y_TICKS,
+  CHART_MARGIN,
+  CLUSTER_AVERAGE_CHART_HEIGHT,
+  PARALLEL_COORDINATES_CHART_HEIGHT,
+  MIN_CHART_WIDTH,
+  STAT_AXIS_WIDTH,
+} from "../cluster-analysis/constants";
+import type {
+  ClusterAnalysisTabProps,
+  ClusterProfile,
+  ClusterInsightStat,
+  ClusterLegendItem,
+  ClusterFilterValue,
+  StatDisplayItem,
+  ParallelCoordinatesPoint,
+  ParallelCoordinatesPathRow,
+  ClusterTeamSeasonEntry,
+  SelectFieldProps,
+  MessageBoxProps,
+  ClusterAverageProfilesChartProps,
+  ClusterLegendProps,
+  ClusterSelectionControlsProps,
+  ClusterAverageDetailsPanelProps,
+  ParallelCoordinatesPlotProps,
+  EntrySelectionListProps,
+  SelectedEntryDetailsPanelProps,
+  ClusterMembershipSummaryProps,
+  ClusterFilterControlsProps,
+  ElbowTooltipProps,
+} from "../cluster-analysis/types";
 
 export default function ClusterAnalysisTab({
   entries,
@@ -627,12 +633,7 @@ function SelectField({
   value,
   onChange,
   options,
-}: {
-  label: string;
-  value: string | number;
-  onChange: (value: string) => void;
-  options: Array<{ value: string | number; label: string }>;
-}) {
+}: SelectFieldProps) {
   return (
     <label className="block">
       <span className="mb-3 block text-[10px] font-black uppercase tracking-widest text-slate-500">
@@ -660,10 +661,7 @@ function SelectField({
 function MessageBox({
   tone,
   messages,
-}: {
-  tone: "error" | "warning";
-  messages: string[];
-}) {
+}: MessageBoxProps) {
   const toneClass =
     tone === "error"
       ? "border-rose-500/20 bg-rose-500/10 text-rose-300"
@@ -683,10 +681,7 @@ function MessageBox({
 const ClusterAverageProfilesChart = memo(function ClusterAverageProfilesChart({
   profiles,
   statKeys,
-}: {
-  profiles: ClusterProfile[];
-  statKeys: TeamStatKey[];
-}) {
+}: ClusterAverageProfilesChartProps) {
   const [selectedAverageClusterId, setSelectedAverageClusterId] =
     useState<number | null>(null);
   const statItems = useMemo(() => buildStatDisplayItems(statKeys), [statKeys]);
@@ -910,9 +905,7 @@ const ClusterAverageProfilesChart = memo(function ClusterAverageProfilesChart({
 
 const ClusterLegend = memo(function ClusterLegend({
   items,
-}: {
-  items: ClusterLegendItem[];
-}) {
+}: ClusterLegendProps) {
   return (
     <div className="flex flex-wrap gap-2">
       {items.map((item) => (
@@ -936,12 +929,7 @@ const ClusterSelectionControls = memo(function ClusterSelectionControls({
   selectedClusterId,
   onSelect,
   onClear,
-}: {
-  profiles: ClusterProfile[];
-  selectedClusterId: number | null;
-  onSelect: (clusterId: number) => void;
-  onClear: () => void;
-}) {
+}: ClusterSelectionControlsProps) {
   return (
     <div className="mb-5 flex flex-wrap items-center gap-2">
       {profiles.map((profile) => (
@@ -976,10 +964,7 @@ const ClusterSelectionControls = memo(function ClusterSelectionControls({
 const ClusterAverageDetailsPanel = memo(function ClusterAverageDetailsPanel({
   profile,
   statItems,
-}: {
-  profile: ClusterProfile | null;
-  statItems: StatDisplayItem[];
-}) {
+}: ClusterAverageDetailsPanelProps) {
   return (
     <div className="min-h-[360px] rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
       {profile ? (
@@ -1048,10 +1033,7 @@ const ClusterAverageDetailsPanel = memo(function ClusterAverageDetailsPanel({
 const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
   result,
   statKeys,
-}: {
-  result: TeamClusterRunPayload;
-  statKeys: TeamStatKey[];
-}) {
+}: ParallelCoordinatesPlotProps) {
   const [selectedClusterFilter, setSelectedClusterFilter] =
     useState<ClusterFilterValue>("all");
   const [selectedDetailEntryId, setSelectedDetailEntryId] =
@@ -1076,7 +1058,7 @@ const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
       CHART_MARGIN.top + (1 - getNormalizedDisplayValue(value)) * plotHeight,
     [plotHeight],
   );
-  const allPathRows = useMemo(
+  const allPathRows = useMemo<ParallelCoordinatesPathRow[]>(
     () =>
       result.assignments.map((assignment, index) => {
         const color = getClusterColor(assignment.clusterId);
@@ -1368,14 +1350,7 @@ const EntrySelectionList = memo(function EntrySelectionList({
   onSearchChange,
   onClearSearch,
   onSelect,
-}: {
-  rows: ParallelCoordinatesPathRow[];
-  searchValue: string;
-  selectedEntryId: string | null;
-  onSearchChange: (event: ChangeEvent<HTMLInputElement>) => void;
-  onClearSearch: () => void;
-  onSelect: (entryId: string) => void;
-}) {
+}: EntrySelectionListProps) {
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -1457,11 +1432,7 @@ const SelectedEntryDetailsPanel = memo(function SelectedEntryDetailsPanel({
   row,
   statItems,
   onClearSelection,
-}: {
-  row: ParallelCoordinatesPathRow | null;
-  statItems: StatDisplayItem[];
-  onClearSelection: () => void;
-}) {
+}: SelectedEntryDetailsPanelProps) {
   return (
     <div className="mt-4 min-h-[5.5rem] rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
       {row ? (
@@ -1531,9 +1502,7 @@ const SelectedEntryDetailsPanel = memo(function SelectedEntryDetailsPanel({
 
 const ClusterMembershipSummary = memo(function ClusterMembershipSummary({
   clusters,
-}: {
-  clusters: Array<{ clusterId: number; members: TeamClusterAssignment[] }>;
-}) {
+}: ClusterMembershipSummaryProps) {
   const groupedMembership = useMemo(
     () =>
       clusters.map((cluster) => ({
@@ -1617,11 +1586,7 @@ const ClusterFilterControls = memo(function ClusterFilterControls({
   options,
   value,
   onChange,
-}: {
-  options: ClusterLegendItem[];
-  value: ClusterFilterValue;
-  onChange: (value: ClusterFilterValue) => void;
-}) {
+}: ClusterFilterControlsProps) {
   return (
     <div className="mb-5 flex flex-wrap gap-2">
       <button
@@ -1653,11 +1618,7 @@ function ElbowTooltip({
   active,
   payload,
   label,
-}: {
-  active?: boolean;
-  payload?: Array<{ payload?: TeamClusterElbowPoint }>;
-  label?: string | number;
-}) {
+}: ElbowTooltipProps) {
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -1675,48 +1636,6 @@ function ElbowTooltip({
     </div>
   );
 }
-
-type ClusterProfile = {
-  clusterId: number;
-  members: TeamClusterAssignment[];
-  averages: Partial<Record<TeamStatKey, number>>;
-  strongest: ClusterInsightStat[];
-  weakest: ClusterInsightStat[];
-};
-
-type ClusterInsightStat = {
-  statKey: TeamStatKey;
-  label: string;
-  value: number;
-};
-
-type ClusterLegendItem = {
-  clusterId: number;
-};
-
-type ClusterFilterValue = "all" | number;
-
-type StatDisplayItem = {
-  statKey: TeamStatKey;
-  label: string;
-  shortLabel: string;
-};
-
-type ParallelCoordinatesPoint = StatDisplayItem & {
-  x: number;
-  y: number;
-  rawDisplayValue: string;
-  normalizedDisplayValue: string;
-};
-
-type ParallelCoordinatesPathRow = {
-  assignment: TeamClusterAssignment;
-  color: string;
-  index: number;
-  path: string;
-  points: ParallelCoordinatesPoint[];
-  pointsByStatKey: Partial<Record<TeamStatKey, ParallelCoordinatesPoint>>;
-};
 
 function buildClusterGroups(
   assignments: TeamClusterAssignment[],
@@ -1746,7 +1665,7 @@ function buildClusterProfiles(
   assignments: TeamClusterAssignment[],
   statKeys: TeamStatKey[],
   k: number,
-) {
+): ClusterProfile[] {
   return buildClusterGroups(assignments, k)
     .map(({ clusterId, members }) => {
       const averages = Object.fromEntries(
@@ -1815,7 +1734,7 @@ function formatInsightLabels(stats: ClusterInsightStat[]) {
   return stats.map((stat) => stat.label).join(", ");
 }
 
-function getClusterFilterOptions(result: TeamClusterRunPayload) {
+function getClusterFilterOptions(result: TeamClusterRunPayload): ClusterLegendItem[] {
   return Array.from({ length: result.k }, (_, index) => ({
     clusterId: index + 1,
   })).sort((left, right) => left.clusterId - right.clusterId);
@@ -1829,10 +1748,6 @@ function getClusterFilterButtonClass(isActive: boolean) {
     ? `${baseClass} border-blue-500/30 bg-blue-600 text-white shadow-[0_0_18px_rgba(37,99,235,0.25)]`
     : `${baseClass} border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700 hover:bg-slate-900 hover:text-slate-100`;
 }
-
-type ClusterTeamSeasonEntry = TeamSeasonStatEntry & {
-  tournamentId: number;
-};
 
 function hasClusterEntryIds(
   entry: TeamSeasonStatEntry,
