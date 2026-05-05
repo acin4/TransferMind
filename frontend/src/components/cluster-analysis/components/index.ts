@@ -1,3 +1,4 @@
+export { ClusterAverageProfilesChart } from "./ClusterAverageProfilesChart";
 export { ClusterFilterControls } from "./ClusterFilterControls";
 export { ClusterLegend } from "./ClusterLegend";
 export { ClusterSelectionControls } from "./ClusterSelectionControls";
