@@ -39,6 +39,13 @@ import SearchableCheckboxPanel from "./SearchableCheckboxPanel";
 import StatCategoryFilterTabs from "./StatCategoryFilterTabs";
 import SegmentedTabs from "../ui/SegmentedTabs";
 import {
+  ClusterFilterControls,
+  ClusterLegend,
+  ClusterSelectionControls,
+  MessageBox,
+  SelectField,
+} from "../cluster-analysis/components";
+import {
   CHART_Y_TICKS,
   CHART_MARGIN,
   CLUSTER_AVERAGE_CHART_HEIGHT,
@@ -66,7 +73,6 @@ import {
   getAssignmentSearchText,
   getAssignmentSeasonLabel,
   getAssignmentTournamentLabel,
-  getClusterFilterButtonClass,
   getErrorMessage,
   getSafeStatLabel,
   safeCompareLabels,
@@ -77,17 +83,12 @@ import type {
   ParallelCoordinatesPoint,
   ParallelCoordinatesPathRow,
   ClusterTeamSeasonEntry,
-  SelectFieldProps,
-  MessageBoxProps,
   ClusterAverageProfilesChartProps,
-  ClusterLegendProps,
-  ClusterSelectionControlsProps,
   ClusterAverageDetailsPanelProps,
   ParallelCoordinatesPlotProps,
   EntrySelectionListProps,
   SelectedEntryDetailsPanelProps,
   ClusterMembershipSummaryProps,
-  ClusterFilterControlsProps,
   ElbowTooltipProps,
 } from "../cluster-analysis/types";
 
@@ -640,56 +641,6 @@ export default function ClusterAnalysisTab({
   );
 }
 
-function SelectField({
-  label,
-  value,
-  onChange,
-  options,
-}: SelectFieldProps) {
-  return (
-    <label className="block">
-      <span className="mb-3 block text-[10px] font-black uppercase tracking-widest text-slate-500">
-        {label}
-      </span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 text-sm font-black uppercase tracking-widest text-white focus:border-blue-500 focus:outline-none"
-      >
-        {options.length === 0 ? (
-          <option value="">No options</option>
-        ) : (
-          options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))
-        )}
-      </select>
-    </label>
-  );
-}
-
-function MessageBox({
-  tone,
-  messages,
-}: MessageBoxProps) {
-  const toneClass =
-    tone === "error"
-      ? "border-rose-500/20 bg-rose-500/10 text-rose-300"
-      : "border-yellow-500/20 bg-yellow-500/10 text-yellow-200";
-
-  return (
-    <div className={`mt-5 rounded-2xl border px-5 py-4 ${toneClass}`}>
-      <ul className="space-y-2 text-xs font-bold uppercase tracking-widest">
-        {messages.map((message) => (
-          <li key={message}>{message}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 const ClusterAverageProfilesChart = memo(function ClusterAverageProfilesChart({
   profiles,
   statKeys,
@@ -911,64 +862,6 @@ const ClusterAverageProfilesChart = memo(function ClusterAverageProfilesChart({
           statItems={statItems}
         />
       </div>
-    </div>
-  );
-});
-
-const ClusterLegend = memo(function ClusterLegend({
-  items,
-}: ClusterLegendProps) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {items.map((item) => (
-        <span
-          key={item.clusterId}
-          className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400"
-        >
-          <span
-            className="h-2.5 w-2.5 rounded-full"
-            style={{ backgroundColor: getClusterColor(item.clusterId) }}
-          />
-          Cluster {item.clusterId}
-        </span>
-      ))}
-    </div>
-  );
-});
-
-const ClusterSelectionControls = memo(function ClusterSelectionControls({
-  profiles,
-  selectedClusterId,
-  onSelect,
-  onClear,
-}: ClusterSelectionControlsProps) {
-  return (
-    <div className="mb-5 flex flex-wrap items-center gap-2">
-      {profiles.map((profile) => (
-        <button
-          key={profile.clusterId}
-          type="button"
-          onClick={() => onSelect(profile.clusterId)}
-          className={getClusterFilterButtonClass(
-            selectedClusterId === profile.clusterId,
-          )}
-        >
-          <span
-            className="h-2.5 w-2.5 rounded-full"
-            style={{ backgroundColor: getClusterColor(profile.clusterId) }}
-          />
-          Cluster {profile.clusterId} · {profile.members.length} entries
-        </button>
-      ))}
-      {selectedClusterId == null ? null : (
-        <button
-          type="button"
-          onClick={onClear}
-          className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 transition-colors hover:border-slate-700 hover:bg-slate-900 hover:text-slate-100"
-        >
-          Clear selection
-        </button>
-      )}
     </div>
   );
 });
@@ -1590,38 +1483,6 @@ const ClusterMembershipSummary = memo(function ClusterMembershipSummary({
           </div>
         ))}
       </div>
-    </div>
-  );
-});
-
-const ClusterFilterControls = memo(function ClusterFilterControls({
-  options,
-  value,
-  onChange,
-}: ClusterFilterControlsProps) {
-  return (
-    <div className="mb-5 flex flex-wrap gap-2">
-      <button
-        type="button"
-        onClick={() => onChange("all")}
-        className={getClusterFilterButtonClass(value === "all")}
-      >
-        All clusters
-      </button>
-      {options.map((option) => (
-        <button
-          key={option.clusterId}
-          type="button"
-          onClick={() => onChange(option.clusterId)}
-          className={getClusterFilterButtonClass(value === option.clusterId)}
-        >
-          <span
-            className="h-2.5 w-2.5 rounded-full"
-            style={{ backgroundColor: getClusterColor(option.clusterId) }}
-          />
-          Cluster {option.clusterId}
-        </button>
-      ))}
     </div>
   );
 });
