@@ -11,14 +11,6 @@ import {
 } from "../../api/api";
 import type { TeamStatKey } from "../../teamStatsConfig";
 import {
-  ALL_STAT_CATEGORIES,
-  type StatCategoryFilterId,
-} from "../../utils/statCategories";
-import {
-  ALL_COUNTRIES_TAB,
-  type CountryFilterTab,
-} from "../../utils/countryFilters";
-import {
   ClusterAverageProfilesChart,
   ClusterMembershipSummary,
   ClusterSetupPanel,
@@ -28,6 +20,7 @@ import {
 } from "../cluster-analysis/components";
 import { areStatKeyArraysEqual } from "../cluster-analysis/utils/clusterAnalysisUtils";
 import { useClusterProfiles } from "../cluster-analysis/hooks/useClusterProfiles";
+import { useClusterSelectionState } from "../cluster-analysis/hooks/useClusterSelectionState";
 import { useClusterSetupData } from "../cluster-analysis/hooks/useClusterSetupData";
 import { getErrorMessage } from "../cluster-analysis/utils/clusterFormatters";
 import type { ClusterAnalysisTabProps } from "../cluster-analysis/types";
@@ -36,13 +29,18 @@ export default function ClusterAnalysisTab({
   entries,
   statKeys: supportedStatKeys,
 }: ClusterAnalysisTabProps) {
-  const [selectedEntryIds, setSelectedEntryIds] = useState<string[]>([]);
-  const [selectedStatKeys, setSelectedStatKeys] = useState<TeamStatKey[]>([]);
-  const [selectedCountryFilter, setSelectedCountryFilter] =
-    useState<CountryFilterTab>(ALL_COUNTRIES_TAB);
-  const [selectedStatCategory, setSelectedStatCategory] =
-    useState<StatCategoryFilterId>(ALL_STAT_CATEGORIES);
-  const [maxK, setMaxK] = useState(8);
+  const {
+    selectedEntryIds,
+    setSelectedEntryIds,
+    selectedStatKeys,
+    setSelectedStatKeys,
+    selectedCountryFilter,
+    setSelectedCountryFilter,
+    selectedStatCategory,
+    setSelectedStatCategory,
+    maxK,
+    setMaxK,
+  } = useClusterSelectionState();
   const [selectedK, setSelectedK] = useState<number | null>(null);
   const [elbowResult, setElbowResult] =
     useState<TeamClusterElbowPayload | null>(null);
