@@ -1,15 +1,4 @@
 import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-import {
-  calculateTeamClusterElbow,
-  runTeamClusters,
-  type TeamClusterElbowPayload,
-  type TeamClusterRunPayload,
-} from "../../api/api";
-import {
   ClusterAverageProfilesChart,
   ClusterMembershipSummary,
   ClusterSetupPanel,
@@ -18,10 +7,10 @@ import {
   ParallelCoordinatesPlot,
 } from "../cluster-analysis/components";
 import { useClusterProfiles } from "../cluster-analysis/hooks/useClusterProfiles";
+import { useClusterRequests } from "../cluster-analysis/hooks/useClusterRequests";
 import { useClusterSelectionState } from "../cluster-analysis/hooks/useClusterSelectionState";
 import { useClusterSetupData } from "../cluster-analysis/hooks/useClusterSetupData";
 import { useClusterSetupMaintenanceEffects } from "../cluster-analysis/hooks/useClusterSetupMaintenanceEffects";
-import { getErrorMessage } from "../cluster-analysis/utils/clusterFormatters";
 import type { ClusterAnalysisTabProps } from "../cluster-analysis/types";
 
 export default function ClusterAnalysisTab({
@@ -47,14 +36,6 @@ export default function ClusterAnalysisTab({
     clearVisibleStats,
     handleMaxKChange,
   } = useClusterSelectionState({ statKeys: supportedStatKeys });
-  const [selectedK, setSelectedK] = useState<number | null>(null);
-  const [elbowResult, setElbowResult] =
-    useState<TeamClusterElbowPayload | null>(null);
-  const [clusterResult, setClusterResult] =
-    useState<TeamClusterRunPayload | null>(null);
-  const [loadingElbow, setLoadingElbow] = useState(false);
-  const [loadingClusters, setLoadingClusters] = useState(false);
-  const [requestError, setRequestError] = useState<string | null>(null);
 
   const {
     clusterEntries,
@@ -89,85 +70,24 @@ export default function ClusterAnalysisTab({
     setMaxK,
   });
 
-  useEffect(() => {
-    setElbowResult(null);
-    setClusterResult(null);
-    setSelectedK(null);
-    setRequestError(null);
-  }, [cleanedSelectedStatKeys, maxK, selectedEntryIds]);
-
-  useEffect(() => {
-    setClusterResult(null);
-  }, [selectedK]);
-
-  const buildRequestPayload = () => {
-    return {
-      teamSeasonEntries: selectedTeamSeasonEntries,
-      statKeys: cleanedSelectedStatKeys,
-    };
-  };
-
-  const handleCalculateElbow = async () => {
-    const payload = buildRequestPayload();
-
-    if (validationMessage) {
-      setRequestError(validationMessage ?? "Complete the clustering inputs.");
-      return;
-    }
-
-    try {
-      setLoadingElbow(true);
-      setRequestError(null);
-      setClusterResult(null);
-
-      const result = await calculateTeamClusterElbow({
-        ...payload,
-        maxK,
-      });
-
-      setElbowResult(result);
-      setSelectedK(result.suggestedK ?? Math.min(2, result.maxK));
-    } catch (error) {
-      setElbowResult(null);
-      setRequestError(getErrorMessage(error));
-    } finally {
-      setLoadingElbow(false);
-    }
-  };
-
-  const handleRunClusters = async () => {
-    const payload = buildRequestPayload();
-
-    if (selectedK == null) {
-      setRequestError("Calculate elbow data and choose K first.");
-      return;
-    }
-
-    try {
-      setLoadingClusters(true);
-      setRequestError(null);
-
-      const result = await runTeamClusters({
-        ...payload,
-        k: selectedK,
-      });
-
-      setClusterResult(result);
-    } catch (error) {
-      setClusterResult(null);
-      setRequestError(getErrorMessage(error));
-    } finally {
-      setLoadingClusters(false);
-    }
-  };
-
-  const kOptions = useMemo(
-    () =>
-      elbowResult
-        ? Array.from({ length: elbowResult.maxK - 1 }, (_, index) => index + 2)
-        : [],
-    [elbowResult],
-  );
+  const {
+    selectedK,
+    setSelectedK,
+    elbowResult,
+    clusterResult,
+    loadingElbow,
+    loadingClusters,
+    requestError,
+    handleCalculateElbow,
+    handleRunClusters,
+    kOptions,
+  } = useClusterRequests({
+    requestPayloadEntries: selectedTeamSeasonEntries,
+    cleanedSelectedStatKeys,
+    maxK,
+    selectedEntryIds,
+    validationMessage,
+  });
   const { clusters, clusterProfiles } = useClusterProfiles(
     clusterResult,
     cleanedSelectedStatKeys,
