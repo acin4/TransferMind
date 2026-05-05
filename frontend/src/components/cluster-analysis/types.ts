@@ -72,6 +72,7 @@ export type ClusterSetupPanelProps = {
 
 export type ClusterAverageProfilesChartProps = {
   profiles: ClusterProfile[];
+  resetAssignments: TeamClusterAssignment[];
   statKeys: TeamStatKey[];
 };
 
@@ -81,13 +82,13 @@ export type ClusterLegendProps = {
 
 export type ClusterSelectionControlsProps = {
   profiles: ClusterProfile[];
-  selectedClusterId: number | null;
+  selectedClusterIds: number[];
   onSelect: (clusterId: number) => void;
   onClear: () => void;
 };
 
 export type ClusterAverageDetailsPanelProps = {
-  profile: ClusterProfile | null;
+  profiles: ClusterProfile[];
   statItems: StatDisplayItem[];
 };
 
@@ -99,14 +100,15 @@ export type ParallelCoordinatesPlotProps = {
 export type EntrySelectionListProps = {
   rows: ParallelCoordinatesPathRow[];
   searchValue: string;
-  selectedEntryId: string | null;
+  selectedEntryIdSet: ReadonlySet<string>;
   onSearchChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onClearSearch: () => void;
   onSelect: (entryId: string) => void;
 };
 
 export type SelectedEntryDetailsPanelProps = {
-  row: ParallelCoordinatesPathRow | null;
+  rows: ParallelCoordinatesPathRow[];
+  selectedEntryCount: number;
   statItems: StatDisplayItem[];
   onClearSelection: () => void;
 };
@@ -117,8 +119,9 @@ export type ClusterMembershipSummaryProps = {
 
 export type ClusterFilterControlsProps = {
   options: ClusterLegendItem[];
-  value: ClusterFilterValue;
-  onChange: (value: ClusterFilterValue) => void;
+  selectedClusterIds: number[];
+  onToggle: (clusterId: number) => void;
+  onClear: () => void;
 };
 
 export type ElbowMethodPanelProps = {
@@ -158,8 +161,6 @@ export type ClusterInsightStat = {
 export type ClusterLegendItem = {
   clusterId: number;
 };
-
-export type ClusterFilterValue = "all" | number;
 
 export type StatDisplayItem = {
   statKey: TeamStatKey;

@@ -26,7 +26,6 @@ import {
   getAssignmentSearchText,
 } from "../utils/clusterFormatters";
 import type {
-  ClusterFilterValue,
   ParallelCoordinatesPathRow,
   ParallelCoordinatesPlotProps,
   ParallelCoordinatesPoint,
@@ -40,10 +39,12 @@ export const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
   result,
   statKeys,
 }: ParallelCoordinatesPlotProps) {
-  const [selectedClusterFilter, setSelectedClusterFilter] =
-    useState<ClusterFilterValue>("all");
-  const [selectedDetailEntryId, setSelectedDetailEntryId] =
-    useState<string | null>(null);
+  const [selectedParallelClusterIds, setSelectedParallelClusterIds] = useState<
+    number[]
+  >([]);
+  const [selectedParallelEntryIds, setSelectedParallelEntryIds] = useState<
+    string[]
+  >([]);
   const [entrySearch, setEntrySearch] = useState("");
   const statItems = useMemo(() => buildStatDisplayItems(statKeys), [statKeys]);
   const width = getChartWidth(statItems.length);
@@ -54,6 +55,14 @@ export const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
   const availableClusterIds = useMemo(
     () => new Set(clusterFilters.map((option) => option.clusterId)),
     [clusterFilters],
+  );
+  const selectedParallelClusterIdSet = useMemo(
+    () => new Set(selectedParallelClusterIds),
+    [selectedParallelClusterIds],
+  );
+  const selectedParallelEntryIdSet = useMemo(
+    () => new Set(selectedParallelEntryIds),
+    [selectedParallelEntryIds],
   );
   const xCoordinates = useMemo(
     () => buildXCoordinates(statItems.length, plotWidth),
@@ -111,10 +120,14 @@ export const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
     () =>
       allPathRows.filter(
         (row) =>
-          selectedClusterFilter === "all" ||
-          row.assignment.clusterId === selectedClusterFilter,
+          selectedParallelClusterIds.length === 0 ||
+          selectedParallelClusterIdSet.has(row.assignment.clusterId),
       ),
-    [allPathRows, selectedClusterFilter],
+    [
+      allPathRows,
+      selectedParallelClusterIds.length,
+      selectedParallelClusterIdSet,
+    ],
   );
   const normalizedEntrySearch = useMemo(
     () => entrySearch.trim().toLowerCase(),
@@ -129,38 +142,43 @@ export const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
           ),
     [clusterFilteredPathRows, normalizedEntrySearch],
   );
-  const selectedDetailRow = useMemo(
+  const selectedDetailRows = useMemo(
     () =>
-      selectedDetailEntryId == null
-        ? null
-        : searchedEntryRows.find(
-            (row) => row.assignment.entryId === selectedDetailEntryId,
-          ) ?? null,
-    [searchedEntryRows, selectedDetailEntryId],
+      searchedEntryRows.filter((row) =>
+        selectedParallelEntryIdSet.has(row.assignment.entryId),
+      ),
+    [searchedEntryRows, selectedParallelEntryIdSet],
   );
   const orderedPathRows = useMemo(() => {
-    if (!selectedDetailRow) {
+    if (selectedParallelEntryIds.length === 0) {
       return searchedEntryRows;
     }
 
+    const selectedRows = searchedEntryRows.filter((row) =>
+      selectedParallelEntryIdSet.has(row.assignment.entryId),
+    );
+
     return [
       ...searchedEntryRows.filter(
-        (row) => row.assignment.entryId !== selectedDetailRow.assignment.entryId,
+        (row) => !selectedParallelEntryIdSet.has(row.assignment.entryId),
       ),
-      selectedDetailRow,
+      ...selectedRows,
     ];
-  }, [searchedEntryRows, selectedDetailRow]);
-  const selectedDetailPoints = selectedDetailRow?.points ?? [];
+  }, [
+    searchedEntryRows,
+    selectedParallelEntryIds.length,
+    selectedParallelEntryIdSet,
+  ]);
   const renderedPathCount = searchedEntryRows.length;
   const assignmentCount = result.assignments.length;
   const hasVisibleRows = searchedEntryRows.length > 0;
   const selectDetailEntry = useCallback((entryId: string) => {
-    setSelectedDetailEntryId((current) =>
-      current === entryId ? null : entryId,
+    setSelectedParallelEntryIds((current) =>
+      toggleStringSelection(entryId, current),
     );
   }, []);
   const clearDetailEntry = useCallback(() => {
-    setSelectedDetailEntryId(null);
+    setSelectedParallelEntryIds([]);
   }, []);
   const handleEntrySearchChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -171,8 +189,13 @@ export const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
   const clearEntrySearch = useCallback(() => {
     setEntrySearch("");
   }, []);
-  const selectClusterFilter = useCallback((value: ClusterFilterValue) => {
-    setSelectedClusterFilter((current) => (current === value ? current : value));
+  const toggleClusterFilter = useCallback((clusterId: number) => {
+    setSelectedParallelClusterIds((current) =>
+      toggleNumberSelection(clusterId, current),
+    );
+  }, []);
+  const clearClusterFilter = useCallback(() => {
+    setSelectedParallelClusterIds([]);
   }, []);
   const yTickRows = useMemo(
     () => CHART_Y_TICKS.map((tick) => ({ tick, y: getY(tick) })),
@@ -180,24 +203,21 @@ export const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
   );
 
   useEffect(() => {
-    if (
-      selectedClusterFilter !== "all" &&
-      !availableClusterIds.has(selectedClusterFilter)
-    ) {
-      setSelectedClusterFilter("all");
-    }
-  }, [availableClusterIds, selectedClusterFilter]);
+    setSelectedParallelClusterIds((current) => {
+      const validClusterIds = current.filter((clusterId) =>
+        availableClusterIds.has(clusterId),
+      );
+
+      return validClusterIds.length === current.length
+        ? current
+        : validClusterIds;
+    });
+  }, [availableClusterIds]);
 
   useEffect(() => {
-    if (
-      selectedDetailEntryId != null &&
-      !searchedEntryRows.some(
-        (row) => row.assignment.entryId === selectedDetailEntryId,
-      )
-    ) {
-      setSelectedDetailEntryId(null);
-    }
-  }, [searchedEntryRows, selectedDetailEntryId]);
+    setSelectedParallelEntryIds([]);
+    setSelectedParallelClusterIds([]);
+  }, [result.assignments]);
 
   return (
     <div className="mt-6 rounded-[2rem] border border-slate-800 bg-slate-950/40 p-5">
@@ -218,15 +238,16 @@ export const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
 
       <ClusterFilterControls
         options={clusterFilters}
-        value={selectedClusterFilter}
-        onChange={selectClusterFilter}
+        selectedClusterIds={selectedParallelClusterIds}
+        onToggle={toggleClusterFilter}
+        onClear={clearClusterFilter}
       />
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
         <EntrySelectionList
           rows={searchedEntryRows}
           searchValue={entrySearch}
-          selectedEntryId={selectedDetailEntryId}
+          selectedEntryIdSet={selectedParallelEntryIdSet}
           onSearchChange={handleEntrySearchChange}
           onClearSearch={clearEntrySearch}
           onSelect={selectDetailEntry}
@@ -308,9 +329,10 @@ export const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
               ))}
 
               {orderedPathRows.map((row) => {
-                const isSelected =
-                  selectedDetailEntryId === row.assignment.entryId;
-                const hasSelection = selectedDetailEntryId != null;
+                const isSelected = selectedParallelEntryIdSet.has(
+                  row.assignment.entryId,
+                );
+                const hasSelection = selectedParallelEntryIds.length > 0;
 
                 return (
                   <path
@@ -330,24 +352,25 @@ export const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
                 );
               })}
 
-              {selectedDetailRow
-                ? selectedDetailPoints.map((point) => (
+              {selectedDetailRows.flatMap((row) =>
+                row.points.map((point) => (
                     <circle
-                      key={`${selectedDetailRow.assignment.entryId}-${point.statKey}-selected-point`}
+                      key={`${row.assignment.entryId}-${point.statKey}-selected-point`}
                       cx={point.x}
                       cy={point.y}
                       r={4.5}
-                      fill={selectedDetailRow.color}
+                      fill={row.color}
                       stroke="#020617"
                       strokeWidth={1.5}
                     />
-                  ))
-                : null}
+                  )),
+              )}
             </svg>
           </div>
 
           <SelectedEntryDetailsPanel
-            row={selectedDetailRow}
+            rows={selectedDetailRows}
+            selectedEntryCount={selectedParallelEntryIds.length}
             statItems={statItems}
             onClearSelection={clearDetailEntry}
           />
@@ -356,3 +379,15 @@ export const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
     </div>
   );
 });
+
+function toggleStringSelection(value: string, selected: string[]): string[] {
+  return selected.includes(value)
+    ? selected.filter((item) => item !== value)
+    : [...selected, value];
+}
+
+function toggleNumberSelection(value: number, selected: number[]): number[] {
+  return selected.includes(value)
+    ? selected.filter((item) => item !== value)
+    : [...selected, value];
+}

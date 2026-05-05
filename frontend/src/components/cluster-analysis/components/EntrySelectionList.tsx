@@ -16,7 +16,7 @@ import {
 export const EntrySelectionList = memo(function EntrySelectionList({
   rows,
   searchValue,
-  selectedEntryId,
+  selectedEntryIdSet,
   onSearchChange,
   onClearSearch,
   onSelect,
@@ -61,7 +61,7 @@ export const EntrySelectionList = memo(function EntrySelectionList({
             <EntrySelectionButton
               key={`${row.assignment.entryId}-${row.index}-entry-button`}
               row={row}
-              isSelected={selectedEntryId === row.assignment.entryId}
+              isSelected={selectedEntryIdSet.has(row.assignment.entryId)}
               onSelect={onSelect}
             />
           ))

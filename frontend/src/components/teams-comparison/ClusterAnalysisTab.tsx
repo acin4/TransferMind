@@ -152,6 +152,7 @@ export default function ClusterAnalysisTab({
 
           <ClusterAverageProfilesChart
             profiles={clusterProfiles}
+            resetAssignments={clusterResult.assignments}
             statKeys={cleanedSelectedStatKeys}
           />
 

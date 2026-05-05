@@ -24,10 +24,12 @@ import { ClusterSelectionControls } from "./ClusterSelectionControls";
 
 export const ClusterAverageProfilesChart = memo(function ClusterAverageProfilesChart({
   profiles,
+  resetAssignments,
   statKeys,
 }: ClusterAverageProfilesChartProps) {
-  const [selectedAverageClusterId, setSelectedAverageClusterId] =
-    useState<number | null>(null);
+  const [selectedAverageClusterIds, setSelectedAverageClusterIds] = useState<
+    number[]
+  >([]);
   const statItems = useMemo(() => buildStatDisplayItems(statKeys), [statKeys]);
   const width = getChartWidth(statItems.length);
   const height = CLUSTER_AVERAGE_CHART_HEIGHT;
@@ -82,31 +84,35 @@ export const ClusterAverageProfilesChart = memo(function ClusterAverageProfilesC
         .sort((left, right) => left.clusterId - right.clusterId),
     [profiles],
   );
-  const selectedAverageProfile = useMemo(
-    () =>
-      selectedAverageClusterId == null
-        ? null
-        : profiles.find(
-            (profile) => profile.clusterId === selectedAverageClusterId,
-          ) ?? null,
-    [profiles, selectedAverageClusterId],
+  const availableAverageClusterIds = useMemo(
+    () => new Set(profiles.map((profile) => profile.clusterId)),
+    [profiles],
   );
-  const selectedAverageRow = useMemo(
+  const selectedAverageClusterIdSet = useMemo(
+    () => new Set(selectedAverageClusterIds),
+    [selectedAverageClusterIds],
+  );
+  const selectedAverageProfiles = useMemo(
     () =>
-      selectedAverageClusterId == null
-        ? null
-        : chartRows.find(
-            (row) => row.profile.clusterId === selectedAverageClusterId,
-          ) ?? null,
-    [chartRows, selectedAverageClusterId],
+      sortedProfiles.filter((profile) =>
+        selectedAverageClusterIdSet.has(profile.clusterId),
+      ),
+    [selectedAverageClusterIdSet, sortedProfiles],
+  );
+  const selectedAverageRows = useMemo(
+    () =>
+      chartRows.filter((row) =>
+        selectedAverageClusterIdSet.has(row.profile.clusterId),
+      ),
+    [chartRows, selectedAverageClusterIdSet],
   );
   const selectAverageCluster = useCallback((clusterId: number) => {
-    setSelectedAverageClusterId((current) =>
-      current === clusterId ? current : clusterId,
+    setSelectedAverageClusterIds((current) =>
+      toggleNumberSelection(clusterId, current),
     );
   }, []);
   const clearAverageCluster = useCallback(() => {
-    setSelectedAverageClusterId(null);
+    setSelectedAverageClusterIds([]);
   }, []);
   const yTickRows = useMemo(
     () => CHART_Y_TICKS.map((tick) => ({ tick, y: getY(tick) })),
@@ -114,13 +120,20 @@ export const ClusterAverageProfilesChart = memo(function ClusterAverageProfilesC
   );
 
   useEffect(() => {
-    if (
-      selectedAverageClusterId != null &&
-      !profiles.some((profile) => profile.clusterId === selectedAverageClusterId)
-    ) {
-      setSelectedAverageClusterId(null);
-    }
-  }, [profiles, selectedAverageClusterId]);
+    setSelectedAverageClusterIds([]);
+  }, [resetAssignments]);
+
+  useEffect(() => {
+    setSelectedAverageClusterIds((current) => {
+      const validClusterIds = current.filter((clusterId) =>
+        availableAverageClusterIds.has(clusterId),
+      );
+
+      return validClusterIds.length === current.length
+        ? current
+        : validClusterIds;
+    });
+  }, [availableAverageClusterIds]);
 
   return (
     <div className="mt-6 rounded-[2rem] border border-slate-800 bg-slate-950/40 p-5">
@@ -138,7 +151,7 @@ export const ClusterAverageProfilesChart = memo(function ClusterAverageProfilesC
 
       <ClusterSelectionControls
         profiles={sortedProfiles}
-        selectedClusterId={selectedAverageClusterId}
+        selectedClusterIds={selectedAverageClusterIds}
         onSelect={selectAverageCluster}
         onClear={clearAverageCluster}
       />
@@ -206,9 +219,10 @@ export const ClusterAverageProfilesChart = memo(function ClusterAverageProfilesC
             ))}
 
             {chartRows.map((row) => {
-              const isSelected =
-                selectedAverageClusterId === row.profile.clusterId;
-              const hasSelection = selectedAverageClusterId != null;
+              const isSelected = selectedAverageClusterIdSet.has(
+                row.profile.clusterId,
+              );
+              const hasSelection = selectedAverageClusterIds.length > 0;
 
               return (
                 <path
@@ -226,27 +240,33 @@ export const ClusterAverageProfilesChart = memo(function ClusterAverageProfilesC
               );
             })}
 
-            {selectedAverageRow
-              ? selectedAverageRow.points.map((point) => (
+            {selectedAverageRows.flatMap((row) =>
+              row.points.map((point) => (
                   <circle
-                    key={`cluster-${selectedAverageRow.profile.clusterId}-${point.statKey}-average-point`}
+                    key={`cluster-${row.profile.clusterId}-${point.statKey}-average-point`}
                     cx={point.x}
                     cy={point.y}
                     r={4.5}
-                    fill={selectedAverageRow.color}
+                    fill={row.color}
                     stroke="#020617"
                     strokeWidth={1.5}
                   />
-                ))
-              : null}
+                )),
+            )}
           </svg>
         </div>
 
         <ClusterAverageDetailsPanel
-          profile={selectedAverageProfile}
+          profiles={selectedAverageProfiles}
           statItems={statItems}
         />
       </div>
     </div>
   );
 });
+
+function toggleNumberSelection(value: number, selected: number[]): number[] {
+  return selected.includes(value)
+    ? selected.filter((item) => item !== value)
+    : [...selected, value];
+}

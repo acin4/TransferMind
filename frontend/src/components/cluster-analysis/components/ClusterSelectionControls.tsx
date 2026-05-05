@@ -5,7 +5,7 @@ import { getClusterFilterButtonClass } from "../utils/clusterFormatters";
 
 export const ClusterSelectionControls = memo(function ClusterSelectionControls({
   profiles,
-  selectedClusterId,
+  selectedClusterIds,
   onSelect,
   onClear,
 }: ClusterSelectionControlsProps) {
@@ -17,7 +17,7 @@ export const ClusterSelectionControls = memo(function ClusterSelectionControls({
           type="button"
           onClick={() => onSelect(profile.clusterId)}
           className={getClusterFilterButtonClass(
-            selectedClusterId === profile.clusterId,
+            selectedClusterIds.includes(profile.clusterId),
           )}
         >
           <span
@@ -27,7 +27,7 @@ export const ClusterSelectionControls = memo(function ClusterSelectionControls({
           Cluster {profile.clusterId} · {profile.members.length} entries
         </button>
       ))}
-      {selectedClusterId == null ? null : (
+      {selectedClusterIds.length === 0 ? null : (
         <button
           type="button"
           onClick={onClear}
