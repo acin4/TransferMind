@@ -1,8 +1,9 @@
 import { HttpError } from "../lib/http.js";
+import { runPythonKMeans } from "../lib/pythonKMeansClient.js";
 import { getTeamStatMetadata } from "../lib/teamStatsMetadata.js";
-import { listTeamComparisonRowsByContext } from "../repositories/teamRepository.js";
+import { listTeamComparisonRowsByEntries } from "../repositories/teamRepository.js";
 
-const DEFAULT_MAX_K = 8;
+const MAX_CLUSTER_K = 20;
 const MAX_ITERATIONS = 100;
 const KMEANS_SEED = 42;
 
@@ -16,18 +17,6 @@ function parsePositiveIntegerField(value, fieldName) {
   return parsed;
 }
 
-function parsePositiveIntegerArray(value, fieldName) {
-  if (!Array.isArray(value) || value.length === 0) {
-    throw new HttpError(400, `${fieldName} must be a non-empty array.`);
-  }
-
-  const parsedValues = value.map((item, index) =>
-    parsePositiveIntegerField(item, `${fieldName}[${index}]`),
-  );
-
-  return [...new Set(parsedValues)];
-}
-
 function parseStatKeys(value) {
   if (!Array.isArray(value) || value.length === 0) {
     throw new HttpError(400, "statKeys must be a non-empty array.");
@@ -37,7 +26,14 @@ function parseStatKeys(value) {
     ...new Set(
       value.map((item) => String(item ?? "").trim()).filter(Boolean),
     ),
-  ].filter((statKey) => getTeamStatMetadata(statKey));
+  ];
+  const invalidStatKeys = statKeys.filter(
+    (statKey) => !getTeamStatMetadata(statKey),
+  );
+
+  if (invalidStatKeys.length > 0) {
+    throw new HttpError(400, "One or more selected statistics are not allowed.");
+  }
 
   if (statKeys.length < 2) {
     throw new HttpError(400, "Select at least two statistics.");
@@ -46,48 +42,80 @@ function parseStatKeys(value) {
   return statKeys;
 }
 
+function parseTeamSeasonEntries(value) {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new HttpError(400, "teamSeasonEntries must be a non-empty array.");
+  }
+
+  const entries = [];
+  const seenEntryKeys = new Set();
+
+  value.forEach((item, index) => {
+    const teamId = parsePositiveIntegerField(
+      item?.teamId,
+      `teamSeasonEntries[${index}].teamId`,
+    );
+    const tournamentId = parsePositiveIntegerField(
+      item?.tournamentId,
+      `teamSeasonEntries[${index}].tournamentId`,
+    );
+    const seasonId = parsePositiveIntegerField(
+      item?.seasonId,
+      `teamSeasonEntries[${index}].seasonId`,
+    );
+    const entryKey = buildEntryId({ teamId, tournamentId, seasonId });
+
+    if (!seenEntryKeys.has(entryKey)) {
+      seenEntryKeys.add(entryKey);
+      entries.push({ teamId, tournamentId, seasonId });
+    }
+  });
+
+  return entries;
+}
+
 function parseClusterBasePayload(payload) {
-  const tournamentId = parsePositiveIntegerField(
-    payload?.tournamentId,
-    "tournamentId",
-  );
-  const seasonId = parsePositiveIntegerField(payload?.seasonId, "seasonId");
-  const teamIds = parsePositiveIntegerArray(payload?.teamIds, "teamIds");
+  const teamSeasonEntries = parseTeamSeasonEntries(payload?.teamSeasonEntries);
   const statKeys = parseStatKeys(payload?.statKeys);
 
-  if (teamIds.length < 3) {
-    throw new HttpError(400, "Select at least three teams.");
+  if (teamSeasonEntries.length < 3) {
+    throw new HttpError(400, "Select at least three team-season entries.");
   }
 
   return {
-    tournamentId,
-    seasonId,
-    teamIds,
+    teamSeasonEntries,
     statKeys,
   };
 }
 
 function parseMaxK(value, validRowCount) {
-  const requested = value == null ? DEFAULT_MAX_K : Number(value);
+  const maxAllowedK = Math.min(validRowCount, MAX_CLUSTER_K);
+
+  if (value == null) {
+    return maxAllowedK;
+  }
+
+  const requested = Number(value);
 
   if (!Number.isInteger(requested) || requested < 2) {
     throw new HttpError(400, "maxK must be an integer of at least 2.");
   }
 
-  return Math.min(requested, DEFAULT_MAX_K, validRowCount - 1);
+  return Math.min(requested, maxAllowedK);
 }
 
 function parseSelectedK(value, validRowCount) {
   const k = parsePositiveIntegerField(value, "k");
+  const maxAllowedK = Math.min(validRowCount, MAX_CLUSTER_K);
 
   if (k < 2) {
     throw new HttpError(400, "k must be at least 2.");
   }
 
-  if (k >= validRowCount) {
+  if (k > maxAllowedK) {
     throw new HttpError(
       400,
-      "k must be less than the number of selected teams.",
+      `k must be at most ${maxAllowedK} for the selected entries.`,
     );
   }
 
@@ -122,163 +150,6 @@ function squaredDistance(a, b) {
 
 function distance(a, b) {
   return Math.sqrt(squaredDistance(a, b));
-}
-
-function createSeededRandom(seed) {
-  let state = seed >>> 0;
-
-  return () => {
-    state = (1664525 * state + 1013904223) >>> 0;
-    return state / 2 ** 32;
-  };
-}
-
-function weightedChoice(weights, random) {
-  const total = weights.reduce((sum, value) => sum + value, 0);
-
-  if (total <= 0) {
-    return 0;
-  }
-
-  let threshold = random() * total;
-
-  for (let index = 0; index < weights.length; index += 1) {
-    threshold -= weights[index];
-
-    if (threshold <= 0) {
-      return index;
-    }
-  }
-
-  return weights.length - 1;
-}
-
-function createInitialCentroids(points, k) {
-  const random = createSeededRandom(KMEANS_SEED);
-  const firstIndex = Math.floor(random() * points.length);
-  const selectedIndexes = new Set([firstIndex]);
-  const centroids = [[...points[firstIndex]]];
-
-  while (centroids.length < k) {
-    const weights = points.map((point, index) => {
-      if (selectedIndexes.has(index)) {
-        return 0;
-      }
-
-      return Math.min(
-        ...centroids.map((centroid) => squaredDistance(point, centroid)),
-      );
-    });
-    let nextIndex = weightedChoice(weights, random);
-
-    if (selectedIndexes.has(nextIndex)) {
-      nextIndex = points.findIndex((_, index) => !selectedIndexes.has(index));
-    }
-
-    if (nextIndex === -1) {
-      break;
-    }
-
-    selectedIndexes.add(nextIndex);
-    centroids.push([...points[nextIndex]]);
-  }
-
-  while (centroids.length < k) {
-    centroids.push([...points[centroids.length % points.length]]);
-  }
-
-  return centroids;
-}
-
-function assignPoints(points, centroids) {
-  return points.map((point) => {
-    let nearestCentroidIndex = 0;
-    let nearestDistance = Number.POSITIVE_INFINITY;
-
-    centroids.forEach((centroid, index) => {
-      const currentDistance = squaredDistance(point, centroid);
-
-      if (currentDistance < nearestDistance) {
-        nearestDistance = currentDistance;
-        nearestCentroidIndex = index;
-      }
-    });
-
-    return nearestCentroidIndex;
-  });
-}
-
-function recomputeCentroids(points, assignments, centroids, k) {
-  const dimensions = points[0]?.length ?? 0;
-
-  return Array.from({ length: k }, (_, clusterIndex) => {
-    const clusterPoints = points.filter(
-      (_, pointIndex) => assignments[pointIndex] === clusterIndex,
-    );
-
-    if (clusterPoints.length === 0) {
-      const farthestPoint = points.reduce(
-        (best, point) => {
-          const nearestDistance = Math.min(
-            ...centroids.map((centroid) => squaredDistance(point, centroid)),
-          );
-
-          return nearestDistance > best.distance
-            ? { point, distance: nearestDistance }
-            : best;
-        },
-        { point: centroids[clusterIndex] ?? Array(dimensions).fill(0), distance: -1 },
-      );
-
-      return [...farthestPoint.point];
-    }
-
-    return Array.from({ length: dimensions }, (_, dimensionIndex) => {
-      const total = clusterPoints.reduce(
-        (sum, point) => sum + (point[dimensionIndex] ?? 0),
-        0,
-      );
-
-      return total / clusterPoints.length;
-    });
-  });
-}
-
-function haveAssignmentsChanged(previous, next) {
-  return previous.length !== next.length
-    ? true
-    : previous.some((value, index) => value !== next[index]);
-}
-
-function runKMeans(points, k) {
-  let centroids = createInitialCentroids(points, k);
-  let assignments = Array(points.length).fill(-1);
-  let iterations = 0;
-
-  for (let iteration = 0; iteration < MAX_ITERATIONS; iteration += 1) {
-    iterations = iteration + 1;
-    const nextAssignments = assignPoints(points, centroids);
-
-    if (!haveAssignmentsChanged(assignments, nextAssignments) && iteration > 0) {
-      assignments = nextAssignments;
-      break;
-    }
-
-    assignments = nextAssignments;
-    centroids = recomputeCentroids(points, assignments, centroids, k);
-  }
-
-  const inertia = points.reduce((total, point, pointIndex) => {
-    const centroid = centroids[assignments[pointIndex]] ?? centroids[0];
-    return total + squaredDistance(point, centroid);
-  }, 0);
-
-  return {
-    assignments,
-    centroids,
-    inertia,
-    iterations,
-  };
 }
 
 function calculateSuggestedK(elbowPoints) {
@@ -319,6 +190,10 @@ function calculateSuggestedK(elbowPoints) {
   return bestPoint.k;
 }
 
+function buildEntryId(row) {
+  return `${row.teamId}:${row.tournamentId}:${row.seasonId}`;
+}
+
 function toClusterRow(row, statKeys) {
   const rawStats = Object.fromEntries(
     statKeys.map((statKey) => [
@@ -328,8 +203,18 @@ function toClusterRow(row, statKeys) {
   );
 
   return {
+    entryId: buildEntryId({
+      teamId: row.team_id,
+      tournamentId: row.tournament_id,
+      seasonId: row.season_id,
+    }),
     teamId: row.team_id,
     teamName: row.team_name,
+    teamLogo: row.team_logo ?? null,
+    tournamentId: row.tournament_id,
+    tournamentName: row.tournament_name ?? null,
+    seasonId: row.season_id,
+    seasonName: row.season_name ?? null,
     rawStats,
   };
 }
@@ -346,7 +231,7 @@ function buildNormalizedMatrix(rows, statKeys) {
 
       if (min === max) {
         warnings.push(
-          `${getTeamStatMetadata(statKey).label} is constant across the selected teams; its normalized column was set to 0.`,
+          `${getTeamStatMetadata(statKey).label} is constant across the selected entries; its normalized column was set to 0.`,
         );
       }
 
@@ -378,8 +263,14 @@ function buildNormalizedMatrix(rows, statKeys) {
     );
 
     return {
+      entryId: row.entryId,
       teamId: row.teamId,
       teamName: row.teamName,
+      teamLogo: row.teamLogo,
+      tournamentId: row.tournamentId,
+      tournamentName: row.tournamentName,
+      seasonId: row.seasonId,
+      seasonName: row.seasonName,
       rawStats: row.rawStats,
       normalizedStats,
       vector: statKeys.map((statKey) => normalizedStats[statKey]),
@@ -394,32 +285,37 @@ function buildNormalizedMatrix(rows, statKeys) {
 }
 
 async function buildClusterDataset(payload) {
-  const { tournamentId, seasonId, teamIds, statKeys } =
+  const { teamSeasonEntries, statKeys } =
     parseClusterBasePayload(payload);
-  const rows = await listTeamComparisonRowsByContext({
-    tournamentId,
-    seasonId,
-    teamIds,
-  });
+  const rows = await listTeamComparisonRowsByEntries(teamSeasonEntries);
 
-  if (rows.length !== teamIds.length) {
+  if (rows.length !== teamSeasonEntries.length) {
     throw new HttpError(
       400,
-      "All selected teams must belong to the selected competition and season.",
+      "One or more selected team-season entries do not exist.",
     );
   }
 
-  const rowsByTeamId = new Map(rows.map((row) => [row.team_id, row]));
-  const orderedRows = teamIds.map((teamId) => rowsByTeamId.get(teamId));
+  const rowsByEntryId = new Map(
+    rows.map((row) => [
+      buildEntryId({
+        teamId: row.team_id,
+        tournamentId: row.tournament_id,
+        seasonId: row.season_id,
+      }),
+      row,
+    ]),
+  );
+  const orderedRows = teamSeasonEntries.map((entry) =>
+    rowsByEntryId.get(buildEntryId(entry)),
+  );
   const { matrixRows, columnStats, warnings } = buildNormalizedMatrix(
     orderedRows,
     statKeys,
   );
 
   return {
-    tournamentId,
-    seasonId,
-    teamIds,
+    teamSeasonEntries,
     statKeys,
     rows: matrixRows,
     columnStats,
@@ -451,26 +347,27 @@ export async function calculateTeamClusterElbow(payload) {
   if (maxK < 2) {
     throw new HttpError(
       400,
-      "Select at least three teams to calculate elbow values.",
+      "Select at least three team-season entries to calculate elbow values.",
     );
   }
 
   const points = dataset.rows.map((row) => row.vector);
-  const elbow = Array.from({ length: maxK }, (_, index) => {
-    const k = index + 1;
-    const result = runKMeans(points, k);
-
-    return {
-      k,
-      inertia: Number(result.inertia.toFixed(6)),
-      iterations: result.iterations,
-    };
+  const result = await runPythonKMeans({
+    mode: "elbow",
+    points,
+    maxK,
+    randomState: KMEANS_SEED,
+    maxIter: MAX_ITERATIONS,
   });
+  const elbow = result.elbow.map((point) => ({
+    k: point.k,
+    inertia: Number(point.inertia.toFixed(6)),
+    iterations: point.iterations,
+  }));
 
   return {
     context: {
-      tournamentId: dataset.tournamentId,
-      seasonId: dataset.seasonId,
+      selectedEntryCount: dataset.rows.length,
     },
     rows: dataset.rows.map(({ vector, ...row }) => row),
     stats: buildStatsMetadata(dataset.statKeys, dataset.columnStats),
@@ -485,14 +382,26 @@ export async function runTeamClusters(payload) {
   const dataset = await buildClusterDataset(payload);
   const k = parseSelectedK(payload?.k, dataset.rows.length);
   const points = dataset.rows.map((row) => row.vector);
-  const result = runKMeans(points, k);
+  const result = await runPythonKMeans({
+    mode: "cluster",
+    points,
+    k,
+    randomState: KMEANS_SEED,
+    maxIter: MAX_ITERATIONS,
+  });
   const assignments = dataset.rows.map((row, index) => {
     const clusterIndex = result.assignments[index] ?? 0;
     const centroid = result.centroids[clusterIndex] ?? [];
 
     return {
+      entryId: row.entryId,
       teamId: row.teamId,
       teamName: row.teamName,
+      teamLogo: row.teamLogo,
+      tournamentId: row.tournamentId,
+      tournamentName: row.tournamentName,
+      seasonId: row.seasonId,
+      seasonName: row.seasonName,
       clusterId: clusterIndex + 1,
       distanceToCentroid: Number(distance(row.vector, centroid).toFixed(6)),
       rawStats: row.rawStats,
@@ -511,8 +420,7 @@ export async function runTeamClusters(payload) {
 
   return {
     context: {
-      tournamentId: dataset.tournamentId,
-      seasonId: dataset.seasonId,
+      selectedEntryCount: dataset.rows.length,
     },
     k,
     iterations: result.iterations,

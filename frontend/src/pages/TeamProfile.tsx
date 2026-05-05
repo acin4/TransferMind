@@ -5,8 +5,7 @@ import {
   useState,
   type ChangeEvent,
 } from "react";
-import { Link, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { useParams } from "react-router-dom";
 import {
   getTeamsComparisonDataset,
   getTeamProfile,
@@ -30,6 +29,7 @@ import TeamSquadTable from "../components/team-profile/TeamSquadTable";
 import type { TeamProfileTabId } from "../components/team-profile/types";
 import type { TeamSeasonStatEntry } from "../utils/teamsComparison";
 import { getTeamsBySeasonTournament } from "../utils/teamStatsPerformance";
+import ProfileLayout from "../components/profile/ProfileLayout";
 
 export default function TeamProfile() {
   const { id } = useParams();
@@ -294,50 +294,42 @@ export default function TeamProfile() {
     );
 
   return (
-    <div className="min-h-screen bg-slate-950 p-6 md:p-12 text-white font-sans">
-      <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <Link
-          to="/teams"
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-white mb-8 transition-colors font-bold uppercase text-xs tracking-widest"
-        >
-          <ArrowLeft size={16} /> Back to Teams
-        </Link>
+    <ProfileLayout backTo="/teams" backLabel="Back to Teams">
+      <TeamHeader
+        team={team}
+        headerSubtitle={headerSubtitle}
+        availableSeasons={availableSeasons}
+        selectedSeasonId={selectedSeasonId}
+        onSeasonChange={handleSeasonChange}
+      />
 
-        <TeamHeader
-          team={team}
-          headerSubtitle={headerSubtitle}
-          availableSeasons={availableSeasons}
-          selectedSeasonId={selectedSeasonId}
-          onSeasonChange={handleSeasonChange}
+      <TeamProfileControls
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
+
+      {activeTab === "statistics" ? (
+        <TeamStatsPanel
+          stats={stats}
+          seasonLoading={seasonLoading}
+          activeStatsCategory={activeStatsCategory}
+          onStatsCategoryChange={setActiveStatsCategory}
+          statsPool={selectedStatsPool}
+          statsPoolLoading={comparisonDatasetLoading}
+          seasonError={seasonError}
+          selectedTeamId={team.id}
+          selectedSeasonName={selectedSeason?.season_name ?? null}
+          selectedTournamentName={selectedCompetitionName}
         />
+      ) : (
+        <div className="bg-slate-900/40 rounded-[2.5rem] border border-slate-800/60 p-6 md:p-10 shadow-2xl backdrop-blur-sm">
+          {seasonError ? (
+            <div className="mb-6 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-5 py-4 text-xs font-black uppercase tracking-widest text-rose-400">
+              {seasonError}
+            </div>
+          ) : null}
 
-        <TeamProfileControls
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-        />
-
-        {activeTab === "statistics" ? (
-          <TeamStatsPanel
-            stats={stats}
-            seasonLoading={seasonLoading}
-            activeStatsCategory={activeStatsCategory}
-            onStatsCategoryChange={setActiveStatsCategory}
-            statsPool={selectedStatsPool}
-            statsPoolLoading={comparisonDatasetLoading}
-            seasonError={seasonError}
-            selectedTeamId={team.id}
-            selectedSeasonName={selectedSeason?.season_name ?? null}
-            selectedTournamentName={selectedCompetitionName}
-          />
-        ) : (
-          <div className="bg-slate-900/40 rounded-[2.5rem] border border-slate-800/60 p-6 md:p-10 shadow-2xl backdrop-blur-sm">
-            {seasonError ? (
-              <div className="mb-6 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-5 py-4 text-xs font-black uppercase tracking-widest text-rose-400">
-                {seasonError}
-              </div>
-            ) : null}
-
-            {activeTab === "standings" && (
+          {activeTab === "standings" && (
             <TeamStandingsPreview
               seasonLoading={seasonLoading}
               standingsLabel={standingsLabel}
@@ -346,12 +338,11 @@ export default function TeamProfile() {
               miniStandings={miniStandings}
               fullStandingsPath={fullStandingsPath}
             />
-            )}
+          )}
 
-            {activeTab === "squad" && <TeamSquadTable squad={teamSquad} />}
-          </div>
-        )}
-      </div>
-    </div>
+          {activeTab === "squad" && <TeamSquadTable squad={teamSquad} />}
+        </div>
+      )}
+    </ProfileLayout>
   );
 }

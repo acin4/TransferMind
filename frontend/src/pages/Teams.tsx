@@ -56,11 +56,13 @@ export default function Teams() {
     }
 
     if (activeCountry === OTHER_TAB) {
-      return teams.filter((team) => !getTeamCountry(team));
+      return teams.filter((team) => !normalizeCountryForComparison(team));
     }
 
+    const activeCountryValue = normalizeCountryValue(activeCountry);
+
     return teams.filter(
-      (team) => getTeamCountry(team) === activeCountry,
+      (team) => normalizeCountryForComparison(team) === activeCountryValue,
     );
   }, [activeCountry, teams]);
 
@@ -189,6 +191,15 @@ function getTeamSearchFields(team: TeamListItem) {
     getVenueCity(team.venue),
     team.badge_label,
   ];
+}
+
+function normalizeCountryForComparison(team: TeamListItem) {
+  return normalizeCountryValue(getTeamCountry(team));
+}
+
+function normalizeCountryValue(value: string | null | undefined) {
+  const country = value?.trim();
+  return country ? country.toLocaleLowerCase() : null;
 }
 
 function getVenueName(venue: TeamListItem["venue"]) {

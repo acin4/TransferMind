@@ -26,7 +26,20 @@ import {
   isNegativeTeamStat,
   type TeamStatKey,
 } from "../../teamStatsConfig";
+import {
+  ALL_STAT_CATEGORIES,
+  filterTeamStatItemsByCategory,
+  type StatCategoryFilterId,
+} from "../../utils/statCategories";
+import {
+  ALL_COUNTRIES_TAB,
+  COUNTRY_FILTER_TABS,
+  filterItemsByCountry,
+  type CountryFilterTab,
+} from "../../utils/countryFilters";
 import SearchableCheckboxPanel from "./SearchableCheckboxPanel";
+import StatCategoryFilterTabs from "./StatCategoryFilterTabs";
+import SegmentedTabs from "../ui/SegmentedTabs";
 
 const SERIES_COLORS = [
   "#3b82f6",
@@ -38,7 +51,6 @@ const SERIES_COLORS = [
   "#ef4444",
   "#f43f5e",
 ];
-
 type CustomComparisonTabProps = {
   entries: TeamSeasonStatEntry[];
   statKeys: TeamStatKey[];
@@ -79,6 +91,10 @@ export default function CustomComparisonTab({
 }: CustomComparisonTabProps) {
   const [selectedEntryIds, setSelectedEntryIds] = useState<string[]>([]);
   const [selectedStatKeys, setSelectedStatKeys] = useState<TeamStatKey[]>([]);
+  const [selectedCountryFilter, setSelectedCountryFilter] =
+    useState<CountryFilterTab>(ALL_COUNTRIES_TAB);
+  const [selectedStatCategory, setSelectedStatCategory] =
+    useState<StatCategoryFilterId>(ALL_STAT_CATEGORIES);
 
   const entryOptions = useMemo(
     () =>
@@ -91,6 +107,7 @@ export default function CustomComparisonTab({
         ].join(" • "),
         kind: "team-season" as const,
         logoUrl: entry.teamLogo,
+        country: entry.country ?? null,
         seasonLabel: entry.seasonName,
         tagLabel: entry.teamName || entry.label,
         tagHelperText: entry.seasonName,
@@ -106,10 +123,15 @@ export default function CustomComparisonTab({
           entry.groupName,
           entry.standingGroupId,
           entry.stageTournamentId,
+          entry.country,
         ],
       })),
     [entries],
   );
+
+  const countryFilteredEntryOptions = useMemo(() => {
+    return filterItemsByCountry(entryOptions, selectedCountryFilter);
+  }, [entryOptions, selectedCountryFilter]);
 
   const statOptions = useMemo(
     () =>
@@ -123,6 +145,10 @@ export default function CustomComparisonTab({
       })),
     [statKeys],
   );
+
+  const categoryFilteredStatOptions = useMemo(() => {
+    return filterTeamStatItemsByCategory(statOptions, selectedStatCategory);
+  }, [selectedStatCategory, statOptions]);
 
   const selectedEntries = useMemo(
     () => entries.filter((entry) => selectedEntryIds.includes(entry.id)),
@@ -156,8 +182,7 @@ export default function CustomComparisonTab({
           teamName: entry.teamName,
           values: Object.fromEntries(
             selectedStats.map((statKey) => {
-              const rawValue = toNumericStatValue(entry.stats[statKey]);
-
+              const rawValue = toNumericStatValue(entry.stats[statKey]) ?? null;
               return [
                 statKey,
                 {
@@ -218,9 +243,13 @@ export default function CustomComparisonTab({
   const readyForComparison =
     selectedEntries.length >= 1 && selectedStats.length >= 1;
   const shouldRenderBarChart =
-    readyForComparison && Boolean(comparisonPayload) && selectedStats.length <= 2;
+    readyForComparison &&
+    Boolean(comparisonPayload) &&
+    selectedStats.length <= 2;
   const shouldRenderRadarChart =
-    readyForComparison && Boolean(comparisonPayload) && selectedStats.length > 2;
+    readyForComparison &&
+    Boolean(comparisonPayload) &&
+    selectedStats.length > 2;
 
   const toggleEntry = (entryId: string) => {
     setSelectedEntryIds((current) =>
@@ -240,17 +269,61 @@ export default function CustomComparisonTab({
     );
   };
 
+  const selectVisibleEntries = (visibleEntryIds: string[]) => {
+    setSelectedEntryIds((current) => [
+      ...current,
+      ...visibleEntryIds.filter((entryId) => !current.includes(entryId)),
+    ]);
+  };
+
+  const clearVisibleEntries = (visibleEntryIds: string[]) => {
+    const visibleEntryIdSet = new Set(visibleEntryIds);
+    setSelectedEntryIds((current) =>
+      current.filter((entryId) => !visibleEntryIdSet.has(entryId)),
+    );
+  };
+
+  const selectVisibleStats = (visibleStatKeys: string[]) => {
+    const visibleTypedStatKeys = visibleStatKeys as TeamStatKey[];
+
+    setSelectedStatKeys((current) => [
+      ...current,
+      ...visibleTypedStatKeys.filter((statKey) => !current.includes(statKey)),
+    ]);
+  };
+
+  const clearVisibleStats = (visibleStatKeys: string[]) => {
+    const visibleStatKeySet = new Set(visibleStatKeys);
+    setSelectedStatKeys((current) =>
+      current.filter((statKey) => !visibleStatKeySet.has(statKey)),
+    );
+  };
+
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[360px_minmax(0,1fr)] gap-6">
       <div className="space-y-6">
         <SearchableCheckboxPanel
           title="Team + Season Entries"
           subtitle="Select one or more entries"
-          items={entryOptions}
+          items={countryFilteredEntryOptions}
           selectedValues={selectedEntryIds}
           onToggle={toggleEntry}
-          onSelectAll={() => setSelectedEntryIds(entryOptions.map((item) => item.value))}
-          onClear={() => setSelectedEntryIds([])}
+          onSelectVisible={selectVisibleEntries}
+          onClearVisible={clearVisibleEntries}
+          controls={
+            <SegmentedTabs
+              items={COUNTRY_FILTER_TABS.map((country) => ({
+                value: country,
+                label: country,
+              }))}
+              value={selectedCountryFilter}
+              onChange={setSelectedCountryFilter}
+              className="flex flex-wrap gap-2 overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/40 p-1.5"
+              buttonClassName="shrink-0 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap"
+              activeClassName="bg-blue-600 text-white shadow-[0_0_18px_rgba(37,99,235,0.25)]"
+              inactiveClassName="text-slate-400 hover:bg-slate-800/70 hover:text-slate-100"
+            />
+          }
           searchPlaceholder="Search team or season..."
           maxHeightClassName="max-h-[360px]"
         />
@@ -258,11 +331,18 @@ export default function CustomComparisonTab({
         <SearchableCheckboxPanel
           title="Statistics"
           subtitle="Pick one or more team stats"
-          items={statOptions}
+          items={categoryFilteredStatOptions}
+          selectionItems={statOptions}
           selectedValues={selectedStatKeys}
           onToggle={toggleStat}
-          onSelectAll={() => setSelectedStatKeys(statKeys)}
-          onClear={() => setSelectedStatKeys([])}
+          onSelectVisible={selectVisibleStats}
+          onClearVisible={clearVisibleStats}
+          controls={
+            <StatCategoryFilterTabs
+              value={selectedStatCategory}
+              onChange={setSelectedStatCategory}
+            />
+          }
           searchPlaceholder="Search statistic..."
           maxHeightClassName="max-h-[320px]"
         />
@@ -293,7 +373,10 @@ export default function CustomComparisonTab({
         ) : shouldRenderBarChart ? (
           <div className="h-[520px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 20 }}>
+              <BarChart
+                data={chartData}
+                margin={{ top: 20, right: 20, left: 0, bottom: 20 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                 <XAxis
                   dataKey="statLabel"
@@ -316,9 +399,7 @@ export default function CustomComparisonTab({
                 />
                 <Tooltip
                   content={
-                    <BarComparisonTooltip
-                      selectedEntries={displayEntries}
-                    />
+                    <BarComparisonTooltip selectedEntries={displayEntries} />
                   }
                 />
                 <Legend />
@@ -345,9 +426,7 @@ export default function CustomComparisonTab({
                 />
                 <Tooltip
                   content={
-                    <RadarComparisonTooltip
-                      selectedEntries={displayEntries}
-                    />
+                    <RadarComparisonTooltip selectedEntries={displayEntries} />
                   }
                 />
                 <Legend />
@@ -471,7 +550,12 @@ function BarComparisonTooltip({
   selectedEntries,
 }: {
   active?: boolean;
-  payload?: Array<{ value?: number; color?: string; dataKey?: string; payload?: Record<string, number | string | null> }>;
+  payload?: Array<{
+    value?: number;
+    color?: string;
+    dataKey?: string;
+    payload?: Record<string, number | string | null>;
+  }>;
   label?: string;
   selectedEntries: ComparisonDisplayEntry[];
 }) {
@@ -486,8 +570,13 @@ function BarComparisonTooltip({
       </p>
       <div className="space-y-3">
         {payload.map((item) => {
-          const entry = selectedEntries.find((candidate) => candidate.id === item.dataKey);
-          const rawValue = item.payload?.[`${item.dataKey}__raw`] as number | null | undefined;
+          const entry = selectedEntries.find(
+            (candidate) => candidate.id === item.dataKey,
+          );
+          const rawValue = item.payload?.[`${item.dataKey}__raw`] as
+            | number
+            | null
+            | undefined;
           const relativeScore =
             typeof item.value === "number" ? item.value : null;
           const interpretation =
@@ -499,7 +588,10 @@ function BarComparisonTooltip({
           }
 
           return (
-            <div key={entry.id} className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
+            <div
+              key={entry.id}
+              className="rounded-xl border border-slate-800 bg-slate-900/40 p-3"
+            >
               <div className="flex items-center gap-3">
                 <ComparisonTooltipLogo
                   logoUrl={entry.teamLogo}
@@ -516,9 +608,7 @@ function BarComparisonTooltip({
               <div className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-2">
                 Stat Name
               </div>
-              <div className="text-sm font-bold text-slate-200">
-                {label}
-              </div>
+              <div className="text-sm font-bold text-slate-200">{label}</div>
               <div className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-2">
                 Raw Number
               </div>
@@ -560,7 +650,12 @@ function RadarComparisonTooltip({
   selectedEntries,
 }: {
   active?: boolean;
-  payload?: Array<{ value?: number; color?: string; dataKey?: string; payload?: Record<string, number | string | null> }>;
+  payload?: Array<{
+    value?: number;
+    color?: string;
+    dataKey?: string;
+    payload?: Record<string, number | string | null>;
+  }>;
   label?: string;
   selectedEntries: ComparisonDisplayEntry[];
 }) {
@@ -577,8 +672,13 @@ function RadarComparisonTooltip({
       </p>
       <div className="space-y-3">
         {payload.map((item) => {
-          const entry = selectedEntries.find((candidate) => candidate.id === item.dataKey);
-          const rawValue = item.payload?.[`${item.dataKey}__raw`] as number | null | undefined;
+          const entry = selectedEntries.find(
+            (candidate) => candidate.id === item.dataKey,
+          );
+          const rawValue = item.payload?.[`${item.dataKey}__raw`] as
+            | number
+            | null
+            | undefined;
           const relativeScore =
             typeof item.value === "number" ? item.value : null;
           const interpretation =
@@ -589,7 +689,10 @@ function RadarComparisonTooltip({
           }
 
           return (
-            <div key={entry.id} className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
+            <div
+              key={entry.id}
+              className="rounded-xl border border-slate-800 bg-slate-900/40 p-3"
+            >
               <div className="flex items-center gap-3">
                 <ComparisonTooltipLogo
                   logoUrl={entry.teamLogo}
@@ -606,9 +709,7 @@ function RadarComparisonTooltip({
               <div className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-2">
                 Stat Name
               </div>
-              <div className="text-sm font-bold text-slate-200">
-                {label}
-              </div>
+              <div className="text-sm font-bold text-slate-200">{label}</div>
               <div className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-2">
                 Raw Number
               </div>

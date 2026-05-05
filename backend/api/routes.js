@@ -2,6 +2,7 @@ import { Router } from "express";
 import { asyncHandler } from "../lib/http.js";
 import {
   getPlayerController,
+  listPlayerTeamSquadsController,
   listPlayersController,
 } from "../controllers/playerController.js";
 import {
@@ -49,6 +50,7 @@ router.get("/teams/:id/seasons", asyncHandler(listTeamSeasonsController));
 router.get("/teams/:id/stats", asyncHandler(getTeamStatsController));
 
 router.get("/players", asyncHandler(listPlayersController));
+router.get("/players/team-squads", asyncHandler(listPlayerTeamSquadsController));
 router.get("/players/:id", asyncHandler(getPlayerController));
 
 router.get(

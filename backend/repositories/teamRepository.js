@@ -269,6 +269,7 @@ function buildTeamComparisonSeasons(rows) {
       tournament_id: row.tournament_db_id ?? null,
       tournament_api_id: row.tournament_id ?? null,
       tournament_name: row.tournament_name?.trim() || null,
+      country: normalizeCountry(row.tournament_country),
       is_current: Boolean(row.is_current),
     };
     const existingSeason = seasonsByContext.get(nextSeason.key);
@@ -277,7 +278,8 @@ function buildTeamComparisonSeasons(rows) {
       !existingSeason ||
       (nextSeason.is_current && !existingSeason.is_current) ||
       (!existingSeason.season_name && nextSeason.season_name) ||
-      (!existingSeason.tournament_name && nextSeason.tournament_name)
+      (!existingSeason.tournament_name && nextSeason.tournament_name) ||
+      (!existingSeason.country && nextSeason.country)
     ) {
       seasonsByContext.set(nextSeason.key, nextSeason);
     }
@@ -360,15 +362,23 @@ function mergeRowsById(...rowGroups) {
   return [...rowsById.values()];
 }
 
-function buildRowByReference(rows) {
+function buildRowByReference(rows, referenceType = "any") {
   const rowsByReference = new Map();
 
   for (const row of rows ?? []) {
-    if (row?.id !== null && row?.id !== undefined) {
+    if (
+      referenceType !== "api" &&
+      row?.id !== null &&
+      row?.id !== undefined
+    ) {
       rowsByReference.set(String(row.id), row);
     }
 
-    if (row?.api_id !== null && row?.api_id !== undefined) {
+    if (
+      referenceType !== "internal" &&
+      row?.api_id !== null &&
+      row?.api_id !== undefined
+    ) {
       rowsByReference.set(String(row.api_id), row);
     }
   }
@@ -386,11 +396,18 @@ function seasonBelongsToTournament(season, tournament) {
     .some((reference) => String(reference) === String(season.tournament_id));
 }
 
-function pickSeasonByReference(seasons, seasonReference, tournament) {
+function pickSeasonByReference(
+  seasons,
+  seasonReference,
+  tournament,
+  referenceType = "any",
+) {
   const candidates = (seasons ?? []).filter(
     (season) =>
-      String(season.id) === String(seasonReference) ||
-      String(season.api_id) === String(seasonReference),
+      (referenceType !== "api" &&
+        String(season.id) === String(seasonReference)) ||
+      (referenceType !== "internal" &&
+        String(season.api_id) === String(seasonReference)),
   );
 
   return (
@@ -400,11 +417,37 @@ function pickSeasonByReference(seasons, seasonReference, tournament) {
   );
 }
 
-async function listTournamentsByReferences(references) {
+async function listTournamentsByReferences(references, referenceType = "any") {
   const ids = uniqueReferences(references);
 
   if (ids.length === 0) {
     return [];
+  }
+
+  if (referenceType === "internal") {
+    const { data, error } = await supabase
+      .from("tournaments")
+      .select("id, api_id, name, country")
+      .in("id", ids);
+
+    if (error) {
+      throw error;
+    }
+
+    return data ?? [];
+  }
+
+  if (referenceType === "api") {
+    const { data, error } = await supabase
+      .from("tournaments")
+      .select("id, api_id, name, country")
+      .in("api_id", ids);
+
+    if (error) {
+      throw error;
+    }
+
+    return data ?? [];
   }
 
   const [byInternalId, byApiId] = await Promise.all([
@@ -429,11 +472,37 @@ async function listTournamentsByReferences(references) {
   return mergeRowsById(byInternalId.data ?? [], byApiId.data ?? []);
 }
 
-async function listSeasonsByReferences(references) {
+async function listSeasonsByReferences(references, referenceType = "any") {
   const ids = uniqueReferences(references);
 
   if (ids.length === 0) {
     return [];
+  }
+
+  if (referenceType === "internal") {
+    const { data, error } = await supabase
+      .from("seasons")
+      .select("id, api_id, name, year, tournament_id, is_current")
+      .in("id", ids);
+
+    if (error) {
+      throw error;
+    }
+
+    return data ?? [];
+  }
+
+  if (referenceType === "api") {
+    const { data, error } = await supabase
+      .from("seasons")
+      .select("id, api_id, name, year, tournament_id, is_current")
+      .in("api_id", ids);
+
+    if (error) {
+      throw error;
+    }
+
+    return data ?? [];
   }
 
   const [byInternalId, byApiId] = await Promise.all([
@@ -718,13 +787,19 @@ async function listTeamStatsByApiReferences(references) {
 async function buildStatsSeasonRowsForTeams(teams, statsRows) {
   return buildSeasonRowsFromSource(teams, statsRows, {
     getTeamRowReferences: getTeamApiReferences,
+    tournamentReferenceType: "api",
+    seasonReferenceType: "api",
   });
 }
 
 async function buildSeasonRowsFromSource(
   teams,
   sourceRows,
-  { getTeamRowReferences = getTeamReferences } = {},
+  {
+    getTeamRowReferences = getTeamReferences,
+    tournamentReferenceType = "any",
+    seasonReferenceType = "any",
+  } = {},
 ) {
   const teamsByReference = buildTeamByReference(teams, getTeamRowReferences);
   const seasonReferences = uniqueReferences(
@@ -742,18 +817,26 @@ async function buildSeasonRowsFromSource(
     (sourceRows ?? []).map((row) => row.tournament_id),
   );
   const [tournaments, seasons] = await Promise.all([
-    listTournamentsByReferences(tournamentReferences),
-    listSeasonsByReferences(seasonReferences),
+    listTournamentsByReferences(tournamentReferences, tournamentReferenceType),
+    listSeasonsByReferences(seasonReferences, seasonReferenceType),
   ]);
 
-  const tournamentsByReference = buildRowByReference(tournaments);
+  const tournamentsByReference = buildRowByReference(
+    tournaments,
+    tournamentReferenceType,
+  );
 
   const rows = (sourceRows ?? [])
     .map((row) => {
       const team = teamsByReference.get(String(row.team_id));
       const tournament =
         tournamentsByReference.get(String(row.tournament_id)) ?? null;
-      const season = pickSeasonByReference(seasons, row.season_id, tournament);
+      const season = pickSeasonByReference(
+        seasons,
+        row.season_id,
+        tournament,
+        seasonReferenceType,
+      );
 
       if (!team || !season) {
         return null;
@@ -827,6 +910,8 @@ async function listPlayerStatsSeasonRowsForTeams(teams) {
 
   return buildSeasonRowsFromSource(teams, data ?? [], {
     getTeamRowReferences: getTeamInternalReferences,
+    tournamentReferenceType: "internal",
+    seasonReferenceType: "internal",
   });
 }
 
@@ -1061,17 +1146,80 @@ export async function listTeamSeasonsById(teamId, preferredTournamentApiId = nul
   return seasons;
 }
 
-export async function listTeamMappings() {
+export async function listTeamMappings({ includeTournament = false } = {}) {
   const { data, error } = await supabase
     .from("teams")
-    .select("id, api_id, name")
+    .select(
+      includeTournament
+        ? "id, api_id, name, tournament_id, logo_url"
+        : "id, api_id, name",
+    )
     .order("id", { ascending: true });
 
   if (error) {
     throw error;
   }
 
-  return data ?? [];
+  const teams = data ?? [];
+
+  if (!includeTournament) {
+    return teams;
+  }
+
+  const teamTournamentApiIds = [
+    ...new Set(teams.map((team) => team.tournament_id).filter(Boolean)),
+  ];
+  let fallbackTournamentByApiId = new Map();
+
+  if (teamTournamentApiIds.length > 0) {
+    const { data: tournaments, error: tournamentsError } = await supabase
+      .from("tournaments")
+      .select("id, api_id, name")
+      .in("api_id", teamTournamentApiIds);
+
+    if (tournamentsError) {
+      throw tournamentsError;
+    }
+
+    fallbackTournamentByApiId = new Map(
+      (tournaments ?? []).map((tournament) => [
+        tournament.api_id,
+        tournament,
+      ]),
+    );
+  }
+
+  const [statsSeasonRows, playerStatsSeasonRows] = await Promise.all([
+    listStatsSeasonRowsForTeams(teams),
+    listPlayerStatsSeasonRowsForTeams(teams),
+  ]);
+  const summaryByTeamId = buildParticipationSummary([
+    ...statsSeasonRows,
+    ...playerStatsSeasonRows,
+  ]);
+
+  return teams.map((team) => {
+    const participation = summaryByTeamId.get(team.id);
+    const fallbackTournament = fallbackTournamentByApiId.get(team.tournament_id);
+
+    return {
+      id: team.id,
+      api_id: team.api_id,
+      name: team.name,
+      logo_url: team.logo_url ?? null,
+      tournament_id:
+        participation?.tournament_db_id ?? fallbackTournament?.id ?? null,
+      tournament_api_id:
+        participation?.tournament_id ??
+        fallbackTournament?.api_id ??
+        team.tournament_id ??
+        null,
+      tournament_name:
+        participation?.tournament_name?.trim() ||
+        fallbackTournament?.name?.trim() ||
+        null,
+    };
+  });
 }
 
 export async function listTeamMappingsByReferences(teamReferences) {
@@ -1315,6 +1463,7 @@ export async function listTeamsComparisonDatasetRows() {
         team_api_id: team.api_id ?? null,
         team_name: team.name,
         team_logo: team.logo_url ?? null,
+        country: season.country ?? null,
         tournament_id: season.tournament_id,
         tournament_api_id: season.tournament_api_id,
         tournament_name: season.tournament_name,
@@ -1499,4 +1648,230 @@ export async function listTeamComparisonRowsByContext({
           ) ?? null
         : null,
   }));
+}
+
+export async function listTeamComparisonRowsByEntries(teamSeasonEntries) {
+  const teamIds = uniqueReferences(
+    teamSeasonEntries.map((entry) => entry.teamId),
+  );
+  const tournamentIds = uniqueReferences(
+    teamSeasonEntries.map((entry) => entry.tournamentId),
+  );
+  const seasonIds = uniqueReferences(
+    teamSeasonEntries.map((entry) => entry.seasonId),
+  );
+
+  if (
+    teamIds.length === 0 ||
+    tournamentIds.length === 0 ||
+    seasonIds.length === 0
+  ) {
+    return [];
+  }
+
+  const [{ data: teams, error }, { data: participationRows, error: participationError }] =
+    await Promise.all([
+      getTeamsBaseQuery()
+        .in("id", teamIds)
+        .order("name", { ascending: true }),
+      supabase
+        .from("standings_with_team_info")
+        .select(PARTICIPATION_SELECT)
+        .in("team_db_id", teamIds)
+        .in("tournament_db_id", tournamentIds)
+        .in("season_db_id", seasonIds)
+        .not("team_db_id", "is", null)
+        .not("tournament_db_id", "is", null)
+        .not("season_db_id", "is", null),
+    ]);
+
+  if (error) {
+    throw error;
+  }
+
+  if (participationError) {
+    throw participationError;
+  }
+
+  const requestedEntryKeys = new Set(
+    teamSeasonEntries.map((entry) =>
+      buildInternalEntryKey(entry.teamId, entry.tournamentId, entry.seasonId),
+    ),
+  );
+  const teamsById = new Map((teams ?? []).map((team) => [team.id, team]));
+  const participationRowsWithStatsFallback = [
+    ...(participationRows ?? []).filter((row) =>
+      requestedEntryKeys.has(
+        buildInternalEntryKey(
+          row.team_db_id,
+          row.tournament_db_id,
+          row.season_db_id,
+        ),
+      ),
+    ),
+  ];
+  const foundEntryKeys = new Set(
+    participationRowsWithStatsFallback.map((row) =>
+      buildInternalEntryKey(
+        row.team_db_id,
+        row.tournament_db_id,
+        row.season_db_id,
+      ),
+    ),
+  );
+  const missingEntries = teamSeasonEntries.filter(
+    (entry) =>
+      !foundEntryKeys.has(
+        buildInternalEntryKey(entry.teamId, entry.tournamentId, entry.seasonId),
+      ),
+  );
+
+  if (missingEntries.length > 0) {
+    const [tournaments, seasons] = await Promise.all([
+      listTournamentsByReferences(tournamentIds, "internal"),
+      listSeasonsByReferences(seasonIds, "internal"),
+    ]);
+    const tournamentApiIdById = new Map(
+      tournaments
+        .filter((tournament) => tournament.api_id)
+        .map((tournament) => [tournament.id, tournament.api_id]),
+    );
+    const seasonApiIdById = new Map(
+      seasons
+        .filter((season) => season.api_id)
+        .map((season) => [season.id, season.api_id]),
+    );
+    const missingTeams = [
+      ...new Map(
+        missingEntries
+          .map((entry) => teamsById.get(entry.teamId))
+          .filter(Boolean)
+          .map((team) => [team.id, team]),
+      ).values(),
+    ];
+    const missingTeamReferences = uniqueReferences(
+      missingTeams.flatMap((team) => getTeamApiReferences(team)),
+    );
+    const missingTournamentReferences = uniqueReferences(
+      missingEntries.map((entry) => tournamentApiIdById.get(entry.tournamentId)),
+    );
+    const missingSeasonReferences = uniqueReferences(
+      missingEntries.map((entry) => seasonApiIdById.get(entry.seasonId)),
+    );
+
+    if (
+      missingTeamReferences.length > 0 &&
+      missingTournamentReferences.length > 0 &&
+      missingSeasonReferences.length > 0
+    ) {
+      const { data: statsRows, error: statsError } = await supabase
+        .from("team_stats")
+        .select("team_id, tournament_id, season_id")
+        .in("team_id", missingTeamReferences)
+        .in("tournament_id", missingTournamentReferences)
+        .in("season_id", missingSeasonReferences);
+
+      if (statsError) {
+        throw statsError;
+      }
+
+      const fallbackRows = await buildStatsSeasonRowsForTeams(
+        missingTeams,
+        statsRows ?? [],
+      );
+      participationRowsWithStatsFallback.push(
+        ...fallbackRows.filter((row) =>
+          requestedEntryKeys.has(
+            buildInternalEntryKey(
+              row.team_db_id,
+              row.tournament_db_id,
+              row.season_db_id,
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
+  const participationByEntryKey = new Map();
+
+  for (const row of dedupeParticipationRows(participationRowsWithStatsFallback)) {
+    const entryKey = buildInternalEntryKey(
+      row.team_db_id,
+      row.tournament_db_id,
+      row.season_db_id,
+    );
+
+    if (!participationByEntryKey.has(entryKey)) {
+      participationByEntryKey.set(entryKey, row);
+    }
+  }
+
+  const entries = [];
+  const statsReferences = [];
+
+  for (const selectedEntry of teamSeasonEntries) {
+    const team = teamsById.get(selectedEntry.teamId);
+    const participation = participationByEntryKey.get(
+      buildInternalEntryKey(
+        selectedEntry.teamId,
+        selectedEntry.tournamentId,
+        selectedEntry.seasonId,
+      ),
+    );
+
+    if (!team || !participation) {
+      continue;
+    }
+
+    const entry = {
+      team_id: team.id,
+      team_api_id: team.api_id ?? null,
+      team_name: team.name,
+      team_logo: team.logo_url ?? null,
+      tournament_id: participation.tournament_db_id ?? null,
+      tournament_api_id: participation.tournament_id ?? null,
+      tournament_name: participation.tournament_name?.trim() || null,
+      season_id: participation.season_db_id ?? null,
+      season_api_id: participation.season_id ?? null,
+      season_name: getSeasonLabel(participation),
+    };
+
+    entries.push(entry);
+
+    if (
+      entry.team_api_id &&
+      entry.tournament_api_id &&
+      entry.season_api_id
+    ) {
+      statsReferences.push({
+        teamId: entry.team_id,
+        teamApiId: entry.team_api_id,
+        tournamentId: entry.tournament_id,
+        tournamentApiId: entry.tournament_api_id,
+        seasonId: entry.season_id,
+        seasonApiId: entry.season_api_id,
+      });
+    }
+  }
+
+  const statsByReference = await listTeamStatsByApiReferences(statsReferences);
+
+  return entries.map((entry) => ({
+    ...entry,
+    stats:
+      entry.team_api_id && entry.tournament_api_id && entry.season_api_id
+        ? statsByReference.get(
+            buildStatsKey(
+              entry.team_api_id,
+              entry.tournament_api_id,
+              entry.season_api_id,
+            ),
+          ) ?? null
+        : null,
+  }));
+}
+
+function buildInternalEntryKey(teamId, tournamentId, seasonId) {
+  return `${teamId}:${tournamentId}:${seasonId}`;
 }

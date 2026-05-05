@@ -162,3 +162,24 @@ export async function getPlayerById(id) {
 
   return data;
 }
+
+export async function getLatestPlayerStatsByPlayerReferences(player) {
+  const playerReferences = uniqueReferences([player?.id, player?.api_id]);
+
+  if (playerReferences.length === 0) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("player_stats")
+    .select("*")
+    .in("player_id", playerReferences)
+    .order("id", { ascending: false })
+    .limit(1);
+
+  if (error) {
+    throw error;
+  }
+
+  return data?.[0] ?? null;
+}

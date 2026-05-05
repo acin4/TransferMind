@@ -1,5 +1,9 @@
 import { parseInteger } from "../lib/http.js";
-import { getPlayer, getPlayers } from "../services/playerService.js";
+import {
+  getPlayer,
+  getPlayers,
+  getPlayerTeamSquads,
+} from "../services/playerService.js";
 
 export async function listPlayersController(req, res) {
   const teamId =
@@ -9,6 +13,11 @@ export async function listPlayersController(req, res) {
 
   const players = await getPlayers(teamId);
   res.status(200).json({ data: players });
+}
+
+export async function listPlayerTeamSquadsController(req, res) {
+  const squads = await getPlayerTeamSquads();
+  res.status(200).json({ data: squads });
 }
 
 export async function getPlayerController(req, res) {

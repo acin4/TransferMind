@@ -50,11 +50,7 @@ export function getTeamLocation(
     return null;
   }
 
-  const city =
-    normalizeDisplayText(team.city) ??
-    (typeof team.venue === "object" && team.venue
-      ? normalizeDisplayText(team.venue.city)
-      : null);
+  const city = normalizeDisplayText(team.city);
   const country = getTeamCountry(team);
 
   if (city && country) {

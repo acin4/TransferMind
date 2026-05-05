@@ -31,9 +31,26 @@ export type PlayerListItem = {
   id: number | string;
   name: string;
   team_id?: number | string | null;
+  team_name?: string | null;
+  team_logo?: string | null;
+  teamLogo?: string | null;
+  tournament_name?: string | null;
+  tournamentName?: string | null;
+  position?: string | null;
   height?: number | string | null;
   player_stats?: PlayerListStat[] | null;
   [key: string]: unknown;
+};
+
+export type PlayerTeamSquad = {
+  teamId: number | string;
+  teamName: string;
+  teamLogo?: string | null;
+  tournamentId?: number | string | null;
+  tournamentName?: string | null;
+  seasonId?: number | string | null;
+  seasonName?: string | null;
+  players: PlayerListItem[];
 };
 
 export type TeamProfileData = TeamListItem & {
@@ -177,10 +194,14 @@ export type TeamComparisonMatrixRequest = {
   statKeys: TeamStatKey[];
 };
 
-export type TeamClusterRequest = {
+export type TeamClusterEntryRequest = {
+  teamId: number;
   tournamentId: number;
   seasonId: number;
-  teamIds: number[];
+};
+
+export type TeamClusterRequest = {
+  teamSeasonEntries: TeamClusterEntryRequest[];
   statKeys: TeamStatKey[];
 };
 
@@ -203,8 +224,14 @@ export type TeamClusterStat = {
 };
 
 export type TeamClusterMatrixRow = {
+  entryId: string;
   teamId: number;
   teamName: string;
+  teamLogo: string | null;
+  tournamentId: number;
+  tournamentName: string | null;
+  seasonId: number;
+  seasonName: string | null;
   rawStats: Partial<Record<TeamStatKey, number>>;
   normalizedStats: Partial<Record<TeamStatKey, number>>;
 };
@@ -217,8 +244,7 @@ export type TeamClusterElbowPoint = {
 
 export type TeamClusterElbowPayload = {
   context: {
-    tournamentId: number;
-    seasonId: number;
+    selectedEntryCount: number;
   };
   rows: TeamClusterMatrixRow[];
   stats: TeamClusterStat[];
@@ -240,8 +266,7 @@ export type TeamClusterCentroid = {
 
 export type TeamClusterRunPayload = {
   context: {
-    tournamentId: number;
-    seasonId: number;
+    selectedEntryCount: number;
   };
   k: number;
   iterations: number;
@@ -307,6 +332,10 @@ export const getPlayers = async (
 
   const suffix = params.toString() ? `?${params.toString()}` : "";
   return request(`/api/players${suffix}`);
+};
+
+export const getPlayerTeamSquads = async (): Promise<PlayerTeamSquad[]> => {
+  return request("/api/players/team-squads");
 };
 
 export const getSearchResults = async (
@@ -431,6 +460,8 @@ export const runTeamClusters = async (
 // ==========================================
 // 4. ΠΡΟΦΙΛ ΠΑΙΚΤΗ (PlayerProfile)
 // ==========================================
-export const getPlayer = async (id: string | number) => {
+export const getPlayer = async (
+  id: string | number,
+): Promise<PlayerListItem> => {
   return request(`/api/players/${id}`);
 };
