@@ -9,7 +9,6 @@ import {
   type TeamClusterElbowPayload,
   type TeamClusterRunPayload,
 } from "../../api/api";
-import type { TeamStatKey } from "../../teamStatsConfig";
 import {
   ClusterAverageProfilesChart,
   ClusterMembershipSummary,
@@ -40,7 +39,14 @@ export default function ClusterAnalysisTab({
     setSelectedStatCategory,
     maxK,
     setMaxK,
-  } = useClusterSelectionState();
+    toggleEntry,
+    toggleStat,
+    selectVisibleEntries,
+    clearVisibleEntries,
+    selectVisibleStats,
+    clearVisibleStats,
+    handleMaxKChange,
+  } = useClusterSelectionState({ statKeys: supportedStatKeys });
   const [selectedK, setSelectedK] = useState<number | null>(null);
   const [elbowResult, setElbowResult] =
     useState<TeamClusterElbowPayload | null>(null);
@@ -57,7 +63,6 @@ export default function ClusterAnalysisTab({
     selectedEntries,
     selectedTeamSeasonEntries,
     maxAllowedK,
-    availableStatKeySet,
     cleanedSelectedStatKeys,
     statOptions,
     categoryFilteredStatOptions,
@@ -94,60 +99,6 @@ export default function ClusterAnalysisTab({
   useEffect(() => {
     setClusterResult(null);
   }, [selectedK]);
-
-  const toggleEntry = (entryId: string) => {
-    setSelectedEntryIds((current) =>
-      current.includes(entryId)
-        ? current.filter((value) => value !== entryId)
-        : [...current, entryId],
-    );
-  };
-
-  const toggleStat = (statKey: string) => {
-    const typedStatKey = statKey as TeamStatKey;
-
-    if (!availableStatKeySet.has(typedStatKey)) {
-      return;
-    }
-
-    setSelectedStatKeys((current) =>
-      current.includes(typedStatKey)
-        ? current.filter((value) => value !== typedStatKey)
-        : [...current, typedStatKey],
-    );
-  };
-
-  const selectVisibleStats = (visibleStatKeys: string[]) => {
-    const visibleTypedStatKeys = visibleStatKeys.filter((statKey) =>
-      availableStatKeySet.has(statKey as TeamStatKey),
-    ) as TeamStatKey[];
-
-    setSelectedStatKeys((current) => [
-      ...current,
-      ...visibleTypedStatKeys.filter((statKey) => !current.includes(statKey)),
-    ]);
-  };
-
-  const clearVisibleStats = (visibleStatKeys: string[]) => {
-    const visibleStatKeySet = new Set(visibleStatKeys);
-    setSelectedStatKeys((current) =>
-      current.filter((statKey) => !visibleStatKeySet.has(statKey)),
-    );
-  };
-
-  const selectVisibleEntries = (visibleEntryIds: string[]) => {
-    setSelectedEntryIds((current) => [
-      ...current,
-      ...visibleEntryIds.filter((entryId) => !current.includes(entryId)),
-    ]);
-  };
-
-  const clearVisibleEntries = (visibleEntryIds: string[]) => {
-    const visibleEntryIdSet = new Set(visibleEntryIds);
-    setSelectedEntryIds((current) =>
-      current.filter((entryId) => !visibleEntryIdSet.has(entryId)),
-    );
-  };
 
   const buildRequestPayload = () => {
     return {
@@ -240,7 +191,7 @@ export default function ClusterAnalysisTab({
         validationMessage={validationMessage}
         loadingElbow={loadingElbow}
         requestError={requestError}
-        onMaxKChange={(value) => setMaxK(Number(value))}
+        onMaxKChange={handleMaxKChange}
         onEntryToggle={toggleEntry}
         onSelectVisibleEntries={selectVisibleEntries}
         onClearVisibleEntries={clearVisibleEntries}
