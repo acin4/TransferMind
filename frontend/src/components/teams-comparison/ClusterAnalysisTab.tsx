@@ -18,10 +18,10 @@ import {
   MessageBox,
   ParallelCoordinatesPlot,
 } from "../cluster-analysis/components";
-import { areStatKeyArraysEqual } from "../cluster-analysis/utils/clusterAnalysisUtils";
 import { useClusterProfiles } from "../cluster-analysis/hooks/useClusterProfiles";
 import { useClusterSelectionState } from "../cluster-analysis/hooks/useClusterSelectionState";
 import { useClusterSetupData } from "../cluster-analysis/hooks/useClusterSetupData";
+import { useClusterSetupMaintenanceEffects } from "../cluster-analysis/hooks/useClusterSetupMaintenanceEffects";
 import { getErrorMessage } from "../cluster-analysis/utils/clusterFormatters";
 import type { ClusterAnalysisTabProps } from "../cluster-analysis/types";
 
@@ -72,22 +72,17 @@ export default function ClusterAnalysisTab({
     statCategoryFilter: selectedStatCategory,
   });
 
-  useEffect(() => {
-    const availableEntryIds = new Set(clusterEntries.map((entry) => entry.id));
-    setSelectedEntryIds((current) =>
-      current.filter((entryId) => availableEntryIds.has(entryId)),
-    );
-  }, [clusterEntries]);
-
-  useEffect(() => {
-    if (!areStatKeyArraysEqual(selectedStatKeys, cleanedSelectedStatKeys)) {
-      setSelectedStatKeys(cleanedSelectedStatKeys);
-    }
-  }, [cleanedSelectedStatKeys, selectedStatKeys]);
-
-  useEffect(() => {
-    setMaxK(maxAllowedK);
-  }, [maxAllowedK]);
+  useClusterSetupMaintenanceEffects({
+    clusterEntries,
+    cleanedSelectedStatKeys,
+    maxAllowedK,
+    selectedEntryIds,
+    setSelectedEntryIds,
+    selectedStatKeys,
+    setSelectedStatKeys,
+    maxK,
+    setMaxK,
+  });
 
   useEffect(() => {
     setElbowResult(null);
