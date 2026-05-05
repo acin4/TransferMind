@@ -5,6 +5,9 @@ import type {
   TeamClusterElbowPoint,
   TeamClusterRunPayload,
 } from "../../api/api";
+import type { CountryFilterTab } from "../../utils/countryFilters";
+import type { SearchFieldValue } from "../../utils/search";
+import type { StatCategoryFilterId } from "../../utils/statCategories";
 import type { TeamSeasonStatEntry } from "../../utils/teamsComparison";
 import type { TeamStatKey } from "../../teamStatsConfig";
 
@@ -23,6 +26,48 @@ export type SelectFieldProps = {
 export type MessageBoxProps = {
   tone: "error" | "warning";
   messages: string[];
+};
+
+export type ClusterSetupOption<TValue extends string = string> = {
+  value: TValue;
+  label: string;
+  helperText?: string;
+  kind?: "team" | "team-season" | "stat";
+  logoUrl?: string | null;
+  country?: string | null;
+  seasonLabel?: string | null;
+  statKey?: TValue;
+  tagLabel?: string;
+  tagHelperText?: string | null;
+  searchFields?: SearchFieldValue[];
+};
+
+export type ClusterSetupPanelProps = {
+  maxK: number;
+  maxKOptions: Array<{ value: number; label: string }>;
+  matrixRowCount: number;
+  matrixColumnCount: number;
+  entryOptions: ClusterSetupOption[];
+  countryFilteredEntryOptions: ClusterSetupOption[];
+  selectedEntryIds: string[];
+  selectedCountryFilter: CountryFilterTab;
+  statOptions: ClusterSetupOption<TeamStatKey>[];
+  categoryFilteredStatOptions: ClusterSetupOption<TeamStatKey>[];
+  selectedStatKeys: TeamStatKey[];
+  selectedStatCategory: StatCategoryFilterId;
+  validationMessage: string | null;
+  loadingElbow: boolean;
+  requestError: string | null;
+  onMaxKChange: (value: string) => void;
+  onEntryToggle: (entryId: string) => void;
+  onSelectVisibleEntries: (visibleEntryIds: string[]) => void;
+  onClearVisibleEntries: (visibleEntryIds: string[]) => void;
+  onCountryFilterChange: (value: CountryFilterTab) => void;
+  onStatToggle: (statKey: string) => void;
+  onSelectVisibleStats: (visibleStatKeys: string[]) => void;
+  onClearVisibleStats: (visibleStatKeys: string[]) => void;
+  onStatCategoryChange: (value: StatCategoryFilterId) => void;
+  onCalculateElbow: () => void;
 };
 
 export type ClusterAverageProfilesChartProps = {
