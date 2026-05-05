@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -64,14 +65,14 @@ export function useClusterRequests({
     setClusterResult(null);
   }, [selectedK]);
 
-  const buildRequestPayload = () => {
+  const buildRequestPayload = useCallback(() => {
     return {
       teamSeasonEntries: requestPayloadEntries,
       statKeys: cleanedSelectedStatKeys,
     };
-  };
+  }, [cleanedSelectedStatKeys, requestPayloadEntries]);
 
-  const handleCalculateElbow = async () => {
+  const handleCalculateElbow = useCallback(async () => {
     const payload = buildRequestPayload();
 
     if (validationMessage) {
@@ -97,9 +98,9 @@ export function useClusterRequests({
     } finally {
       setLoadingElbow(false);
     }
-  };
+  }, [buildRequestPayload, maxK, validationMessage]);
 
-  const handleRunClusters = async () => {
+  const handleRunClusters = useCallback(async () => {
     const payload = buildRequestPayload();
 
     if (selectedK == null) {
@@ -123,7 +124,7 @@ export function useClusterRequests({
     } finally {
       setLoadingClusters(false);
     }
-  };
+  }, [buildRequestPayload, selectedK]);
 
   const kOptions = useMemo(
     () =>

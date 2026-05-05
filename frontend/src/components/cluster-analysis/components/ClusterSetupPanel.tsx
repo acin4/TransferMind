@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { COUNTRY_FILTER_TABS } from "../../../utils/countryFilters";
 import SearchableCheckboxPanel from "../../teams-comparison/SearchableCheckboxPanel";
 import StatCategoryFilterTabs from "../../teams-comparison/StatCategoryFilterTabs";
@@ -6,7 +7,7 @@ import type { ClusterSetupPanelProps } from "../types";
 import { MessageBox } from "./MessageBox";
 import { SelectField } from "./SelectField";
 
-export function ClusterSetupPanel({
+export const ClusterSetupPanel = memo(function ClusterSetupPanel({
   maxK,
   maxKOptions,
   matrixRowCount,
@@ -126,4 +127,4 @@ export function ClusterSetupPanel({
       ) : null}
     </section>
   );
-}
+});

@@ -51,6 +51,10 @@ export const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
   const plotWidth = width - CHART_MARGIN.left - CHART_MARGIN.right;
   const plotHeight = height - CHART_MARGIN.top - CHART_MARGIN.bottom;
   const clusterFilters = useMemo(() => getClusterFilterOptions(result), [result]);
+  const availableClusterIds = useMemo(
+    () => new Set(clusterFilters.map((option) => option.clusterId)),
+    [clusterFilters],
+  );
   const xCoordinates = useMemo(
     () => buildXCoordinates(statItems.length, plotWidth),
     [plotWidth, statItems.length],
@@ -98,6 +102,7 @@ export const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
           pointsByStatKey: Object.fromEntries(
             points.map((point) => [point.statKey, point]),
           ) as Partial<Record<TeamStatKey, ParallelCoordinatesPoint>>,
+          searchText: getAssignmentSearchText(assignment),
         };
       }),
     [getY, result.assignments, statItems, xCoordinates],
@@ -111,15 +116,16 @@ export const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
       ),
     [allPathRows, selectedClusterFilter],
   );
-  const normalizedEntrySearch = entrySearch.trim().toLowerCase();
+  const normalizedEntrySearch = useMemo(
+    () => entrySearch.trim().toLowerCase(),
+    [entrySearch],
+  );
   const searchedEntryRows = useMemo(
     () =>
       normalizedEntrySearch.length === 0
         ? clusterFilteredPathRows
         : clusterFilteredPathRows.filter((row) =>
-            getAssignmentSearchText(row.assignment).includes(
-              normalizedEntrySearch,
-            ),
+            row.searchText.includes(normalizedEntrySearch),
           ),
     [clusterFilteredPathRows, normalizedEntrySearch],
   );
@@ -168,17 +174,19 @@ export const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
   const selectClusterFilter = useCallback((value: ClusterFilterValue) => {
     setSelectedClusterFilter((current) => (current === value ? current : value));
   }, []);
+  const yTickRows = useMemo(
+    () => CHART_Y_TICKS.map((tick) => ({ tick, y: getY(tick) })),
+    [getY],
+  );
 
   useEffect(() => {
-    const availableClusterIds = new Set(clusterFilters.map((option) => option.clusterId));
-
     if (
       selectedClusterFilter !== "all" &&
       !availableClusterIds.has(selectedClusterFilter)
     ) {
       setSelectedClusterFilter("all");
     }
-  }, [clusterFilters, selectedClusterFilter]);
+  }, [availableClusterIds, selectedClusterFilter]);
 
   useEffect(() => {
     if (
@@ -252,19 +260,19 @@ export const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
                 </text>
               ) : null}
 
-              {CHART_Y_TICKS.map((tick) => (
+              {yTickRows.map(({ tick, y }) => (
                 <g key={tick}>
                   <line
                     x1={CHART_MARGIN.left}
                     x2={width - CHART_MARGIN.right}
-                    y1={getY(tick)}
-                    y2={getY(tick)}
+                    y1={y}
+                    y2={y}
                     stroke="#1e293b"
                     strokeDasharray={tick === 0 || tick === 1 ? "0" : "3 3"}
                   />
                   <text
                     x={CHART_MARGIN.left - 12}
-                    y={getY(tick) + 4}
+                    y={y + 4}
                     textAnchor="end"
                     fill="#64748b"
                     fontSize="11"

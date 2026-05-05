@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { TeamStatKey } from "../../../teamStatsConfig";
 import { ALL_COUNTRIES_TAB } from "../../../utils/countryFilters";
@@ -46,15 +46,15 @@ export function useClusterSelectionState(
     [statKeys],
   );
 
-  const toggleEntry = (entryId: string) => {
+  const toggleEntry = useCallback((entryId: string) => {
     setSelectedEntryIds((current) =>
       current.includes(entryId)
         ? current.filter((value) => value !== entryId)
         : [...current, entryId],
     );
-  };
+  }, []);
 
-  const toggleStat = (statKey: string) => {
+  const toggleStat = useCallback((statKey: string) => {
     const typedStatKey = statKey as TeamStatKey;
 
     if (!availableStatKeySet.has(typedStatKey)) {
@@ -66,43 +66,53 @@ export function useClusterSelectionState(
         ? current.filter((value) => value !== typedStatKey)
         : [...current, typedStatKey],
     );
-  };
+  }, [availableStatKeySet]);
 
-  const selectVisibleStats = (visibleStatKeys: string[]) => {
+  const selectVisibleStats = useCallback((visibleStatKeys: string[]) => {
     const visibleTypedStatKeys = visibleStatKeys.filter((statKey) =>
       availableStatKeySet.has(statKey as TeamStatKey),
     ) as TeamStatKey[];
 
-    setSelectedStatKeys((current) => [
-      ...current,
-      ...visibleTypedStatKeys.filter((statKey) => !current.includes(statKey)),
-    ]);
-  };
+    setSelectedStatKeys((current) => {
+      const currentStatKeySet = new Set(current);
 
-  const clearVisibleStats = (visibleStatKeys: string[]) => {
+      return [
+        ...current,
+        ...visibleTypedStatKeys.filter(
+          (statKey) => !currentStatKeySet.has(statKey),
+        ),
+      ];
+    });
+  }, [availableStatKeySet]);
+
+  const clearVisibleStats = useCallback((visibleStatKeys: string[]) => {
     const visibleStatKeySet = new Set(visibleStatKeys);
     setSelectedStatKeys((current) =>
       current.filter((statKey) => !visibleStatKeySet.has(statKey)),
     );
-  };
+  }, []);
 
-  const selectVisibleEntries = (visibleEntryIds: string[]) => {
-    setSelectedEntryIds((current) => [
-      ...current,
-      ...visibleEntryIds.filter((entryId) => !current.includes(entryId)),
-    ]);
-  };
+  const selectVisibleEntries = useCallback((visibleEntryIds: string[]) => {
+    setSelectedEntryIds((current) => {
+      const currentEntryIdSet = new Set(current);
 
-  const clearVisibleEntries = (visibleEntryIds: string[]) => {
+      return [
+        ...current,
+        ...visibleEntryIds.filter((entryId) => !currentEntryIdSet.has(entryId)),
+      ];
+    });
+  }, []);
+
+  const clearVisibleEntries = useCallback((visibleEntryIds: string[]) => {
     const visibleEntryIdSet = new Set(visibleEntryIds);
     setSelectedEntryIds((current) =>
       current.filter((entryId) => !visibleEntryIdSet.has(entryId)),
     );
-  };
+  }, []);
 
-  const handleMaxKChange = (value: string) => {
+  const handleMaxKChange = useCallback((value: string) => {
     setMaxK(Number(value));
-  };
+  }, []);
 
   return {
     selectedEntryIds,

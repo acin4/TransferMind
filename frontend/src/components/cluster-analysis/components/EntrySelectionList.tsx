@@ -1,5 +1,12 @@
-import { memo } from "react";
-import type { EntrySelectionListProps } from "../types";
+import {
+  memo,
+  useCallback,
+  useMemo,
+} from "react";
+import type {
+  EntrySelectionListProps,
+  ParallelCoordinatesPathRow,
+} from "../types";
 import { getClusterColor } from "../utils/clusterChartUtils";
 import {
   getAssignmentSeasonLabel,
@@ -50,43 +57,63 @@ export const EntrySelectionList = memo(function EntrySelectionList({
             No entries match the current filters.
           </p>
         ) : (
-          rows.map((row) => {
-            const isSelected = selectedEntryId === row.assignment.entryId;
-
-            return (
-              <button
-                key={`${row.assignment.entryId}-${row.index}-entry-button`}
-                type="button"
-                onClick={() => onSelect(row.assignment.entryId)}
-                className={`w-full rounded-xl border p-3 text-left transition-colors ${
-                  isSelected
-                    ? "border-blue-500/40 bg-blue-500/10"
-                    : "border-slate-800 bg-slate-950/45 hover:border-slate-700 hover:bg-slate-900/80"
-                }`}
-              >
-                <span className="block truncate text-xs font-black uppercase tracking-widest text-white">
-                  {row.assignment.teamName}
-                </span>
-                <span className="mt-1 block truncate text-[10px] font-black uppercase tracking-widest text-slate-500">
-                  {getAssignmentSeasonLabel(row.assignment)}
-                </span>
-                <span className="mt-1 block truncate text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  {getAssignmentTournamentLabel(row.assignment)}
-                </span>
-                <span className="mt-2 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-300">
-                  <span
-                    className="h-2.5 w-2.5 rounded-full"
-                    style={{
-                      backgroundColor: getClusterColor(row.assignment.clusterId),
-                    }}
-                  />
-                  Cluster {row.assignment.clusterId}
-                </span>
-              </button>
-            );
-          })
+          rows.map((row) => (
+            <EntrySelectionButton
+              key={`${row.assignment.entryId}-${row.index}-entry-button`}
+              row={row}
+              isSelected={selectedEntryId === row.assignment.entryId}
+              onSelect={onSelect}
+            />
+          ))
         )}
       </div>
     </div>
+  );
+});
+
+const EntrySelectionButton = memo(function EntrySelectionButton({
+  row,
+  isSelected,
+  onSelect,
+}: {
+  row: ParallelCoordinatesPathRow;
+  isSelected: boolean;
+  onSelect: (entryId: string) => void;
+}) {
+  const handleSelect = useCallback(() => {
+    onSelect(row.assignment.entryId);
+  }, [onSelect, row.assignment.entryId]);
+  const clusterDotStyle = useMemo(
+    () => ({ backgroundColor: getClusterColor(row.assignment.clusterId) }),
+    [row.assignment.clusterId],
+  );
+
+  return (
+    <button
+      type="button"
+      onClick={handleSelect}
+      className={`w-full rounded-xl border p-3 text-left transition-colors ${
+        isSelected
+          ? "border-blue-500/40 bg-blue-500/10"
+          : "border-slate-800 bg-slate-950/45 hover:border-slate-700 hover:bg-slate-900/80"
+      }`}
+    >
+      <span className="block truncate text-xs font-black uppercase tracking-widest text-white">
+        {row.assignment.teamName}
+      </span>
+      <span className="mt-1 block truncate text-[10px] font-black uppercase tracking-widest text-slate-500">
+        {getAssignmentSeasonLabel(row.assignment)}
+      </span>
+      <span className="mt-1 block truncate text-[10px] font-black uppercase tracking-widest text-slate-400">
+        {getAssignmentTournamentLabel(row.assignment)}
+      </span>
+      <span className="mt-2 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-300">
+        <span
+          className="h-2.5 w-2.5 rounded-full"
+          style={clusterDotStyle}
+        />
+        Cluster {row.assignment.clusterId}
+      </span>
+    </button>
   );
 });

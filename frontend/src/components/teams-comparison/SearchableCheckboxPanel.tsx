@@ -1,4 +1,11 @@
-import { useMemo, useState, type ReactNode } from "react";
+import {
+  memo,
+  useCallback,
+  useMemo,
+  useState,
+  type ChangeEvent,
+  type ReactNode,
+} from "react";
 import {
   Activity,
   BadgeAlert,
@@ -60,7 +67,7 @@ type SearchableCheckboxPanelProps = {
   maxHeightClassName?: string;
 };
 
-export default function SearchableCheckboxPanel({
+const SearchableCheckboxPanel = memo(function SearchableCheckboxPanel({
   title,
   subtitle,
   items,
@@ -77,21 +84,59 @@ export default function SearchableCheckboxPanel({
 }: SearchableCheckboxPanelProps) {
   const [query, setQuery] = useState("");
 
+  const selectedValueSet = useMemo(
+    () => new Set(selectedValues),
+    [selectedValues],
+  );
+
   const filteredItems = useMemo(() => {
     return filterAndRankSearchResults(items, query, (item) =>
       item.searchFields ?? [item.label, item.helperText, item.statKey, item.value],
     );
   }, [items, query]);
 
+  const visibleValues = useMemo(
+    () => filteredItems.map((item) => item.value),
+    [filteredItems],
+  );
+
+  const selectableItemsByValue = useMemo(
+    () =>
+      new Map(
+        (selectionItems ?? items).map((item) => [item.value, item]),
+      ),
+    [items, selectionItems],
+  );
+
   const selectedItems = useMemo(
     () =>
       selectedValues
-        .map((selectedValue) =>
-          (selectionItems ?? items).find((item) => item.value === selectedValue),
-        )
+        .map((selectedValue) => selectableItemsByValue.get(selectedValue))
         .filter((item): item is CheckboxItem => Boolean(item)),
-    [items, selectedValues, selectionItems],
+    [selectableItemsByValue, selectedValues],
   );
+
+  const handleQueryChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setQuery(event.target.value);
+  }, []);
+
+  const handleSelectVisible = useCallback(() => {
+    if (onSelectVisible) {
+      onSelectVisible(visibleValues);
+      return;
+    }
+
+    onSelectAll?.();
+  }, [onSelectAll, onSelectVisible, visibleValues]);
+
+  const handleClearVisible = useCallback(() => {
+    if (onClearVisible) {
+      onClearVisible(visibleValues);
+      return;
+    }
+
+    onClear?.();
+  }, [onClear, onClearVisible, visibleValues]);
 
   return (
     <section className="bg-slate-900/50 border border-slate-800 rounded-[2rem] p-5 shadow-xl">
@@ -108,11 +153,7 @@ export default function SearchableCheckboxPanel({
           {onSelectAll || onSelectVisible ? (
             <button
               type="button"
-              onClick={() =>
-                onSelectVisible
-                  ? onSelectVisible(filteredItems.map((item) => item.value))
-                  : onSelectAll?.()
-              }
+              onClick={handleSelectVisible}
               className="px-3 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[10px] font-black uppercase tracking-widest text-blue-400 hover:bg-blue-500/20 transition-colors"
             >
               All
@@ -121,11 +162,7 @@ export default function SearchableCheckboxPanel({
           {onClear || onClearVisible ? (
             <button
               type="button"
-              onClick={() =>
-                onClearVisible
-                  ? onClearVisible(filteredItems.map((item) => item.value))
-                  : onClear?.()
-              }
+              onClick={handleClearVisible}
               className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:text-white transition-colors"
             >
               Clear
@@ -142,7 +179,7 @@ export default function SearchableCheckboxPanel({
             <SelectionTag
               key={item.value}
               item={item}
-              onRemove={() => onToggle(item.value)}
+              onRemove={onToggle}
             />
           ))}
         </div>
@@ -154,7 +191,7 @@ export default function SearchableCheckboxPanel({
         </div>
         <input
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={handleQueryChange}
           placeholder={searchPlaceholder}
           className="w-full rounded-2xl border border-slate-800 bg-slate-950/70 py-3 pl-11 pr-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
         />
@@ -170,7 +207,7 @@ export default function SearchableCheckboxPanel({
         ) : (
           <div className="divide-y divide-slate-800/70">
             {filteredItems.map((item) => {
-              const isSelected = selectedValues.includes(item.value);
+              const isSelected = selectedValueSet.has(item.value);
 
               if (item.kind === "stat" || item.statKey) {
                 return (
@@ -178,7 +215,7 @@ export default function SearchableCheckboxPanel({
                     key={item.value}
                     item={item}
                     isSelected={isSelected}
-                    onToggle={() => onToggle(item.value)}
+                    onToggle={onToggle}
                   />
                 );
               }
@@ -188,7 +225,7 @@ export default function SearchableCheckboxPanel({
                   key={item.value}
                   item={item}
                   isSelected={isSelected}
-                  onToggle={() => onToggle(item.value)}
+                  onToggle={onToggle}
                 />
               );
             })}
@@ -197,18 +234,23 @@ export default function SearchableCheckboxPanel({
       </div>
     </section>
   );
-}
+});
 
-function SelectionTag({
+export default SearchableCheckboxPanel;
+
+const SelectionTag = memo(function SelectionTag({
   item,
   onRemove,
 }: {
   item: CheckboxItem;
-  onRemove: () => void;
+  onRemove: (value: string) => void;
 }) {
   const tagLabel = item.tagLabel ?? item.label;
   const tagHelperText =
     item.tagHelperText ?? (item.kind === "team-season" ? item.seasonLabel : null);
+  const handleRemove = useCallback(() => {
+    onRemove(item.value);
+  }, [item.value, onRemove]);
 
   return (
     <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-xs font-bold text-blue-100">
@@ -229,7 +271,7 @@ function SelectionTag({
       </span>
       <button
         type="button"
-        onClick={onRemove}
+        onClick={handleRemove}
         aria-label={`Remove ${tagLabel}`}
         className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-blue-200 transition-colors hover:bg-blue-400/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
       >
@@ -237,22 +279,26 @@ function SelectionTag({
       </button>
     </span>
   );
-}
+});
 
-function TeamSeasonOptionRow({
+const TeamSeasonOptionRow = memo(function TeamSeasonOptionRow({
   item,
   isSelected,
   onToggle,
 }: {
   item: CheckboxItem;
   isSelected: boolean;
-  onToggle: () => void;
+  onToggle: (value: string) => void;
 }) {
+  const handleToggle = useCallback(() => {
+    onToggle(item.value);
+  }, [item.value, onToggle]);
+
   return (
     <button
       type="button"
       aria-pressed={isSelected}
-      onClick={onToggle}
+      onClick={handleToggle}
       className={`flex w-full items-start gap-3 px-4 py-4 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 ${
         isSelected
           ? "bg-blue-500/10 hover:bg-blue-500/15"
@@ -263,22 +309,26 @@ function TeamSeasonOptionRow({
       <OptionText item={item} isSelected={isSelected} />
     </button>
   );
-}
+});
 
-function StatisticOptionRow({
+const StatisticOptionRow = memo(function StatisticOptionRow({
   item,
   isSelected,
   onToggle,
 }: {
   item: CheckboxItem;
   isSelected: boolean;
-  onToggle: () => void;
+  onToggle: (value: string) => void;
 }) {
+  const handleToggle = useCallback(() => {
+    onToggle(item.value);
+  }, [item.value, onToggle]);
+
   return (
     <button
       type="button"
       aria-pressed={isSelected}
-      onClick={onToggle}
+      onClick={handleToggle}
       className={`flex w-full items-start gap-3 px-4 py-4 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 ${
         isSelected
           ? "bg-blue-500/10 hover:bg-blue-500/15"
@@ -297,7 +347,7 @@ function StatisticOptionRow({
       <OptionText item={item} isSelected={isSelected} />
     </button>
   );
-}
+});
 
 function OptionText({
   item,

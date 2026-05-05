@@ -181,6 +181,7 @@ export type ParallelCoordinatesPathRow = {
   path: string;
   points: ParallelCoordinatesPoint[];
   pointsByStatKey: Partial<Record<TeamStatKey, ParallelCoordinatesPoint>>;
+  searchText: string;
 };
 
 export type ClusterTeamSeasonEntry = TeamSeasonStatEntry & {

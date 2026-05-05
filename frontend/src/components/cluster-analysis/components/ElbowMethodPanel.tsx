@@ -1,4 +1,9 @@
 import {
+  memo,
+  useCallback,
+  useMemo,
+} from "react";
+import {
   CartesianGrid,
   Line,
   LineChart,
@@ -20,7 +25,7 @@ type ElbowMethodPanelComponentProps = ElbowMethodPanelProps & {
   elbowResult: TeamClusterElbowPayload;
 };
 
-export function ElbowMethodPanel({
+export const ElbowMethodPanel = memo(function ElbowMethodPanel({
   elbowResult,
   selectedK,
   kOptions,
@@ -28,6 +33,24 @@ export function ElbowMethodPanel({
   onSelectedKChange,
   onRunClusters,
 }: ElbowMethodPanelComponentProps) {
+  const kSelectOptions = useMemo(
+    () =>
+      kOptions.map((value) => ({
+        value,
+        label:
+          value === elbowResult.suggestedK
+            ? `${value} suggested`
+            : String(value),
+      })),
+    [elbowResult.suggestedK, kOptions],
+  );
+  const handleSelectedKChange = useCallback(
+    (value: string) => {
+      onSelectedKChange(Number(value));
+    },
+    [onSelectedKChange],
+  );
+
   return (
     <section className="bg-slate-900/50 border border-slate-800 rounded-[2.5rem] p-6 md:p-8 shadow-2xl">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between mb-6">
@@ -43,14 +66,8 @@ export function ElbowMethodPanel({
           <SelectField
             label="Final K"
             value={selectedK ?? ""}
-            onChange={(value) => onSelectedKChange(Number(value))}
-            options={kOptions.map((value) => ({
-              value,
-              label:
-                value === elbowResult.suggestedK
-                  ? `${value} suggested`
-                  : String(value),
-            }))}
+            onChange={handleSelectedKChange}
+            options={kSelectOptions}
           />
           <button
             type="button"
@@ -124,7 +141,7 @@ export function ElbowMethodPanel({
       </div>
     </section>
   );
-}
+});
 
 function ElbowTooltip({
   active,

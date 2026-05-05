@@ -108,6 +108,10 @@ export const ClusterAverageProfilesChart = memo(function ClusterAverageProfilesC
   const clearAverageCluster = useCallback(() => {
     setSelectedAverageClusterId(null);
   }, []);
+  const yTickRows = useMemo(
+    () => CHART_Y_TICKS.map((tick) => ({ tick, y: getY(tick) })),
+    [getY],
+  );
 
   useEffect(() => {
     if (
@@ -154,19 +158,19 @@ export const ClusterAverageProfilesChart = memo(function ClusterAverageProfilesC
             className="h-[360px] max-w-none"
             style={svgStyle}
           >
-            {CHART_Y_TICKS.map((tick) => (
+            {yTickRows.map(({ tick, y }) => (
               <g key={tick}>
                 <line
                   x1={CHART_MARGIN.left}
                   x2={width - CHART_MARGIN.right}
-                  y1={getY(tick)}
-                  y2={getY(tick)}
+                  y1={y}
+                  y2={y}
                   stroke="#1e293b"
                   strokeDasharray={tick === 0 || tick === 1 ? "0" : "3 3"}
                 />
                 <text
                   x={CHART_MARGIN.left - 12}
-                  y={getY(tick) + 4}
+                  y={y + 4}
                   textAnchor="end"
                   fill="#64748b"
                   fontSize="11"
