@@ -5,6 +5,7 @@ import type {
 import type { TeamStatKey } from "../../../teamStatsConfig";
 import type { TeamSeasonStatEntry } from "../../../utils/teamsComparison";
 import type {
+  ClusterGroup,
   ClusterLegendItem,
   ClusterProfile,
   ClusterTeamSeasonEntry,
@@ -18,7 +19,7 @@ import { getSafeStatLabel } from "./clusterFormatters";
 export function buildClusterGroups(
   assignments: TeamClusterAssignment[],
   k: number,
-) {
+): ClusterGroup[] {
   const assignmentsByCluster = new Map<number, TeamClusterAssignment[]>();
 
   Array.from({ length: k }, (_, index) => index + 1).forEach((clusterId) => {

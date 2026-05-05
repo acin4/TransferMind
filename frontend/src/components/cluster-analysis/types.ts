@@ -112,7 +112,7 @@ export type SelectedEntryDetailsPanelProps = {
 };
 
 export type ClusterMembershipSummaryProps = {
-  clusters: Array<{ clusterId: number; members: TeamClusterAssignment[] }>;
+  clusters: ClusterGroup[];
 };
 
 export type ClusterFilterControlsProps = {
@@ -142,6 +142,11 @@ export type ClusterProfile = {
   averages: Partial<Record<TeamStatKey, number>>;
   strongest: ClusterInsightStat[];
   weakest: ClusterInsightStat[];
+};
+
+export type ClusterGroup = {
+  clusterId: number;
+  members: TeamClusterAssignment[];
 };
 
 export type ClusterInsightStat = {

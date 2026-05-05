@@ -31,11 +31,10 @@ import {
 } from "../cluster-analysis/components";
 import {
   areStatKeyArraysEqual,
-  buildClusterGroups,
-  buildClusterProfiles,
   hasClusterEntryIds,
   sanitizeSelectedStatKeys,
 } from "../cluster-analysis/utils/clusterAnalysisUtils";
+import { useClusterProfiles } from "../cluster-analysis/hooks/useClusterProfiles";
 import {
   getErrorMessage,
   getSafeStatLabel,
@@ -356,26 +355,10 @@ export default function ClusterAnalysisTab({
       }),
     [maxAllowedK],
   );
-  const clusterAssignments = clusterResult?.assignments;
-  const clusterK = clusterResult?.k ?? 0;
-  const clusters = useMemo(() => {
-    if (!clusterAssignments) {
-      return [];
-    }
-
-    return buildClusterGroups(clusterAssignments, clusterK);
-  }, [clusterAssignments, clusterK]);
-  const clusterProfiles = useMemo(() => {
-    if (!clusterAssignments) {
-      return [];
-    }
-
-    return buildClusterProfiles(
-      clusterAssignments,
-      cleanedSelectedStatKeys,
-      clusterK,
-    );
-  }, [cleanedSelectedStatKeys, clusterAssignments, clusterK]);
+  const { clusters, clusterProfiles } = useClusterProfiles(
+    clusterResult,
+    cleanedSelectedStatKeys,
+  );
 
   return (
     <div className="space-y-6">
