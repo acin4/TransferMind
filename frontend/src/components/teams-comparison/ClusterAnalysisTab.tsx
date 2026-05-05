@@ -19,19 +19,11 @@ import {
 import {
   calculateTeamClusterElbow,
   runTeamClusters,
-  type TeamClusterAssignment,
   type TeamClusterEntryRequest,
   type TeamClusterElbowPayload,
   type TeamClusterRunPayload,
 } from "../../api/api";
-import {
-  formatRawStatValue,
-  type TeamSeasonStatEntry,
-} from "../../utils/teamsComparison";
-import {
-  getTeamStatMeta,
-  type TeamStatKey,
-} from "../../teamStatsConfig";
+import type { TeamStatKey } from "../../teamStatsConfig";
 import {
   ALL_STAT_CATEGORIES,
   filterTeamStatItemsByCategory,
@@ -47,21 +39,41 @@ import SearchableCheckboxPanel from "./SearchableCheckboxPanel";
 import StatCategoryFilterTabs from "./StatCategoryFilterTabs";
 import SegmentedTabs from "../ui/SegmentedTabs";
 import {
-  CLUSTER_COLORS,
   CHART_Y_TICKS,
   CHART_MARGIN,
   CLUSTER_AVERAGE_CHART_HEIGHT,
   PARALLEL_COORDINATES_CHART_HEIGHT,
-  MIN_CHART_WIDTH,
-  STAT_AXIS_WIDTH,
 } from "../cluster-analysis/constants";
+import {
+  areStatKeyArraysEqual,
+  buildClusterGroups,
+  buildClusterProfiles,
+  getClusterFilterOptions,
+  hasClusterEntryIds,
+  sanitizeSelectedStatKeys,
+} from "../cluster-analysis/utils/clusterAnalysisUtils";
+import {
+  buildXCoordinates,
+  getChartWidth,
+  getClusterColor,
+  getNormalizedDisplayValue,
+} from "../cluster-analysis/utils/clusterChartUtils";
+import {
+  buildStatDisplayItems,
+  formatDisplayRawStatValue,
+  formatInsightLabels,
+  formatNormalizedStatValue,
+  getAssignmentSearchText,
+  getAssignmentSeasonLabel,
+  getAssignmentTournamentLabel,
+  getClusterFilterButtonClass,
+  getErrorMessage,
+  getSafeStatLabel,
+  safeCompareLabels,
+} from "../cluster-analysis/utils/clusterFormatters";
 import type {
   ClusterAnalysisTabProps,
-  ClusterProfile,
-  ClusterInsightStat,
-  ClusterLegendItem,
   ClusterFilterValue,
-  StatDisplayItem,
   ParallelCoordinatesPoint,
   ParallelCoordinatesPathRow,
   ClusterTeamSeasonEntry,
@@ -1635,241 +1647,4 @@ function ElbowTooltip({
       </div>
     </div>
   );
-}
-
-function buildClusterGroups(
-  assignments: TeamClusterAssignment[],
-  k: number,
-) {
-  const assignmentsByCluster = new Map<number, TeamClusterAssignment[]>();
-
-  Array.from({ length: k }, (_, index) => index + 1).forEach((clusterId) => {
-    assignmentsByCluster.set(clusterId, []);
-  });
-
-  assignments.forEach((assignment) => {
-    const members = assignmentsByCluster.get(assignment.clusterId) ?? [];
-    members.push(assignment);
-    assignmentsByCluster.set(assignment.clusterId, members);
-  });
-
-  return Array.from(assignmentsByCluster.entries())
-    .sort(([leftClusterId], [rightClusterId]) => leftClusterId - rightClusterId)
-    .map(([clusterId, members]) => ({
-      clusterId,
-      members,
-    }));
-}
-
-function buildClusterProfiles(
-  assignments: TeamClusterAssignment[],
-  statKeys: TeamStatKey[],
-  k: number,
-): ClusterProfile[] {
-  return buildClusterGroups(assignments, k)
-    .map(({ clusterId, members }) => {
-      const averages = Object.fromEntries(
-        statKeys.map((statKey) => {
-          const total = members.reduce(
-            (sum, assignment) =>
-              sum + getNormalizedDisplayValue(assignment.normalizedStats?.[statKey]),
-            0,
-          );
-          const average = members.length > 0 ? total / members.length : 0;
-
-          return [statKey, Number(clamp01(average).toFixed(6))];
-        }),
-      ) as Partial<Record<TeamStatKey, number>>;
-      const { strongest, weakest } = getClusterInsightStats(averages, statKeys);
-
-      return {
-        clusterId,
-        members,
-        averages,
-        strongest,
-        weakest,
-      };
-    });
-}
-
-function getClusterInsightStats(
-  averages: Partial<Record<TeamStatKey, number>>,
-  statKeys: TeamStatKey[],
-) {
-  const rankedStats = statKeys.map((statKey, index) => ({
-    statKey,
-    label: getSafeStatLabel(statKey),
-    value: getNormalizedDisplayValue(averages[statKey]),
-    index,
-  }));
-  const strongest = rankedStats
-    .slice()
-    .sort((left, right) => right.value - left.value || left.index - right.index)
-    .slice(0, Math.min(2, rankedStats.length));
-  const strongestKeys = new Set(strongest.map((stat) => stat.statKey));
-  const weakest = rankedStats
-    .filter((stat) => !strongestKeys.has(stat.statKey))
-    .sort((left, right) => left.value - right.value || left.index - right.index)
-    .slice(0, Math.min(2, Math.max(0, rankedStats.length - strongest.length)));
-
-  return {
-    strongest: strongest.map((stat) => ({
-      statKey: stat.statKey,
-      label: stat.label,
-      value: stat.value,
-    })),
-    weakest: weakest.map((stat) => ({
-      statKey: stat.statKey,
-      label: stat.label,
-      value: stat.value,
-    })),
-  };
-}
-
-function formatInsightLabels(stats: ClusterInsightStat[]) {
-  if (stats.length === 0) {
-    return "—";
-  }
-
-  return stats.map((stat) => stat.label).join(", ");
-}
-
-function getClusterFilterOptions(result: TeamClusterRunPayload): ClusterLegendItem[] {
-  return Array.from({ length: result.k }, (_, index) => ({
-    clusterId: index + 1,
-  })).sort((left, right) => left.clusterId - right.clusterId);
-}
-
-function getClusterFilterButtonClass(isActive: boolean) {
-  const baseClass =
-    "inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-colors";
-
-  return isActive
-    ? `${baseClass} border-blue-500/30 bg-blue-600 text-white shadow-[0_0_18px_rgba(37,99,235,0.25)]`
-    : `${baseClass} border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700 hover:bg-slate-900 hover:text-slate-100`;
-}
-
-function hasClusterEntryIds(
-  entry: TeamSeasonStatEntry,
-): entry is ClusterTeamSeasonEntry {
-  return (
-    Number.isInteger(entry.teamId) &&
-    Number.isInteger(entry.tournamentId) &&
-    Number.isInteger(entry.seasonId)
-  );
-}
-
-function sanitizeSelectedStatKeys(
-  statKeys: TeamStatKey[],
-  availableStatKeys: Set<TeamStatKey>,
-) {
-  const cleanedStatKeys: TeamStatKey[] = [];
-
-  statKeys.forEach((statKey) => {
-    if (
-      availableStatKeys.has(statKey) &&
-      !cleanedStatKeys.includes(statKey)
-    ) {
-      cleanedStatKeys.push(statKey);
-    }
-  });
-
-  return cleanedStatKeys;
-}
-
-function areStatKeyArraysEqual(left: TeamStatKey[], right: TeamStatKey[]) {
-  return (
-    left.length === right.length &&
-    left.every((statKey, index) => statKey === right[index])
-  );
-}
-
-function getErrorMessage(error: unknown) {
-  return error instanceof Error
-    ? error.message
-    : "Unable to complete cluster analysis.";
-}
-
-function getSafeStatLabel(statKey: TeamStatKey) {
-  return getTeamStatMeta(statKey)?.label ?? String(statKey);
-}
-
-function getAssignmentSeasonLabel(assignment: TeamClusterAssignment) {
-  return assignment.seasonName || `Season ${assignment.seasonId}`;
-}
-
-function getAssignmentTournamentLabel(assignment: TeamClusterAssignment) {
-  return assignment.tournamentName ?? "Unknown league";
-}
-
-function getAssignmentSearchText(assignment: TeamClusterAssignment) {
-  return [
-    assignment.teamName,
-    getAssignmentSeasonLabel(assignment),
-    getAssignmentTournamentLabel(assignment),
-    `Cluster ${assignment.clusterId}`,
-  ]
-    .join(" ")
-    .toLowerCase();
-}
-
-function getClusterColor(clusterId: number) {
-  return CLUSTER_COLORS[(clusterId - 1) % CLUSTER_COLORS.length];
-}
-
-function clamp01(value: number) {
-  if (!Number.isFinite(value)) {
-    return 0;
-  }
-
-  return Math.max(0, Math.min(1, value));
-}
-
-function getNormalizedDisplayValue(value: number | null | undefined) {
-  return clamp01(Number(value ?? 0));
-}
-
-function formatDisplayRawStatValue(
-  value: number | null | undefined,
-  statKey: TeamStatKey,
-) {
-  return value == null ? "—" : formatRawStatValue(value, statKey);
-}
-
-function truncateLabel(value: string, maxLength: number) {
-  return value.length > maxLength
-    ? `${value.slice(0, maxLength - 1)}...`
-    : value;
-}
-
-function buildStatDisplayItems(statKeys: TeamStatKey[]): StatDisplayItem[] {
-  return statKeys.map((statKey) => {
-    const label = getSafeStatLabel(statKey);
-
-    return {
-      statKey,
-      label,
-      shortLabel: truncateLabel(label, 14),
-    };
-  });
-}
-
-function getChartWidth(statCount: number) {
-  return Math.max(MIN_CHART_WIDTH, statCount * STAT_AXIS_WIDTH);
-}
-
-function buildXCoordinates(statCount: number, plotWidth: number) {
-  return Array.from(
-    { length: statCount },
-    (_, index) =>
-      CHART_MARGIN.left + (plotWidth * index) / Math.max(1, statCount - 1),
-  );
-}
-
-function formatNormalizedStatValue(value: number | null | undefined) {
-  return clamp01(Number(value ?? 0)).toFixed(3);
-}
-
-function safeCompareLabels(left: string | null | undefined, right: string | null | undefined) {
-  return String(left ?? "").localeCompare(String(right ?? ""));
 }
