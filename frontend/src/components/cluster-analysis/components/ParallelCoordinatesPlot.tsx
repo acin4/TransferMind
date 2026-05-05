@@ -12,7 +12,10 @@ import {
   CHART_MARGIN,
   PARALLEL_COORDINATES_CHART_HEIGHT,
 } from "../constants";
-import { getClusterFilterOptions } from "../utils/clusterAnalysisUtils";
+import {
+  getClusterFilterOptions,
+  toggleSelection,
+} from "../utils/clusterAnalysisUtils";
 import {
   buildXCoordinates,
   getChartWidth,
@@ -174,7 +177,7 @@ export const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
   const hasVisibleRows = searchedEntryRows.length > 0;
   const selectDetailEntry = useCallback((entryId: string) => {
     setSelectedParallelEntryIds((current) =>
-      toggleStringSelection(entryId, current),
+      toggleSelection(entryId, current),
     );
   }, []);
   const clearDetailEntry = useCallback(() => {
@@ -191,7 +194,7 @@ export const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
   }, []);
   const toggleClusterFilter = useCallback((clusterId: number) => {
     setSelectedParallelClusterIds((current) =>
-      toggleNumberSelection(clusterId, current),
+      toggleSelection(clusterId, current),
     );
   }, []);
   const clearClusterFilter = useCallback(() => {
@@ -379,15 +382,3 @@ export const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
     </div>
   );
 });
-
-function toggleStringSelection(value: string, selected: string[]): string[] {
-  return selected.includes(value)
-    ? selected.filter((item) => item !== value)
-    : [...selected, value];
-}
-
-function toggleNumberSelection(value: number, selected: number[]): number[] {
-  return selected.includes(value)
-    ? selected.filter((item) => item !== value)
-    : [...selected, value];
-}

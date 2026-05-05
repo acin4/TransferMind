@@ -10,6 +10,7 @@ import {
   CHART_MARGIN,
   CLUSTER_AVERAGE_CHART_HEIGHT,
 } from "../constants";
+import { toggleSelection } from "../utils/clusterAnalysisUtils";
 import {
   buildXCoordinates,
   getChartWidth,
@@ -108,7 +109,7 @@ export const ClusterAverageProfilesChart = memo(function ClusterAverageProfilesC
   );
   const selectAverageCluster = useCallback((clusterId: number) => {
     setSelectedAverageClusterIds((current) =>
-      toggleNumberSelection(clusterId, current),
+      toggleSelection(clusterId, current),
     );
   }, []);
   const clearAverageCluster = useCallback(() => {
@@ -264,9 +265,3 @@ export const ClusterAverageProfilesChart = memo(function ClusterAverageProfilesC
     </div>
   );
 });
-
-function toggleNumberSelection(value: number, selected: number[]): number[] {
-  return selected.includes(value)
-    ? selected.filter((item) => item !== value)
-    : [...selected, value];
-}

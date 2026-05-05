@@ -145,3 +145,9 @@ export function areStatKeyArraysEqual(left: TeamStatKey[], right: TeamStatKey[])
     left.every((statKey, index) => statKey === right[index])
   );
 }
+
+export function toggleSelection<T>(value: T, selected: T[]): T[] {
+  return selected.includes(value)
+    ? selected.filter((item) => item !== value)
+    : [...selected, value];
+}

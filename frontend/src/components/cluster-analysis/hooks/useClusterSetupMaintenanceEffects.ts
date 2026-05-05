@@ -11,11 +11,9 @@ export type UseClusterSetupMaintenanceEffectsParams = {
   clusterEntries: ClusterTeamSeasonEntry[];
   cleanedSelectedStatKeys: TeamStatKey[];
   maxAllowedK: number;
-  selectedEntryIds: string[];
   setSelectedEntryIds: Dispatch<SetStateAction<string[]>>;
   selectedStatKeys: TeamStatKey[];
   setSelectedStatKeys: Dispatch<SetStateAction<TeamStatKey[]>>;
-  maxK: number;
   setMaxK: Dispatch<SetStateAction<number>>;
 };
 

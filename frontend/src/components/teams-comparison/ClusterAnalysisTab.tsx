@@ -62,11 +62,9 @@ export default function ClusterAnalysisTab({
     clusterEntries,
     cleanedSelectedStatKeys,
     maxAllowedK,
-    selectedEntryIds,
     setSelectedEntryIds,
     selectedStatKeys,
     setSelectedStatKeys,
-    maxK,
     setMaxK,
   });
 

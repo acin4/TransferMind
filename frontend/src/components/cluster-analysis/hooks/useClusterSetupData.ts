@@ -39,8 +39,6 @@ export type UseClusterSetupDataResult = {
   selectedEntries: ClusterTeamSeasonEntry[];
   selectedTeamSeasonEntries: TeamClusterEntryRequest[];
   maxAllowedK: number;
-  availableStatKeys: TeamStatKey[];
-  availableStatKeySet: Set<TeamStatKey>;
   cleanedSelectedStatKeys: TeamStatKey[];
   statOptions: ClusterSetupOption<TeamStatKey>[];
   categoryFilteredStatOptions: ClusterSetupOption<TeamStatKey>[];
@@ -203,8 +201,6 @@ export function useClusterSetupData({
     selectedEntries,
     selectedTeamSeasonEntries,
     maxAllowedK,
-    availableStatKeys,
-    availableStatKeySet,
     cleanedSelectedStatKeys,
     statOptions,
     categoryFilteredStatOptions,
