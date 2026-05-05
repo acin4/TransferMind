@@ -6,19 +6,16 @@ import {
 import {
   calculateTeamClusterElbow,
   runTeamClusters,
-  type TeamClusterEntryRequest,
   type TeamClusterElbowPayload,
   type TeamClusterRunPayload,
 } from "../../api/api";
 import type { TeamStatKey } from "../../teamStatsConfig";
 import {
   ALL_STAT_CATEGORIES,
-  filterTeamStatItemsByCategory,
   type StatCategoryFilterId,
 } from "../../utils/statCategories";
 import {
   ALL_COUNTRIES_TAB,
-  filterItemsByCountry,
   type CountryFilterTab,
 } from "../../utils/countryFilters";
 import {
@@ -29,22 +26,11 @@ import {
   MessageBox,
   ParallelCoordinatesPlot,
 } from "../cluster-analysis/components";
-import {
-  areStatKeyArraysEqual,
-  hasClusterEntryIds,
-  sanitizeSelectedStatKeys,
-} from "../cluster-analysis/utils/clusterAnalysisUtils";
+import { areStatKeyArraysEqual } from "../cluster-analysis/utils/clusterAnalysisUtils";
 import { useClusterProfiles } from "../cluster-analysis/hooks/useClusterProfiles";
-import {
-  getErrorMessage,
-  getSafeStatLabel,
-  safeCompareLabels,
-} from "../cluster-analysis/utils/clusterFormatters";
-import type {
-  ClusterAnalysisTabProps,
-  ClusterSetupOption,
-  ClusterTeamSeasonEntry,
-} from "../cluster-analysis/types";
+import { useClusterSetupData } from "../cluster-analysis/hooks/useClusterSetupData";
+import { getErrorMessage } from "../cluster-analysis/utils/clusterFormatters";
+import type { ClusterAnalysisTabProps } from "../cluster-analysis/types";
 
 export default function ClusterAnalysisTab({
   entries,
@@ -66,132 +52,27 @@ export default function ClusterAnalysisTab({
   const [loadingClusters, setLoadingClusters] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
 
-  const clusterEntries = useMemo(
-    () => entries.filter(hasClusterEntryIds),
-    [entries],
-  );
-
-  const entryOptions = useMemo<ClusterSetupOption[]>(
-    () =>
-      clusterEntries
-        .map((entry) => ({
-          value: entry.id,
-          label: entry.teamName || entry.label,
-          helperText: [
-            entry.seasonName || `Season ${entry.seasonId}`,
-            entry.tournamentName ?? "Unknown league",
-          ].join(" • "),
-          kind: "team-season" as const,
-          logoUrl: entry.teamLogo,
-          country: entry.country ?? null,
-          seasonLabel: entry.seasonName,
-          tagLabel: entry.teamName || entry.label,
-          tagHelperText: entry.seasonName,
-          searchFields: [
-            entry.teamName,
-            entry.label,
-            entry.seasonName,
-            entry.seasonId,
-            entry.tournamentName,
-            entry.tournamentId,
-            entry.stageLabel,
-            entry.stageName,
-            entry.groupName,
-            entry.standingGroupId,
-            entry.stageTournamentId,
-            entry.country,
-          ],
-        }))
-        .sort((a, b) => safeCompareLabels(a.label, b.label)),
-    [clusterEntries],
-  );
-
-  const countryFilteredEntryOptions = useMemo(() => {
-    return filterItemsByCountry(entryOptions, selectedCountryFilter);
-  }, [entryOptions, selectedCountryFilter]);
-
-  const entriesById = useMemo(
-    () => new Map(clusterEntries.map((entry) => [entry.id, entry])),
-    [clusterEntries],
-  );
-
-  const selectedEntries = useMemo(
-    () =>
-      selectedEntryIds
-        .map((entryId) => entriesById.get(entryId))
-        .filter((entry): entry is ClusterTeamSeasonEntry => Boolean(entry)),
-    [entriesById, selectedEntryIds],
-  );
-
-  const selectedTeamSeasonEntries = useMemo<TeamClusterEntryRequest[]>(
-    () =>
-      selectedEntries.map((entry) => ({
-        teamId: entry.teamId,
-        tournamentId: entry.tournamentId,
-        seasonId: entry.seasonId,
-      })),
-    [selectedEntries],
-  );
-
-  const maxAllowedK = Math.max(2, Math.min(20, selectedEntries.length));
-
-  const availableStatKeys = useMemo(() => {
-    return supportedStatKeys
-      .filter((statKey) => Boolean(statKey))
-      .sort((a, b) =>
-        safeCompareLabels(getSafeStatLabel(a), getSafeStatLabel(b)),
-      );
-  }, [supportedStatKeys]);
-
-  const availableStatKeySet = useMemo(
-    () => new Set(availableStatKeys),
-    [availableStatKeys],
-  );
-
-  const cleanedSelectedStatKeys = useMemo(
-    () => sanitizeSelectedStatKeys(selectedStatKeys, availableStatKeySet),
-    [availableStatKeySet, selectedStatKeys],
-  );
-
-  const statOptions = useMemo<ClusterSetupOption<TeamStatKey>[]>(
-    () =>
-      availableStatKeys
-        .map((statKey) => ({
-          value: statKey,
-          label: getSafeStatLabel(statKey),
-          helperText: statKey,
-          kind: "stat" as const,
-          statKey,
-          searchFields: [getSafeStatLabel(statKey), statKey],
-        }))
-        .filter(
-          (option) =>
-            option &&
-            option.value &&
-            typeof option.label === "string" &&
-            option.label.trim().length > 0,
-        ),
-    [availableStatKeys],
-  );
-
-  const categoryFilteredStatOptions = useMemo(() => {
-    return filterTeamStatItemsByCategory(statOptions, selectedStatCategory);
-  }, [selectedStatCategory, statOptions]);
-
-  const validationMessage = useMemo(() => {
-    if (selectedEntries.length < 3) {
-      return "Select at least three team-season entries.";
-    }
-
-    if (cleanedSelectedStatKeys.length < 2) {
-      return "Select at least two statistics.";
-    }
-
-    return null;
-  }, [
-    cleanedSelectedStatKeys.length,
-    selectedEntries.length,
-  ]);
+  const {
+    clusterEntries,
+    entryOptions,
+    countryFilteredEntryOptions,
+    selectedEntries,
+    selectedTeamSeasonEntries,
+    maxAllowedK,
+    availableStatKeySet,
+    cleanedSelectedStatKeys,
+    statOptions,
+    categoryFilteredStatOptions,
+    validationMessage,
+    maxKOptions,
+  } = useClusterSetupData({
+    entries,
+    statKeys: supportedStatKeys,
+    selectedEntryIds,
+    selectedStatKeys,
+    countryFilter: selectedCountryFilter,
+    statCategoryFilter: selectedStatCategory,
+  });
 
   useEffect(() => {
     const availableEntryIds = new Set(clusterEntries.map((entry) => entry.id));
@@ -342,18 +223,6 @@ export default function ClusterAnalysisTab({
         ? Array.from({ length: elbowResult.maxK - 1 }, (_, index) => index + 2)
         : [],
     [elbowResult],
-  );
-  const maxKOptions = useMemo(
-    () =>
-      Array.from({ length: maxAllowedK - 1 }, (_, index) => {
-        const value = index + 2;
-
-        return {
-          value,
-          label: String(value),
-        };
-      }),
-    [maxAllowedK],
   );
   const { clusters, clusterProfiles } = useClusterProfiles(
     clusterResult,
