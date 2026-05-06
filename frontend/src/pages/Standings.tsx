@@ -17,11 +17,15 @@ import type {
 } from "../components/standings/types";
 import { filterAndRankSearchResults } from "../utils/search";
 
+// Minimal tournament record returned by the current-tournaments endpoint.
+// The page later converts these records into dropdown options.
 type TournamentSeasonRecord = {
   tournament_id: number;
   tournament_name?: string | null;
 };
 
+// Reads optional numeric values from URL search params.
+// Invalid or missing values become null so state never receives NaN.
 function parseOptionalNumber(value: string | null) {
   if (value == null) {
     return null;
@@ -31,8 +35,14 @@ function parseOptionalNumber(value: string | null) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+// Standings is the page for selecting a tournament/season and viewing the table.
+// It keeps the selected ids in both React state and URL search params.
 export default function Standings() {
+  // useSearchParams lets the page read and update query-string values like
+  // ?tournamentId=...&seasonId=...
   const [searchParams, setSearchParams] = useSearchParams();
+  // Store the first URL selection in a ref so it stays stable across re-renders.
+  // This is used to restore direct links into a specific standings view.
   const initialSelectionRef = useRef({
     tournamentId: parseOptionalNumber(searchParams.get("tournamentId")),
     seasonId: parseOptionalNumber(searchParams.get("seasonId")),
@@ -40,26 +50,35 @@ export default function Standings() {
     stageTournamentId: parseOptionalNumber(searchParams.get("stageTournamentId")),
     tournamentName: searchParams.get("tournamentName")?.trim() || null,
   });
+  // This ref ensures the legacy group/stage URL selection is applied only once.
   const initialGroupSelectionConsumedRef = useRef(false);
 
+  // Data loaded from the backend.
   const [tournaments, setTournaments] = useState<TournamentSeasonRecord[]>([]);
   const [availableSeasons, setAvailableSeasons] = useState<SeasonOption[]>([]);
   const [standingsGroups, setStandingsGroups] = useState<StandingsGroup[]>([]);
+  // Page-level request state.
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Current UI selections.
   const [selectedLeagueId, setSelectedLeagueId] = useState<number | null>(null);
   const [selectedSeasonId, setSelectedSeasonId] = useState<number | null>(null);
   const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null);
+  // Search text for filtering rows inside the selected standings table.
   const [standingsSearchQuery, setStandingsSearchQuery] = useState("");
 
+  // First load: fetch tournaments that have current/available seasons.
   useEffect(() => {
     const fetchTournaments = async () => {
       try {
+        // Backend returns tournaments that can be used in the standings filters.
         const data = await getCurrentTournaments();
 
         if (data && data.length > 0) {
           setTournaments(data);
+          // Prefer the tournament from the URL. If there is none, default to the
+          // first tournament returned by the backend.
           setSelectedLeagueId(
             initialSelectionRef.current.tournamentId ?? data[0].tournament_id,
           );
@@ -81,23 +100,29 @@ export default function Standings() {
     fetchTournaments();
   }, []);
 
+  // Second load: whenever the selected tournament changes, fetch its seasons.
   useEffect(() => {
     if (!selectedLeagueId) {
+      // Without a tournament, there are no seasons or standings to show.
       setAvailableSeasons([]);
       setSelectedSeasonId(null);
       setLoading(false);
       return;
     }
 
+    // cancelled prevents stale season requests from updating state after the
+    // selected tournament changes quickly.
     let cancelled = false;
 
     setLoading(true);
     setError(null);
+    // Clear previous standings while new season options are loading.
     setStandingsGroups([]);
     setSelectedGroupKey(null);
 
     const fetchSeasons = async () => {
       try {
+        // Backend seasons for the selected tournament.
         const seasons = await getTournamentSeasons(selectedLeagueId);
 
         if (cancelled) {
@@ -105,6 +130,7 @@ export default function Standings() {
         }
 
         const nextSeasons: SeasonOption[] = seasons || [];
+        // If the URL requested a season for this same tournament, try to restore it.
         const requestedSeason =
           selectedLeagueId === initialSelectionRef.current.tournamentId
             ? nextSeasons.find(
@@ -112,6 +138,7 @@ export default function Standings() {
                   season.season_id === initialSelectionRef.current.seasonId,
               )
             : null;
+        // Otherwise prefer the current season, then the first available season.
         const defaultSeason =
           requestedSeason ??
           nextSeasons.find((season) => season.is_current) ??
@@ -141,18 +168,24 @@ export default function Standings() {
     fetchSeasons();
 
     return () => {
+      // Mark this seasons request as stale.
       cancelled = true;
     };
   }, [selectedLeagueId]);
 
+  // Third load: whenever tournament and season are selected, fetch standings.
   useEffect(() => {
     if (!selectedLeagueId || !selectedSeasonId) {
+      // Both ids are required for a standings request.
       setStandingsGroups([]);
       setSelectedGroupKey(null);
       return;
     }
 
+    // cancelled prevents an old standings request from overwriting newer results.
     let cancelled = false;
+    // Older URLs may include a specific group/stage. Restore it only for the
+    // initial tournament/season combination.
     const hasInitialGroupSelection =
       initialSelectionRef.current.standingGroupId != null ||
       initialSelectionRef.current.stageTournamentId != null;
@@ -166,6 +199,7 @@ export default function Standings() {
     getStandings(
       selectedLeagueId,
       selectedSeasonId,
+      // Send group/stage ids only for the first legacy restoration request.
       shouldUseLegacyGroupSelection
         ? {
             standingGroupId: initialSelectionRef.current.standingGroupId,
@@ -180,10 +214,12 @@ export default function Standings() {
 
         const nextGroups = data?.groups ?? [];
         if (import.meta.env.DEV) {
+          // Development-only visibility into the backend response shape.
           console.debug("[Standings] API groups", nextGroups);
         }
 
         setStandingsGroups(nextGroups);
+        // The backend can choose the best default/selected group key.
         setSelectedGroupKey(data?.selectedGroupKey ?? null);
         initialGroupSelectionConsumedRef.current =
           initialGroupSelectionConsumedRef.current ||
@@ -207,15 +243,18 @@ export default function Standings() {
       });
 
     return () => {
+      // Mark this standings request as stale.
       cancelled = true;
     };
   }, [selectedLeagueId, selectedSeasonId]);
 
+  // Convert raw tournament rows into unique dropdown options.
   const uniqueLeagues = useMemo<TournamentOption[]>(() => {
     if (!tournaments || tournaments.length === 0) {
       return [];
     }
 
+    // Map removes duplicate tournament ids while keeping a simple option shape.
     const leagueMap = new Map<number, TournamentOption>();
     tournaments.forEach((tournament) => {
       if (!leagueMap.has(tournament.tournament_id)) {
@@ -228,6 +267,8 @@ export default function Standings() {
       }
     });
 
+    // If the page was opened from a URL with a tournament id not present in the
+    // current list, keep it as an option so the selection still displays.
     if (
       initialSelectionRef.current.tournamentId &&
       !leagueMap.has(initialSelectionRef.current.tournamentId)
@@ -243,6 +284,8 @@ export default function Standings() {
     return Array.from(leagueMap.values());
   }, [tournaments]);
 
+  // Pick the active standings group. If the selected key is missing, fall back to
+  // the first group returned by the backend.
   const selectedStandingsGroup = useMemo<StandingsGroup | undefined>(
     () =>
       standingsGroups.find((group) => group.key === selectedGroupKey) ??
@@ -250,11 +293,13 @@ export default function Standings() {
     [standingsGroups, selectedGroupKey],
   );
 
+  // Rows for the currently selected table/group.
   const selectedStandingsRows = useMemo<TeamStandingRow[]>(
     () => selectedStandingsGroup?.rows ?? [],
     [selectedStandingsGroup],
   );
 
+  // Search/filter the visible standings rows by team, stage, group, and context.
   const visibleStandingsRows = useMemo(
     () =>
       filterAndRankSearchResults(
@@ -265,6 +310,8 @@ export default function Standings() {
     [selectedStandingsGroup, selectedStandingsRows, standingsSearchQuery],
   );
 
+  // Keeps the browser URL synchronized with the current standings selection.
+  // This makes standings views shareable/bookmarkable.
   const updateStandingsUrl = (
     tournamentId: number | null,
     seasonId: number | null,
@@ -273,6 +320,7 @@ export default function Standings() {
     const nextParams = new URLSearchParams();
 
     if (tournamentId != null) {
+      // Query params are always strings, so convert ids before storing them.
       nextParams.set("tournamentId", String(tournamentId));
     }
 
@@ -285,6 +333,8 @@ export default function Standings() {
       initialSelectionRef.current.tournamentName;
 
     if (tournamentName) {
+      // tournamentName is included for friendlier restoration if the id is not in
+      // the current tournament list.
       nextParams.set("tournamentName", tournamentName);
     }
 
@@ -299,28 +349,37 @@ export default function Standings() {
     setSearchParams(nextParams, { replace: false });
   };
 
+  // User changed the tournament dropdown. Reset season/group because they belong
+  // to the previous tournament.
   const handleLeagueChange = (newLeagueId: number | null) => {
     setSelectedLeagueId(newLeagueId);
     setSelectedSeasonId(null);
     updateStandingsUrl(newLeagueId, null, null);
   };
 
+  // User changed the season dropdown. Group selection is reset because groups can
+  // differ between seasons.
   const handleSeasonChange = (newSeasonId: number | null) => {
     setSelectedSeasonId(newSeasonId);
     updateStandingsUrl(selectedLeagueId, newSeasonId, null);
   };
 
+  // User selected a stage/group tab. Fetching again lets the backend return the
+  // exact group/stage context for that selection.
   const handleGroupSelect = async (groupKey: string) => {
     const selectedGroup = standingsGroups.find(
       (group) => group.key === groupKey,
     );
 
     if (!selectedGroup || !selectedLeagueId || !selectedSeasonId) {
+      // If the group cannot be found locally, still update the selected key so
+      // the UI reflects the user's click.
       setSelectedGroupKey(groupKey);
       return;
     }
 
     setSelectedGroupKey(groupKey);
+    // Put the selected group/stage into the URL before fetching the refined data.
     updateStandingsUrl(selectedLeagueId, selectedSeasonId, selectedGroup);
 
     try {
@@ -334,6 +393,7 @@ export default function Standings() {
       const nextGroups = data?.groups ?? [];
 
       if (import.meta.env.DEV) {
+        // Development-only visibility into the backend response shape.
         console.debug("[Standings] API groups", nextGroups);
       }
 
@@ -348,6 +408,7 @@ export default function Standings() {
   };
 
   if (!selectedLeagueId || (!selectedSeasonId && loading)) {
+    // Initial full-screen state while the page finds a tournament and season.
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center text-blue-500 font-black gap-2">
         {error ? (
@@ -363,8 +424,10 @@ export default function Standings() {
   }
 
   return (
+    // Main standings page shell with dark theme and responsive padding.
     <div className="min-h-screen bg-slate-950 p-6 md:p-12 text-white font-sans selection:bg-blue-500/30">
       <div className="max-w-6xl mx-auto">
+        {/* Header row contains page title and tournament/season filters. */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-12 gap-8">
           <div>
             <h1 className="text-6xl font-black italic uppercase tracking-tighter bg-gradient-to-r from-white via-blue-400 to-blue-600 bg-clip-text text-transparent leading-none">
@@ -376,6 +439,7 @@ export default function Standings() {
             </p>
           </div>
 
+          {/* StandingsFilters owns the dropdown UI, while this page owns the state. */}
           <StandingsFilters
             tournaments={uniqueLeagues}
             seasons={availableSeasons}
@@ -386,11 +450,13 @@ export default function Standings() {
           />
         </div>
 
+        {/* Search box filters only the rows in the currently selected standings group. */}
         <div className="relative mb-6 max-w-xl">
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-500">
             <Search size={16} />
           </div>
           <input
+            // Controlled input for standings row search.
             value={standingsSearchQuery}
             onChange={(event) => setStandingsSearchQuery(event.target.value)}
             placeholder="Search standings..."
@@ -399,15 +465,18 @@ export default function Standings() {
         </div>
 
         {loading ? (
+          // Loading panel shown while standings or a selected group is being fetched.
           <div className="text-center p-32 bg-slate-900/20 border-2 border-dashed border-slate-800 rounded-[3rem] italic animate-pulse font-black uppercase tracking-widest text-blue-500 flex flex-col items-center gap-4">
             <Loader2 className="animate-spin" size={40} />
             Loading Standings...
           </div>
         ) : error ? (
+          // Error panel shown when the standings request fails.
           <div className="text-center p-20 bg-rose-500/10 border border-rose-500/20 rounded-[3rem] text-rose-400 font-black uppercase tracking-widest">
             {error}
           </div>
         ) : (
+          // Successful state: tabs choose the stage/group, table renders filtered rows.
           <div className="bg-slate-900/40 border border-slate-800/60 rounded-[3rem] overflow-hidden shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
             <StageTabs
               groups={standingsGroups}
@@ -422,6 +491,8 @@ export default function Standings() {
   );
 }
 
+// Search fields used to rank/filter standings rows.
+// It includes both row-level fields and the selected group context.
 function getStandingRowSearchFields(
   row: TeamStandingRow,
   group: StandingsGroup | undefined,
