@@ -1,4 +1,5 @@
 import type { TeamProfilePlayer } from "../../api/api";
+import { formatAgeFromBirthDate } from "../../utils/dateFormat";
 
 type TeamSquadTableProps = {
   squad: TeamProfilePlayer[];
@@ -56,7 +57,7 @@ export default function TeamSquadTable({ squad }: TeamSquadTableProps) {
                     </span>
                   </td>
                   <td className="py-4 pr-6 text-right text-slate-400 font-bold">
-                    {getAge(player.date_of_birth)}
+                    {formatAgeFromBirthDate(player.date_of_birth)}
                   </td>
                 </tr>
               ))}
@@ -70,11 +71,4 @@ export default function TeamSquadTable({ squad }: TeamSquadTableProps) {
       )}
     </div>
   );
-}
-
-function getAge(dobString: string | null | undefined) {
-  if (!dobString) return "-";
-  const dob = new Date(dobString);
-  const diff = Date.now() - dob.getTime();
-  return new Date(diff).getUTCFullYear() - 1970;
 }

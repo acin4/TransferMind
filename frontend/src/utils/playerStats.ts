@@ -8,6 +8,8 @@ export type PlayerStatCategoryId =
   | "discipline"
   | "goalkeeping";
 
+export type PlayerStatSectionId = "common" | "outfield" | "goalkeeping";
+
 export type PlayerStatFormat = "number" | "rating" | "percent" | "boolean";
 
 export type PlayerStatDefinition = {
@@ -167,6 +169,21 @@ const PLAYER_STAT_DEFINITION_BY_KEY = new Map(
 
 const HIDDEN_STAT_KEYS = new Set(["has_stats"]);
 
+const COMMON_CATEGORY_ORDER: PlayerStatCategoryId[] = [
+  "overview",
+  "discipline",
+];
+
+const OUTFIELD_CATEGORY_ORDER: PlayerStatCategoryId[] = [
+  "attack",
+  "passing",
+  "defense",
+];
+
+const GOALKEEPER_ONLY_CATEGORY_ORDER: PlayerStatCategoryId[] = [
+  "goalkeeping",
+];
+
 export function isGoalkeeperPosition(position: unknown) {
   const normalizedPositions = String(position ?? "")
     .split(/[,\s/]+/)
@@ -214,6 +231,40 @@ export function groupStatsByCategory(
     label: CATEGORY_LABELS[id],
     stats: groups.get(id) ?? [],
   })).filter((category) => category.stats.length > 0);
+}
+
+export function groupStatsBySection(
+  stats: PlayerListStat | null,
+  sectionId: PlayerStatSectionId,
+): PlayerStatCategory[] {
+  const categoryOrder = getSectionCategoryOrder(sectionId);
+  const allowedCategories = new Set<PlayerStatCategoryId>(categoryOrder);
+  const groups = new Map<PlayerStatCategoryId, PlayerStatDefinition[]>(
+    categoryOrder.map((categoryId) => [categoryId, []]),
+  );
+
+  getDisplayStatKeys(stats).forEach((key) => {
+    const definition =
+      PLAYER_STAT_DEFINITION_BY_KEY.get(key) ?? createDynamicStat(key);
+    const categoryId = allowedCategories.has(definition.categoryId)
+      ? definition.categoryId
+      : null;
+
+    if (categoryId) {
+      groups.get(categoryId)?.push({
+        ...definition,
+        categoryId,
+      });
+    }
+  });
+
+  return categoryOrder
+    .map((id) => ({
+      id,
+      label: CATEGORY_LABELS[id],
+      stats: groups.get(id) ?? [],
+    }))
+    .filter((category) => category.stats.length > 0);
 }
 
 export function getStatValue(stats: PlayerListStat | null, key: string) {
@@ -281,7 +332,27 @@ function getDisplayStatKeys(stats: PlayerListStat | null) {
     return [];
   }
 
-  return Object.keys(stats).filter((key) => !HIDDEN_STAT_KEYS.has(key));
+  return Object.keys(stats).filter((key) => {
+    const value = stats[key];
+    return (
+      !HIDDEN_STAT_KEYS.has(key) &&
+      value !== null &&
+      value !== undefined &&
+      value !== ""
+    );
+  });
+}
+
+function getSectionCategoryOrder(sectionId: PlayerStatSectionId) {
+  if (sectionId === "common") {
+    return COMMON_CATEGORY_ORDER;
+  }
+
+  if (sectionId === "goalkeeping") {
+    return GOALKEEPER_ONLY_CATEGORY_ORDER;
+  }
+
+  return OUTFIELD_CATEGORY_ORDER;
 }
 
 function createDynamicStat(key: string): PlayerStatDefinition {

@@ -1238,11 +1238,11 @@ export async function listTeamMappingsByReferences(teamReferences) {
   const [teamsByInternalId, teamsByApiId] = await Promise.all([
     supabase
       .from("teams")
-      .select("id, api_id, name")
+      .select("id, api_id, name, logo_url")
       .in("id", references),
     supabase
       .from("teams")
-      .select("id, api_id, name")
+      .select("id, api_id, name, logo_url")
       .in("api_id", references),
   ]);
 

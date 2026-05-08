@@ -35,6 +35,12 @@ export type PlayerListStat = {
   [key: string]: unknown;
 };
 
+export type PlayerRelatedTeam = {
+  id: number | string;
+  name: string;
+  logo_url?: string | null;
+};
+
 // A player item as the frontend expects to receive it from backend endpoints.
 // Some fields have two naming styles, such as team_logo and teamLogo, so older
 // and newer UI code can both read the same kind of data safely.
@@ -50,6 +56,10 @@ export type PlayerListItem = {
   position?: string | null;
   height?: number | string | null;
   player_stats?: PlayerListStat[] | null;
+  commonStats?: PlayerListStat;
+  outfieldStats?: PlayerListStat | null;
+  goalkeeperStats?: PlayerListStat | null;
+  related_teams?: PlayerRelatedTeam[] | null;
   [key: string]: unknown;
 };
 
@@ -64,6 +74,31 @@ export type PlayerTeamSquad = {
   seasonId?: number | string | null;
   seasonName?: string | null;
   players: PlayerListItem[];
+};
+
+export type PaginatedResponse<T> = {
+  data: T[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+};
+
+export type PlayerListOptions = {
+  page: number;
+  limit: number;
+  search?: string;
+  teamId?: number | string;
+  position?: string;
+};
+
+export type TeamListOptions = {
+  page: number;
+  limit: number;
+  search?: string;
+  country?: string;
 };
 
 // Team profile data starts with the normal team list fields and adds the
@@ -396,6 +431,17 @@ async function request(path: string, options?: RequestInit) {
   return payload?.data;
 }
 
+async function requestEnvelope<T>(path: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(`${apiBaseUrl}${path}`, options);
+  const payload = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(payload?.error || "Request failed.");
+  }
+
+  return payload;
+}
+
 // ==========================================
 // 1. HOME & GENERAL LISTS (Teams / Players)
 // ==========================================
@@ -404,23 +450,72 @@ export const getTeams = async (): Promise<TeamListItem[]> => {
   return request("/api/teams");
 };
 
+export const getPlayerTeams = async (
+  options: TeamListOptions,
+): Promise<PaginatedResponse<TeamListItem>> => {
+  const params = new URLSearchParams({
+    page: String(options.page),
+    limit: String(options.limit),
+  });
+
+  if (options.search?.trim()) {
+    params.set("search", options.search.trim());
+  }
+
+  if (options.country?.trim() && options.country !== "ALL") {
+    params.set("country", options.country.trim());
+  }
+
+  return requestEnvelope<PaginatedResponse<TeamListItem>>(
+    `/api/teams?${params.toString()}`,
+  );
+};
+
 // Fetches players, optionally filtered by team. The optional teamId supports UI
 // flows where a user picks a team first and then sees only that team's players.
 export const getPlayers = async (
-  teamId?: number | string,
-): Promise<PlayerListItem[]> => {
+  options: PlayerListOptions,
+): Promise<PaginatedResponse<PlayerListItem>> => {
   // URLSearchParams safely builds query strings and handles encoding for us.
-  const params = new URLSearchParams();
+  const params = new URLSearchParams({
+    page: String(options.page),
+    limit: String(options.limit),
+  });
 
-  if (teamId !== undefined) {
+  if (options.teamId !== undefined && options.teamId !== "") {
     // Convert to string because query-string values are always text in URLs.
-    params.set("teamId", String(teamId));
+    params.set("teamId", String(options.teamId));
   }
 
-  // Only add "?" when there are actual query parameters. This keeps the endpoint
-  // clean for the unfiltered player list.
-  const suffix = params.toString() ? `?${params.toString()}` : "";
-  return request(`/api/players${suffix}`);
+  if (options.search?.trim()) {
+    params.set("search", options.search.trim());
+  }
+
+  if (options.position?.trim()) {
+    params.set("position", options.position.trim());
+  }
+
+  return requestEnvelope<PaginatedResponse<PlayerListItem>>(
+    `/api/players?${params.toString()}`,
+  );
+};
+
+export const getTeamPlayers = async (
+  teamId: number | string,
+  options: Omit<PlayerListOptions, "teamId" | "position">,
+): Promise<PaginatedResponse<PlayerListItem>> => {
+  const params = new URLSearchParams({
+    page: String(options.page),
+    limit: String(options.limit),
+  });
+
+  if (options.search?.trim()) {
+    params.set("search", options.search.trim());
+  }
+
+  return requestEnvelope<PaginatedResponse<PlayerListItem>>(
+    `/api/teams/${teamId}/players?${params.toString()}`,
+  );
 };
 
 // Fetches players already grouped by team, which is convenient for squad-style

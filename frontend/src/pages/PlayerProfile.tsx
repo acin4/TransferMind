@@ -1,25 +1,29 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Ruler, UserRound, Users } from "lucide-react";
-import { useLocation, useParams } from "react-router-dom";
+import { Ruler, Users } from "lucide-react";
+import { Link, useLocation, useParams } from "react-router-dom";
 import {
   getPlayer,
   type PlayerListItem,
   type PlayerListStat,
+  type PlayerRelatedTeam,
 } from "../api/api";
 import ProfileLayout from "../components/profile/ProfileLayout";
 import SegmentedTabs from "../components/ui/SegmentedTabs";
 import {
   getOptionalPlayerField,
+  getPlayerCommonStats,
+  getPlayerGoalkeeperStats,
+  getPlayerOutfieldStats,
   getPlayerTeamName,
-  getPlayerStats,
 } from "../utils/playerDisplay";
 import {
   formatStatValue,
   getStatValue,
-  groupStatsByCategory,
+  groupStatsBySection,
   isGoalkeeperPosition,
-  type PlayerStatCategoryId,
+  type PlayerStatCategory,
 } from "../utils/playerStats";
+import { formatBirthDate } from "../utils/dateFormat";
 
 // The player profile has two top-level tabs: one for stats and one for general info.
 type PlayerProfileTabId = "statistics" | "info";
@@ -31,6 +35,7 @@ type PlayerProfileLocationState = {
   fromTeamName?: string;
   fromTournament?: string;
   fromTeamKey?: string;
+  playersState?: unknown;
 };
 
 // PlayerProfile is a route page. It reads the player id from the URL, fetches
@@ -55,11 +60,6 @@ export default function PlayerProfile() {
   // activeTab controls whether the user sees Statistics or Info.
   const [activeTab, setActiveTab] =
     useState<PlayerProfileTabId>("statistics");
-  // activeStatsCategory controls which stat category tab is selected inside the
-  // Statistics panel.
-  const [activeStatsCategory, setActiveStatsCategory] =
-    useState<PlayerStatsCategoryId>("overview");
-
   // Fetch player data whenever the URL id changes.
   useEffect(() => {
     // cancelled prevents stale requests from updating state after the component
@@ -111,24 +111,10 @@ export default function PlayerProfile() {
   const playerPosition = player?.position ?? null;
   // Goalkeepers use a different stat grouping/description than outfield players.
   const isGoalkeeper = isGoalkeeperPosition(playerPosition);
-  // getPlayerStats extracts the stat row from the player object when available.
-  const stats = player ? getPlayerStats(player) : null;
-  // Group stats into category tabs so the Statistics panel is easier to scan.
-  const statCategories = useMemo(
-    () => groupStatsByCategory(stats, playerPosition),
-    [playerPosition, stats],
+  const statSections = useMemo(
+    () => (player ? buildPlayerStatSections(player, isGoalkeeper) : []),
+    [isGoalkeeper, player],
   );
-
-  // If the current active category disappears after stats load/change, select
-  // the first available category so the UI never points at a missing tab.
-  useEffect(() => {
-    if (
-      statCategories.length > 0 &&
-      !statCategories.some((category) => category.id === activeStatsCategory)
-    ) {
-      setActiveStatsCategory(statCategories[0].id);
-    }
-  }, [activeStatsCategory, statCategories]);
 
   if (loading) {
     // Full-screen loading state shown while the player request is in progress.
@@ -152,9 +138,10 @@ export default function PlayerProfile() {
   // header consistent with the team page the user came from.
   const displayTeamName =
     playerProfileLocationState?.fromTeamName ?? getPlayerTeamName(player);
+  const relatedTeams = getRelatedTeams(player, displayTeamName);
   // backState preserves team-page filters when ProfileLayout navigates back.
   const backState = playerProfileLocationState
-    ? {
+    ? playerProfileLocationState.playersState ?? {
         selectedTournament: playerProfileLocationState.fromTournament,
         selectedTeamKey: playerProfileLocationState.fromTeamKey,
       }
@@ -169,21 +156,66 @@ export default function PlayerProfile() {
     <ProfileLayout backTo="/players" backLabel={backLabel} backState={backState}>
       <PlayerHeader player={player} teamName={displayTeamName} />
 
+      <PlayerTeamsPanel teams={relatedTeams} />
+
       <PlayerProfileControls activeTab={activeTab} onTabChange={setActiveTab} />
 
       {/* Main tab content switches between statistical data and general player info. */}
       {activeTab === "statistics" ? (
         <PlayerStatsPanel
-          stats={stats}
-          statCategories={statCategories}
+          sections={statSections}
           isGoalkeeper={isGoalkeeper}
-          activeStatsCategory={activeStatsCategory}
-          onStatsCategoryChange={setActiveStatsCategory}
         />
       ) : (
         <PlayerInfoPanel player={player} teamName={displayTeamName} />
       )}
     </ProfileLayout>
+  );
+}
+
+function PlayerTeamsPanel({ teams }: { teams: PlayerRelatedTeam[] }) {
+  if (teams.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mb-8 rounded-3xl border border-slate-800 bg-slate-900/40 p-5">
+      <h3 className="mb-4 text-xs font-black uppercase tracking-widest text-slate-500">
+        Teams
+      </h3>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {teams.map((team) => (
+          <Link
+            key={team.id}
+            to="/players"
+            state={{
+              page: 1,
+              search: "",
+              teamId: team.id,
+              teamName: team.name,
+            }}
+            className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-950/50 p-3 text-white transition hover:border-blue-500"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-slate-950/70 text-blue-400">
+              {team.logo_url ? (
+                <img
+                  src={team.logo_url}
+                  alt={`${team.name} logo`}
+                  loading="lazy"
+                  decoding="async"
+                  className="h-full w-full object-contain p-1.5"
+                />
+              ) : (
+                <Users size={18} />
+              )}
+            </span>
+            <span className="min-w-0 truncate text-sm font-black uppercase tracking-wide">
+              {team.name}
+            </span>
+          </Link>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -202,11 +234,6 @@ function PlayerHeader({
         <h1 className="text-5xl font-black uppercase text-white tracking-tight italic">
           {player.name}
         </h1>
-        {/* Player id is useful for debugging and for matching the profile to data. */}
-        <p className="text-blue-400 text-sm font-black mt-2 uppercase tracking-widest flex items-center gap-2">
-          <UserRound size={14} className="text-blue-500" />
-          Player ID {player.id}
-        </p>
         {/* Metadata lines only render when they have a value, keeping the header clean. */}
         <div className="mt-4 space-y-2">
           <HeaderMetaLine
@@ -246,34 +273,15 @@ function PlayerProfileControls({
 }
 
 function PlayerStatsPanel({
-  stats,
-  statCategories,
+  sections,
   isGoalkeeper,
-  activeStatsCategory,
-  onStatsCategoryChange,
 }: {
-  stats: PlayerListStat | null;
-  statCategories: ReturnType<typeof groupStatsByCategory>;
+  sections: PlayerStatSection[];
   isGoalkeeper: boolean;
-  activeStatsCategory: PlayerStatsCategoryId;
-  onStatsCategoryChange: (category: PlayerStatsCategoryId) => void;
 }) {
-  // Find the currently selected category. If it is missing, fall back to the
-  // first available category so the panel can still render safely.
-  const selectedStatsCategory = useMemo(
-    () =>
-      statCategories.find(
-        (category) => category.id === activeStatsCategory,
-      ) ?? statCategories[0],
-    [activeStatsCategory, statCategories],
-  );
-  // visibleStats is the list of stat rows shown in the current category tab.
-  const visibleStats = selectedStatsCategory?.stats ?? [];
-
   return (
     // Fade-in gives the tab switch a small visual transition.
-    <div className="animate-in fade-in duration-300">
-      {/* Stats card groups category tabs and stat rows into one panel. */}
+    <div className="space-y-6 animate-in fade-in duration-300">
       <div className="bg-slate-900/40 rounded-[2.5rem] border border-slate-800/60 p-6 md:p-10 shadow-2xl backdrop-blur-sm">
         <div className="mb-6">
           <h3 className="text-slate-400 font-bold uppercase tracking-widest text-xs">
@@ -286,44 +294,55 @@ function PlayerStatsPanel({
           </p>
         </div>
 
-        {stats ? (
-          <>
-            {/* Category tabs let users move between groups like overview, attacking,
-                defending, or goalkeeper-specific stats. */}
-            <SegmentedTabs
-              items={statCategories.map((category) => ({
-                value: category.id,
-                label: `${category.label} (${category.stats.length})`,
-              }))}
-              value={activeStatsCategory}
-              onChange={onStatsCategoryChange}
-              className="mb-6 flex gap-1 overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/50 p-1.5"
-              buttonClassName="min-w-max overflow-hidden text-ellipsis whitespace-nowrap rounded-xl px-3 py-2.5 text-[8px] font-black uppercase tracking-wide transition-all sm:px-4 sm:text-[9px] md:text-[10px]"
-            />
-
-            {visibleStats.length > 0 ? (
-              // Stat rows are wrapped in a bordered card so they read like a table.
-              <div className="bg-slate-900/50 rounded-3xl border border-slate-800 overflow-hidden shadow-inner">
-                {visibleStats.map((stat) => (
-                  <PlayerStatLine
-                    key={stat.key}
-                    label={stat.label}
-                    // getStatValue reads the raw stat; formatStatValue turns it
-                    // into display text based on the stat's configured format.
-                    value={formatStatValue(
-                      getStatValue(stats, stat.key),
-                      stat.format,
-                    )}
-                  />
-                ))}
-              </div>
-            ) : (
-              <EmptyPanelMessage message="No populated stats in this category." />
-            )}
-          </>
+        {sections.length > 0 ? (
+          <div className="space-y-5">
+            {sections.map((section) => (
+              <PlayerStatSectionCard key={section.id} section={section} />
+            ))}
+          </div>
         ) : (
-          <EmptyPanelMessage message="No statistics found for this player." />
+          <EmptyPanelMessage message="No stats available." />
         )}
+      </div>
+    </div>
+  );
+}
+
+type PlayerStatSection = {
+  id: string;
+  title: string;
+  stats: PlayerListStat;
+  categories: PlayerStatCategory[];
+};
+
+function PlayerStatSectionCard({ section }: { section: PlayerStatSection }) {
+  return (
+    <div>
+      <h4 className="mb-3 text-[11px] font-black uppercase tracking-widest text-blue-400">
+        {section.title}
+      </h4>
+      <div className="space-y-4">
+        {section.categories.map((category) => (
+          <div key={category.id}>
+            <div className="border-x border-t border-slate-800 bg-slate-950/40 px-5 py-3 first:rounded-t-3xl">
+              <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                {category.label}
+              </h5>
+            </div>
+            <div className="bg-slate-900/50 border border-slate-800 overflow-hidden shadow-inner last:rounded-b-3xl">
+              {category.stats.map((stat) => (
+                <PlayerStatLine
+                  key={stat.key}
+                  label={stat.label}
+                  value={formatStatValue(
+                    getStatValue(section.stats, stat.key),
+                    stat.format,
+                  )}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -360,12 +379,11 @@ function PlayerInfoPanel({
   // infoRows is a simple label/value list so the JSX below can render one
   // consistent row for every profile detail.
   const infoRows = [
-    ["Player ID", player.id],
     ["Team", teamName],
     ["Height", formatHeight(player.height)],
     ["Position", player.position],
     ["Nationality", getOptionalPlayerField(player, "nationality")],
-    ["Date of Birth", getOptionalPlayerField(player, "date_of_birth")],
+    ["Date of Birth", formatBirthDate(getOptionalPlayerField(player, "date_of_birth"))],
     ["Preferred Foot", getOptionalPlayerField(player, "foot")],
     ["Jersey Number", getOptionalPlayerField(player, "jersey_num")],
     ["Contract", getOptionalPlayerField(player, "contract")],
@@ -453,6 +471,79 @@ function formatMarketValue(player: PlayerListItem) {
   return [value, currency].filter(Boolean).join(" ");
 }
 
+function getRelatedTeams(
+  player: PlayerListItem,
+  fallbackTeamName: string | null,
+) {
+  if (Array.isArray(player.related_teams) && player.related_teams.length > 0) {
+    return player.related_teams;
+  }
+
+  if (!player.team_id || !fallbackTeamName) {
+    return [];
+  }
+
+  return [
+    {
+      id: player.team_id,
+      name: fallbackTeamName,
+      logo_url:
+        typeof player.team_logo === "string" ? player.team_logo : null,
+    },
+  ];
+}
+
+function buildPlayerStatSections(
+  player: PlayerListItem,
+  isGoalkeeper: boolean,
+): PlayerStatSection[] {
+  const commonStats = getPlayerCommonStats(player);
+  const outfieldStats = getPlayerOutfieldStats(player);
+  const goalkeeperStats = getPlayerGoalkeeperStats(player);
+  const sections: PlayerStatSection[] = [];
+  const commonCategories = groupStatsBySection(commonStats, "common");
+
+  if (commonCategories.length > 0) {
+    sections.push({
+      id: "common",
+      title: "Common Stats",
+      stats: commonStats,
+      categories: commonCategories,
+    });
+  }
+
+  if (!isGoalkeeper && outfieldStats) {
+    const outfieldCategories = groupStatsBySection(outfieldStats, "outfield");
+
+    if (outfieldCategories.length > 0) {
+      sections.push({
+        id: "outfield",
+        title: "Outfield Stats",
+        stats: outfieldStats,
+        categories: outfieldCategories,
+      });
+    }
+  }
+
+  if (goalkeeperStats) {
+    const goalkeeperCategories = groupStatsBySection(
+      goalkeeperStats,
+      "goalkeeping",
+    );
+
+    if (goalkeeperCategories.length > 0) {
+      sections.push({
+        id: "goalkeeping",
+        title: "Goalkeeper Stats",
+        stats: goalkeeperStats,
+        categories: goalkeeperCategories,
+      });
+    }
+  }
+
+  return sections;
+}
+
 // Safely reads router location.state into the shape this page understands.
 // This is defensive because location.state can be anything or missing entirely.
 function getPlayerProfileLocationState(
@@ -474,8 +565,16 @@ function getPlayerProfileLocationState(
     typeof value.fromTeamId === "string" || typeof value.fromTeamId === "number"
       ? value.fromTeamId
       : undefined;
+  const playersState =
+    isRecord(value.playersState) ? value.playersState : undefined;
 
-  if (!fromTeamName && !fromTeamKey && !fromTeamId && !fromTournament) {
+  if (
+    !fromTeamName &&
+    !fromTeamKey &&
+    !fromTeamId &&
+    !fromTournament &&
+    !playersState
+  ) {
     // Treat an empty state object the same as no state.
     return null;
   }
@@ -485,6 +584,7 @@ function getPlayerProfileLocationState(
     fromTeamName,
     fromTournament,
     fromTeamKey,
+    playersState,
   };
 }
 

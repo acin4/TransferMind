@@ -6,16 +6,67 @@ import {
 import {
   getTeam,
   getTeamComparisonMatrix,
+  getPaginatedTeams,
   getTeamProfile,
   getTeamSeasons,
   getTeamStats,
   getTeamsComparisonDataset,
   getTeams,
 } from "../services/teamService.js";
+import { getPlayers } from "../services/playerService.js";
+
+const DEFAULT_PAGE_LIMIT = 20;
+const MAX_PAGE_LIMIT = 50;
+
+function parseOptionalInteger(value, fieldName) {
+  return value !== undefined ? parseInteger(value, fieldName) : undefined;
+}
+
+function parsePaginatedQuery(query) {
+  const page = parseOptionalInteger(query.page, "page") ?? 1;
+  const requestedLimit =
+    parseOptionalInteger(query.limit, "limit") ?? DEFAULT_PAGE_LIMIT;
+  const search =
+    typeof query.search === "string" ? query.search.trim() : "";
+  const country =
+    typeof query.country === "string" ? query.country.trim() : "";
+
+  return {
+    page,
+    limit: Math.min(requestedLimit, MAX_PAGE_LIMIT),
+    search,
+    country,
+  };
+}
+
+function hasPaginatedTeamQuery(query) {
+  return ["page", "limit", "search", "country"].some(
+    (key) => query[key] !== undefined,
+  );
+}
 
 export async function listTeamsController(req, res) {
+  if (hasPaginatedTeamQuery(req.query)) {
+    const teams = await getPaginatedTeams(parsePaginatedQuery(req.query));
+    res.status(200).json(teams);
+    return;
+  }
+
   const teams = await getTeams();
   res.status(200).json({ data: teams });
+}
+
+export async function listTeamPlayersController(req, res) {
+  const teamId = parseInteger(req.params.id, "id");
+  const query = parsePaginatedQuery(req.query);
+  const players = await getPlayers({
+    teamId,
+    page: query.page,
+    limit: query.limit,
+    search: query.search,
+  });
+
+  res.status(200).json(players);
 }
 
 export async function getTeamsComparisonDatasetController(req, res) {

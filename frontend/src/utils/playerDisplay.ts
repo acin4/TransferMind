@@ -19,6 +19,18 @@ export function getPlayerStats(player: PlayerListItem) {
   return player.player_stats?.[0] ?? null;
 }
 
+export function getPlayerCommonStats(player: PlayerListItem) {
+  return player.commonStats ?? {};
+}
+
+export function getPlayerOutfieldStats(player: PlayerListItem) {
+  return player.outfieldStats ?? null;
+}
+
+export function getPlayerGoalkeeperStats(player: PlayerListItem) {
+  return player.goalkeeperStats ?? null;
+}
+
 export function getOptionalPlayerField(
   player: PlayerListItem,
   fieldName: string,
