@@ -395,7 +395,9 @@ export default function TeamProfile() {
           )}
 
           {/* Squad tab shows the selected season's squad rows. */}
-          {activeTab === "squad" && <TeamSquadTable squad={teamSquad} />}
+          {activeTab === "squad" && (
+            <TeamSquadTable squad={teamSquad} teamName={team.name} />
+          )}
         </div>
       )}
     </ProfileLayout>

@@ -14,12 +14,11 @@ import {
   getTeamPlayers,
   type PaginatedResponse,
   type PlayerListItem,
-  type PlayerListStat,
   type TeamListItem,
 } from "../api/api";
 import SegmentedTabs from "../components/ui/SegmentedTabs";
 import {
-  getPlayerStats,
+  formatPlayerHeight,
   getPlayerTeamName,
 } from "../utils/playerDisplay";
 
@@ -405,7 +404,6 @@ function PlayerGrid({
         <PlayerCard
           key={player.id}
           player={player}
-          stats={getPlayerStats(player)}
           pageState={pageState}
         />
       ))}
@@ -415,11 +413,9 @@ function PlayerGrid({
 
 function PlayerCard({
   player,
-  stats,
   pageState,
 }: {
   player: PlayerListItem;
-  stats: PlayerListStat | null;
   pageState: PlayersBrowserState;
 }) {
   const teamName = getPlayerTeamName(player);
@@ -436,19 +432,11 @@ function PlayerCard({
     >
       <div className="rounded-2xl border border-slate-800 bg-gradient-to-br from-gray-900 to-gray-800 p-4 text-white shadow-lg transition hover:border-blue-500">
         <h2 className="text-lg font-semibold">{player.name}</h2>
-
         <p className="text-sm text-gray-400">
-          Team: {teamName ?? pageState.teamName ?? "-"}
+          {teamName ?? pageState.teamName ?? "-"}
         </p>
-
-        <p className="text-sm">Height: {player.height ?? "-"} cm</p>
-
-        {stats && (
-          <div className="mt-3 text-sm">
-            <p>Goals: {stats.goals}</p>
-            <p>Assists: {stats.assists}</p>
-          </div>
-        )}
+        <p className="text-sm">Position: {player.position ?? "-"}</p>
+        <p className="text-sm">Height: {formatPlayerHeight(player.height)}</p>
       </div>
     </Link>
   );

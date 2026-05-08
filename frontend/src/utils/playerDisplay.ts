@@ -31,6 +31,22 @@ export function getPlayerGoalkeeperStats(player: PlayerListItem) {
   return player.goalkeeperStats ?? null;
 }
 
+export function formatPlayerHeight(value: unknown) {
+  if (value === null || value === undefined || value === "") {
+    return "-";
+  }
+
+  const heightText = String(value).trim();
+
+  if (!heightText) {
+    return "-";
+  }
+
+  return heightText.toLowerCase().endsWith("cm")
+    ? heightText
+    : `${heightText} cm`;
+}
+
 export function getOptionalPlayerField(
   player: PlayerListItem,
   fieldName: string,

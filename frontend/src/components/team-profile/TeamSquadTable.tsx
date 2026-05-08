@@ -1,11 +1,13 @@
 import type { TeamProfilePlayer } from "../../api/api";
 import { formatAgeFromBirthDate } from "../../utils/dateFormat";
+import { formatPlayerHeight } from "../../utils/playerDisplay";
 
 type TeamSquadTableProps = {
   squad: TeamProfilePlayer[];
+  teamName: string | null;
 };
 
-export default function TeamSquadTable({ squad }: TeamSquadTableProps) {
+export default function TeamSquadTable({ squad, teamName }: TeamSquadTableProps) {
   return (
     <div className="animate-in fade-in duration-300">
       <h3 className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-6">
@@ -20,7 +22,6 @@ export default function TeamSquadTable({ squad }: TeamSquadTableProps) {
                   Player
                 </th>
                 <th className="py-5 font-normal">Nationality</th>
-                <th className="py-5 font-normal text-center">Position</th>
                 <th className="py-5 pr-6 font-normal text-right rounded-tr-2xl">
                   Age
                 </th>
@@ -44,17 +45,23 @@ export default function TeamSquadTable({ squad }: TeamSquadTableProps) {
                         player.name.charAt(0)
                       )}
                     </div>
-                    <span className="truncate max-w-[150px] sm:max-w-[250px] text-sm md:text-base group-hover:text-blue-400 transition-colors">
-                      {player.name}
-                    </span>
+                    <div className="min-w-0">
+                      <span className="block truncate max-w-[150px] sm:max-w-[250px] text-sm md:text-base group-hover:text-blue-400 transition-colors">
+                        {player.name}
+                      </span>
+                      <span className="mt-1 block truncate text-xs font-bold text-slate-500">
+                        {teamName ?? "-"}
+                      </span>
+                      <span className="mt-1 block truncate text-xs font-bold text-slate-400">
+                        Position: {player.position || "-"}
+                      </span>
+                      <span className="mt-1 block truncate text-xs font-bold text-slate-400">
+                        Height: {formatPlayerHeight(player.height)}
+                      </span>
+                    </div>
                   </td>
                   <td className="py-4 text-slate-400 text-sm font-medium">
                     {player.country?.name || player.nationality || "-"}
-                  </td>
-                  <td className="py-4 text-center">
-                    <span className="bg-slate-950 text-slate-300 text-[10px] px-3 py-1.5 rounded-lg font-black uppercase tracking-widest border border-slate-800/80 shadow-sm">
-                      {player.position || "-"}
-                    </span>
                   </td>
                   <td className="py-4 pr-6 text-right text-slate-400 font-bold">
                     {formatAgeFromBirthDate(player.date_of_birth)}

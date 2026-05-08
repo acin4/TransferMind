@@ -129,6 +129,7 @@ export type TeamProfilePlayer = {
   country?: { name?: string | null } | null;
   nationality?: string | null;
   position?: string | null;
+  height?: number | string | null;
   date_of_birth?: string | null;
   [key: string]: unknown;
 };
@@ -396,6 +397,7 @@ export type SearchPlayerResult = {
   name: string;
   photo: string | null;
   position: string | null;
+  height: number | string | null;
   nationality: string | null;
   teamId: number | null;
   teamName: string | null;

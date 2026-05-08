@@ -10,6 +10,7 @@ import {
   type SearchTeamResult,
 } from "../api/api";
 import { filterAndRankSearchResults } from "../utils/search";
+import { formatPlayerHeight } from "../utils/playerDisplay";
 
 // Home is the app's landing page. It combines the brand header, global
 // team/player search, quick navigation cards, hover previews, and an About modal.
@@ -197,11 +198,15 @@ export default function Home() {
                     </div>
                     <div className="min-w-0">
                       <span className="block truncate font-bold italic uppercase text-slate-300 text-xl group-hover:text-purple-400 transition-colors">{p.name}</span>
-                      {getPlayerSearchContext(p) && (
-                        <span className="mt-1 block truncate text-xs font-bold uppercase tracking-widest text-slate-500">
-                          {getPlayerSearchContext(p)}
-                        </span>
-                      )}
+                      <span className="mt-1 block truncate text-xs font-bold uppercase tracking-widest text-slate-500">
+                        {p.teamName ?? "-"}
+                      </span>
+                      <span className="mt-1 block truncate text-xs font-bold uppercase tracking-widest text-slate-500">
+                        Position: {p.position ?? "-"}
+                      </span>
+                      <span className="mt-1 block truncate text-xs font-bold uppercase tracking-widest text-slate-500">
+                        Height: {formatPlayerHeight(p.height)}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -409,16 +414,6 @@ function getTeamSearchContext(team: SearchTeamResult) {
     team.stadium,
     team.tournamentName,
     team.seasonName,
-  ]);
-}
-
-// Builds the smaller context line shown under a player search result.
-// Team, position, and nationality help users distinguish players with similar names.
-function getPlayerSearchContext(player: SearchPlayerResult) {
-  return joinSearchContext([
-    player.teamName,
-    player.position,
-    player.nationality,
   ]);
 }
 

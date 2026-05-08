@@ -54,6 +54,7 @@ function toSearchPlayerResult(player, teamByAnyReference, positionsByPlayerId) {
     name: player.name,
     photo: null,
     position: positionsByPlayerId.get(player.id) ?? null,
+    height: player.height ?? null,
     nationality: player.nationality ?? null,
     teamId: team?.id ?? null,
     teamName: team?.name ?? null,
