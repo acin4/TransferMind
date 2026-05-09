@@ -12,6 +12,7 @@ import { useClusterSelectionState } from "../cluster-analysis/hooks/useClusterSe
 import { useClusterSetupData } from "../cluster-analysis/hooks/useClusterSetupData";
 import { useClusterSetupMaintenanceEffects } from "../cluster-analysis/hooks/useClusterSetupMaintenanceEffects";
 import type { ClusterAnalysisTabProps } from "../cluster-analysis/types";
+import { ContentPanel } from "../ui/design";
 
 // ClusterAnalysisTab is the Cluster Analysis view inside Teams Comparison.
 // It connects the raw team-season entries and supported stat keys to the reusable
@@ -156,7 +157,7 @@ export default function ClusterAnalysisTab({
 
       {/* Show final cluster visualizations only after k-means has successfully run. */}
       {clusterResult ? (
-        <section className="bg-slate-900/50 border border-slate-800 rounded-[2.5rem] p-6 md:p-8 shadow-2xl">
+        <ContentPanel>
           {/* Results header explains that clustering used normalized values, while
               raw values are still available for human interpretation. */}
           <div className="mb-6">
@@ -191,7 +192,7 @@ export default function ClusterAnalysisTab({
 
           {/* Membership summary lists which team-season entries belong to each cluster. */}
           <ClusterMembershipSummary clusters={clusters} />
-        </section>
+        </ContentPanel>
       ) : null}
     </div>
   );

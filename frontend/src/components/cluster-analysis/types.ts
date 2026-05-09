@@ -1,4 +1,3 @@
-import type { ChangeEvent } from "react";
 import type {
   TeamClusterAssignment,
   TeamClusterElbowPayload,
@@ -101,7 +100,7 @@ export type EntrySelectionListProps = {
   rows: ParallelCoordinatesPathRow[];
   searchValue: string;
   selectedEntryIdSet: ReadonlySet<string>;
-  onSearchChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onSearchChange: (value: string) => void;
   onClearSearch: () => void;
   onSelect: (entryId: string) => void;
 };

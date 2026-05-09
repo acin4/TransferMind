@@ -12,6 +12,7 @@ import {
   getAssignmentSeasonLabel,
   getAssignmentTournamentLabel,
 } from "../utils/clusterFormatters";
+import { SearchInput, standingsTheme } from "../../ui/design";
 
 // memo keeps the list from re-rendering unless its props change.
 // The parent owns the search text and selected entries; this component displays
@@ -34,7 +35,7 @@ export const EntrySelectionList = memo(function EntrySelectionList({
 }: EntrySelectionListProps) {
   return (
     // Outer card groups the entry search box and scrollable entry list.
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+    <div className={standingsTheme.nestedPanel}>
       {/* Header shows the section label and the number of visible rows after
           filtering/searching. */}
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -50,14 +51,11 @@ export const EntrySelectionList = memo(function EntrySelectionList({
           the input fills available width, while the Clear button appears only
           when there is text to clear. */}
       <div className="mb-3 flex gap-2">
-        <input
-          type="search"
-          // Controlled input: its value comes from parent state.
+        <SearchInput
           value={searchValue}
-          // The parent updates searchValue and usually filters rows from it.
           onChange={onSearchChange}
           placeholder="Search team, season, league..."
-          className="min-w-0 flex-1 rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-xs font-bold text-white placeholder:text-slate-600 focus:border-blue-500 focus:outline-none"
+          className="!mb-0 !max-w-none flex-1"
         />
         {/* Only show Clear when the search has non-space characters, keeping the
             UI quieter when there is nothing to reset. */}

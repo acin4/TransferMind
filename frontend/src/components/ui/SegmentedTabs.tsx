@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import TabButton from "./TabButton";
+import { standingsTheme } from "./design";
 
 export type SegmentedTabItem<T extends string | number> = {
   value: T;
@@ -27,14 +28,14 @@ export default function SegmentedTabs<T extends string | number>({
   inactiveClassName,
 }: SegmentedTabsProps<T>) {
   return (
-    <div className={className}>
+    <div className={className ?? standingsTheme.segmentedTabs}>
       {items.map((item) => (
         <TabButton
           key={item.value}
           active={value === item.value}
           onClick={() => onChange(item.value)}
           disabled={item.disabled}
-          className={buttonClassName}
+          className={buttonClassName ?? standingsTheme.segmentedTabButton}
           activeClassName={activeClassName}
           inactiveClassName={inactiveClassName}
         >

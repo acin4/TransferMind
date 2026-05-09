@@ -5,6 +5,7 @@ import {
   getAssignmentTournamentLabel,
   safeCompareLabels,
 } from "../utils/clusterFormatters";
+import { standingsTheme } from "../../ui/design";
 
 // memo prevents this summary from re-rendering unless the cluster data changes.
 // That is helpful because this component renders lists of members, which can grow
@@ -46,7 +47,7 @@ export const ClusterMembershipSummary = memo(function ClusterMembershipSummary({
   return (
     // Outer card groups the membership summary as one section of the cluster
     // analysis page.
-    <div className="mt-6 rounded-[2rem] border border-slate-800 bg-slate-950/40 p-5">
+    <div className={`mt-6 ${standingsTheme.nestedPanel}`}>
       {/* Section heading explains that this view focuses on membership only,
           not the individual statistic values used to create the clusters. */}
       <div className="mb-5">
@@ -66,7 +67,7 @@ export const ClusterMembershipSummary = memo(function ClusterMembershipSummary({
           // so it works as a stable React key.
           <div
             key={cluster.clusterId}
-            className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4"
+            className="rounded-2xl border border-slate-800/60 bg-slate-900/40 p-4"
           >
             {/* Card header shows the cluster label and how many team-season
                 entries belong to it. */}

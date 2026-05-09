@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Shield, Trophy } from "lucide-react";
 import type { TeamStandingRow } from "../../api/api";
+import { standingsTheme } from "../ui/design";
 
 type StandingsTableProps = {
   rows: TeamStandingRow[];
@@ -11,7 +12,7 @@ export default function StandingsTable({ rows }: StandingsTableProps) {
     <div className="overflow-x-auto">
       <table className="min-w-[980px] w-full text-left border-collapse">
         <thead>
-          <tr className="bg-slate-900/90 border-b border-slate-800 text-slate-500 uppercase text-[10px] font-black tracking-[0.25em]">
+          <tr className={standingsTheme.tableHead}>
             <th className="px-6 py-6 text-center">#</th>
             <th className="px-8 py-6">CLUB</th>
             <th className="px-3 py-6 text-center">MP</th>
@@ -30,7 +31,7 @@ export default function StandingsTable({ rows }: StandingsTableProps) {
           {rows.map((row, index) => (
             <tr
               key={row.id || row.team_id}
-              className="hover:bg-blue-500/[0.03] transition-all group"
+              className={standingsTheme.rowHover}
             >
               <td className="px-6 py-5 text-center">
                 <span
@@ -138,7 +139,7 @@ function TeamNameWithLeaderIcon({
 }) {
   return (
     <span className="flex min-w-0 items-center gap-3">
-      <span className="truncate font-black text-xl tracking-tighter uppercase italic group-hover:text-blue-400 transition-colors">
+      <span className={`truncate text-xl ${standingsTheme.teamName}`}>
         {row.team_name || "Unknown Team"}
       </span>
       {isLeader && (

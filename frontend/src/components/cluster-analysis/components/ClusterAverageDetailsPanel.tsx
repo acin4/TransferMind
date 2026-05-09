@@ -4,6 +4,7 @@ import {
   formatInsightLabels,
   formatNormalizedStatValue,
 } from "../utils/clusterFormatters";
+import { standingsTheme } from "../../ui/design";
 
 // memo prevents this presentational panel from re-rendering unless its props
 // change. That is useful here because the parent cluster page may update other
@@ -22,7 +23,7 @@ export const ClusterAverageDetailsPanel = memo(function ClusterAverageDetailsPan
     // - min height keeps the layout stable when no cluster is selected.
     // - border/background make it read as a separate details area.
     // - padding gives the content room inside the panel.
-    <div className="min-h-[360px] rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+    <div className={`min-h-[360px] ${standingsTheme.nestedPanel}`}>
       {/* Conditional rendering shows real details when profiles exist, or a
           beginner-friendly empty state when the user has not selected a cluster. */}
       {profiles.length > 0 ? (
@@ -52,7 +53,7 @@ export const ClusterAverageDetailsPanel = memo(function ClusterAverageDetailsPan
               {/* Insight cards summarize which stats stand out most for this
                   cluster before the user reads the full table below. */}
               <div className="mt-4 grid grid-cols-1 gap-3 text-xs font-bold uppercase tracking-widest">
-                <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3">
+                <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 p-3">
                   <p className="mb-2 text-[10px] font-black text-slate-500">
                     Strongest Statistics
                   </p>
@@ -62,7 +63,7 @@ export const ClusterAverageDetailsPanel = memo(function ClusterAverageDetailsPan
                     {formatInsightLabels(profile.strongest)}
                   </p>
                 </div>
-                <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3">
+                <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 p-3">
                   <p className="mb-2 text-[10px] font-black text-slate-500">
                     Weakest Statistics
                   </p>
@@ -100,7 +101,7 @@ export const ClusterAverageDetailsPanel = memo(function ClusterAverageDetailsPan
                       </span>
                       {/* tabular-nums makes each digit the same width, which
                           helps averages line up cleanly down the column. */}
-                      <span className="text-right font-black tabular-nums text-blue-300">
+                      <span className="text-right font-black tabular-nums text-blue-400">
                         {formatNormalizedStatValue(
                           profile.averages[statItem.statKey],
                         )}

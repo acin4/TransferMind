@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Users, ChevronRight, Trophy, Building2, MapPin, Search } from "lucide-react";
+import { Users, ChevronRight, Trophy, Building2, MapPin, Award } from "lucide-react";
 import { useTeams } from "../hooks/useTeams";
 import type { TeamListItem } from "../api/api";
 import {
@@ -10,6 +10,12 @@ import {
 } from "../utils/teamDisplay";
 import SegmentedTabs from "../components/ui/SegmentedTabs";
 import { filterAndRankSearchResults } from "../utils/search";
+import {
+  PageHeader,
+  PageShell,
+  SearchInput,
+  standingsTheme,
+} from "../components/ui/design";
 
 const ALL_TAB = "ALL";
 const OTHER_TAB = "Other";
@@ -78,103 +84,101 @@ export default function Teams() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-blue-500 font-bold tracking-widest animate-pulse">
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-blue-500 font-black italic uppercase tracking-widest animate-pulse">
         ΦΟΡΤΩΣΗ ΟΜΑΔΩΝ...
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 p-6 md:p-12 text-white font-sans">
-      <div className="max-w-7xl mx-auto animate-in fade-in duration-500">
-        <h1 className="text-4xl font-black uppercase mb-10 text-white tracking-tight">
-          Teams
-        </h1>
+    <PageShell>
+      <PageHeader
+        title="Teams"
+        subtitle="Professional Scouting Network"
+        icon={Award}
+      />
 
-        <div className="relative mb-6 max-w-xl">
-          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-500">
-            <Search size={16} />
-          </div>
-          <input
-            value={teamSearchQuery}
-            onChange={(event) => setTeamSearchQuery(event.target.value)}
-            placeholder="Search teams..."
-            className="w-full rounded-2xl border border-slate-800 bg-slate-950/70 py-3 pl-11 pr-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
-          />
-        </div>
+      <SearchInput
+        value={teamSearchQuery}
+        onChange={setTeamSearchQuery}
+        placeholder="Search teams..."
+      />
 
-        <div className="mb-8">
-          <SegmentedTabs
-            items={countryTabs.map((country) => ({
-              value: country,
-              label: country,
-            }))}
-            value={activeCountry}
-            onChange={setActiveCountry}
-            className="flex gap-2 bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800 w-full md:w-max overflow-x-auto"
-            buttonClassName="px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap"
-          />
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredTeams.map((team) => (
-            <Link 
-              key={team.id} 
-              to={`/team/${team.id}`}
-              className="flex flex-col justify-between bg-slate-900 border border-slate-800 p-6 rounded-3xl hover:border-blue-500 hover:bg-slate-800/50 transition-all group shadow-xl"
-            >
-              <div className="flex justify-between items-start mb-6">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-blue-500/20 bg-slate-950/80 p-2 shadow-[0_10px_24px_rgba(2,6,23,0.35),0_0_18px_rgba(59,130,246,0.12)] ring-1 ring-slate-800/80">
-                  {team.logo_url ? (
-                    <img src={team.logo_url} alt={team.name} className="w-full h-full object-contain" />
-                  ) : (
-                    <Users className="text-slate-400" size={20} />
-                  )}
-                </div>
-                
-                {team.badge_label ? (
-                  <span
-                    className={`text-[9px] px-3 py-1 rounded-full font-black uppercase tracking-widest flex items-center gap-1 border ${
-                      team.badge_is_current
-                        ? "bg-blue-500/10 border-blue-500/20 text-blue-400"
-                        : "bg-slate-800/80 border-slate-700 text-slate-300"
-                    }`}
-                  >
-                    <Trophy size={10} />
-                    {team.badge_label}
-                  </span>
-                ) : null}
-              </div>
-              
-              <h2 className="text-2xl font-black uppercase italic mb-4 group-hover:text-blue-400 transition-colors leading-tight">
-                {team.name}
-              </h2>
-
-              <div className="space-y-2 min-h-[48px]">
-                <TeamMetaLine
-                  icon={<MapPin size={14} />}
-                  value={getTeamLocation(team)}
-                />
-                <TeamMetaLine
-                  icon={<Building2 size={14} />}
-                  value={getTeamStadium(team)}
-                />
-              </div>
-              
-              <div className="mt-4 flex items-center text-slate-500 text-xs font-black uppercase tracking-widest group-hover:gap-3 group-hover:text-blue-500 transition-all">
-                View Profile <ChevronRight size={16} />
-              </div>
-            </Link>
-          ))}
-        </div>
-
-        {filteredTeams.length === 0 && (
-          <div className="mt-10 text-center p-16 bg-slate-900/20 border-2 border-dashed border-slate-800 rounded-[3rem] font-black uppercase tracking-widest text-slate-500">
-            No teams found for this country.
-          </div>
-        )}
+      <div className="mb-8">
+        <SegmentedTabs
+          items={countryTabs.map((country) => ({
+            value: country,
+            label: country,
+          }))}
+          value={activeCountry}
+          onChange={setActiveCountry}
+          className={standingsTheme.segmentedTabs}
+          buttonClassName={standingsTheme.segmentedTabButton}
+        />
       </div>
-    </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {filteredTeams.map((team) => (
+          <Link
+            key={team.id}
+            to={`/team/${team.id}`}
+            className="group flex flex-col justify-between rounded-[2rem] border border-slate-800/60 bg-slate-900/40 p-6 shadow-2xl backdrop-blur-xl transition-all hover:border-blue-500 hover:bg-blue-500/[0.03]"
+          >
+            <div className="flex justify-between items-start mb-6">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-blue-500/20 bg-slate-950/80 p-2 shadow-[0_10px_24px_rgba(2,6,23,0.35),0_0_18px_rgba(59,130,246,0.12)] ring-1 ring-slate-800/80">
+                {team.logo_url ? (
+                  <img
+                    src={team.logo_url}
+                    alt={team.name}
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <Users className="text-slate-400" size={20} />
+                )}
+              </div>
+
+              {team.badge_label ? (
+                <span
+                  className={`text-[9px] px-3 py-1 rounded-full font-black uppercase tracking-widest flex items-center gap-1 border ${
+                    team.badge_is_current
+                      ? "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                      : "bg-slate-800/80 border-slate-700 text-slate-300"
+                  }`}
+                >
+                  <Trophy size={10} />
+                  {team.badge_label}
+                </span>
+              ) : null}
+            </div>
+
+            <h2 className="mb-4 text-2xl leading-tight font-black tracking-tighter uppercase italic transition-colors group-hover:text-blue-400">
+              {team.name}
+            </h2>
+
+            <div className="space-y-2 min-h-[48px]">
+              <TeamMetaLine
+                icon={<MapPin size={14} />}
+                value={getTeamLocation(team)}
+              />
+              <TeamMetaLine
+                icon={<Building2 size={14} />}
+                value={getTeamStadium(team)}
+              />
+            </div>
+
+            <div className="mt-4 flex items-center text-xs font-black uppercase tracking-widest text-slate-500 transition-all group-hover:gap-3 group-hover:text-blue-500">
+              View Profile <ChevronRight size={16} />
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      {filteredTeams.length === 0 && (
+        <div className={`mt-10 ${standingsTheme.emptyPanel}`}>
+          No teams found for this country.
+        </div>
+      )}
+    </PageShell>
   );
 }
 

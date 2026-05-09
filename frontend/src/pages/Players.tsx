@@ -8,7 +8,7 @@ import {
   type SetStateAction,
 } from "react";
 import { useLocation } from "react-router-dom";
-import { ArrowLeft, ChevronRight, Search, Users } from "lucide-react";
+import { ArrowLeft, Award, ChevronRight, Users } from "lucide-react";
 import {
   getPlayerTeams,
   getTeamPlayers,
@@ -22,6 +22,12 @@ import {
   getPlayerRouteKey,
   normalizePlayersPagePlayer,
 } from "../utils/playerTable";
+import {
+  PageHeader,
+  PageShell,
+  SearchInput,
+  standingsTheme,
+} from "../components/ui/design";
 
 const COUNTRY_TABS = ["ALL", "ENGLAND", "GERMANY", "GREECE", "ITALY", "SPAIN"] as const;
 const TEAM_PAGE_SIZE = 24;
@@ -209,38 +215,36 @@ export default function Players() {
     [playerPage, playerSearchQuery, selectedTeam],
   );
 
+  const handleSearchChange = (value: string) => {
+    if (isTeamView) {
+      setTeamSearchQuery(value);
+      setTeamPage(1);
+      setTeams([]);
+      setTeamPagination(null);
+      return;
+    }
+
+    setPlayerSearchQuery(value);
+    setPlayerPage(1);
+    setPlayers([]);
+    setPlayerPagination(null);
+  };
+
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">Players</h1>
+    <PageShell>
+      <PageHeader
+        title="Players"
+        subtitle="Professional Scouting Network"
+        icon={Award}
+      />
 
-      {error && (
-        <div className="mb-4 text-sm font-bold text-rose-400">{error}</div>
-      )}
+      {error && <div className={`mb-6 ${standingsTheme.errorPanel}`}>{error}</div>}
 
-      <div className="relative mb-6 max-w-xl">
-        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-500">
-          <Search size={16} />
-        </div>
-        <input
-          value={isTeamView ? teamSearchQuery : playerSearchQuery}
-          onChange={(event) => {
-            if (isTeamView) {
-              setTeamSearchQuery(event.target.value);
-              setTeamPage(1);
-              setTeams([]);
-              setTeamPagination(null);
-              return;
-            }
-
-            setPlayerSearchQuery(event.target.value);
-            setPlayerPage(1);
-            setPlayers([]);
-            setPlayerPagination(null);
-          }}
-          placeholder={isTeamView ? "Search teams..." : "Search players..."}
-          className="w-full rounded-2xl border border-slate-800 bg-slate-950/70 py-3 pl-11 pr-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
-        />
-      </div>
+      <SearchInput
+        value={isTeamView ? teamSearchQuery : playerSearchQuery}
+        onChange={handleSearchChange}
+        placeholder={isTeamView ? "Search teams..." : "Search players..."}
+      />
 
       {isTeamView ? (
         <>
@@ -257,8 +261,8 @@ export default function Players() {
                 setTeams([]);
                 setTeamPagination(null);
               }}
-              className="flex gap-2 bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800 w-full md:w-max overflow-x-auto"
-              buttonClassName="px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap"
+              className={standingsTheme.segmentedTabs}
+              buttonClassName={standingsTheme.segmentedTabButton}
             />
           </div>
 
@@ -292,7 +296,7 @@ export default function Players() {
                 setPlayers([]);
                 setPlayerPagination(null);
               }}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-2 text-xs font-black uppercase tracking-widest text-slate-300 transition hover:border-blue-500 hover:text-blue-400"
+              className="inline-flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-300 shadow-xl transition hover:border-blue-500 hover:text-blue-400"
             >
               <ArrowLeft size={14} />
               Back to teams
@@ -312,7 +316,7 @@ export default function Players() {
           <div ref={playerLoadMoreRef} aria-hidden="true" className="h-px" />
         </>
       )}
-    </div>
+    </PageShell>
   );
 }
 
@@ -326,12 +330,12 @@ function TeamGrid({
   onSelectTeam: (team: TeamListItem) => void;
 }) {
   if (isLoading && teams.length === 0) {
-    return <div className="p-6">Loading teams...</div>;
+    return <div className={standingsTheme.loadingPanel}>Loading teams...</div>;
   }
 
   if (!isLoading && teams.length === 0) {
     return (
-      <div className="mt-10 text-center p-12 bg-slate-900/20 border-2 border-dashed border-slate-800 rounded-[3rem] font-black uppercase tracking-widest text-slate-500">
+      <div className={`mt-10 ${standingsTheme.emptyPanel}`}>
         No teams found.
       </div>
     );
@@ -344,7 +348,7 @@ function TeamGrid({
           key={team.id}
           type="button"
           onClick={() => onSelectTeam(team)}
-          className="group flex items-center justify-between rounded-2xl border border-slate-800 bg-gradient-to-br from-gray-900 to-gray-800 p-5 text-left text-white shadow-lg transition hover:border-blue-500 hover:bg-slate-800/70"
+          className="group flex items-center justify-between rounded-[2rem] border border-slate-800/60 bg-slate-900/40 p-5 text-left text-white shadow-2xl backdrop-blur-xl transition hover:border-blue-500 hover:bg-blue-500/[0.03]"
         >
           <div className="flex min-w-0 items-center gap-4">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-slate-950/70 text-blue-400">
@@ -361,7 +365,7 @@ function TeamGrid({
               )}
             </div>
             <div className="min-w-0">
-              <h2 className="truncate text-lg font-black uppercase leading-tight group-hover:text-blue-400">
+              <h2 className="truncate text-lg font-black uppercase italic tracking-tighter leading-tight transition-colors group-hover:text-blue-400">
                 {team.name}
               </h2>
               <p className="mt-1 text-xs font-bold uppercase tracking-widest text-slate-500">
@@ -399,12 +403,12 @@ function PlayerResultsTable({
   );
 
   if (isLoading && players.length === 0) {
-    return <div className="p-6">Loading players...</div>;
+    return <div className={standingsTheme.loadingPanel}>Loading players...</div>;
   }
 
   if (!isLoading && players.length === 0) {
     return (
-      <div className="mt-10 text-center p-12 bg-slate-900/20 border-2 border-dashed border-slate-800 rounded-[3rem] font-black uppercase tracking-widest text-slate-500">
+      <div className={`mt-10 ${standingsTheme.emptyPanel}`}>
         No players found.
       </div>
     );

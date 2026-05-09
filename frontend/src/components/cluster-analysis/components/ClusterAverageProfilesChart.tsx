@@ -22,6 +22,7 @@ import type { ClusterAverageProfilesChartProps } from "../types";
 import { ClusterAverageDetailsPanel } from "./ClusterAverageDetailsPanel";
 import { ClusterLegend } from "./ClusterLegend";
 import { ClusterSelectionControls } from "./ClusterSelectionControls";
+import { standingsTheme } from "../../ui/design";
 
 // memo keeps this chart from re-rendering unless its props change. That matters
 // because SVG charts can have many calculated points, so avoiding unnecessary
@@ -181,7 +182,7 @@ export const ClusterAverageProfilesChart = memo(function ClusterAverageProfilesC
   return (
     // Outer card for the full chart area. The border/background visually groups
     // the chart, legend, controls, and details panel as one UI feature.
-    <div className="mt-6 rounded-[2rem] border border-slate-800 bg-slate-950/40 p-5">
+    <div className={`mt-6 ${standingsTheme.nestedPanel}`}>
       {/* Header layout stacks on small screens and becomes a title + legend row
           on wider screens for easier scanning. */}
       <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">

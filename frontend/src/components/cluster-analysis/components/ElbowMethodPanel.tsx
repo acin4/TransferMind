@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { MessageBox } from "./MessageBox";
 import { SelectField } from "./SelectField";
+import { ContentPanel } from "../../ui/design";
 import type {
   ElbowMethodPanelProps,
   ElbowTooltipProps,
@@ -69,7 +70,7 @@ export const ElbowMethodPanel = memo(function ElbowMethodPanel({
 
   return (
     // Main panel card for the elbow result and final K controls.
-    <section className="bg-slate-900/50 border border-slate-800 rounded-[2.5rem] p-6 md:p-8 shadow-2xl">
+    <ContentPanel>
       {/* Header and action controls stack on smaller screens and sit side by side
           on large screens, keeping the chart setup readable. */}
       <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between mb-6">
@@ -97,7 +98,7 @@ export const ElbowMethodPanel = memo(function ElbowMethodPanel({
             // Disable until a K is selected, and while clustering is already
             // running, to prevent incomplete or duplicate requests.
             disabled={selectedK == null || loadingClusters}
-            className="rounded-2xl bg-emerald-600 px-6 py-4 text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
+            className="rounded-2xl bg-blue-600 px-6 py-4 text-xs font-black uppercase tracking-widest text-white shadow-[0_0_20px_rgba(37,99,235,0.25)] transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
           >
             {/* Loading text confirms that the click was received and work is in progress. */}
             {loadingClusters ? "Clustering..." : "Run K-Means"}
@@ -179,7 +180,7 @@ export const ElbowMethodPanel = memo(function ElbowMethodPanel({
           </LineChart>
         </ResponsiveContainer>
       </div>
-    </section>
+    </ContentPanel>
   );
 });
 

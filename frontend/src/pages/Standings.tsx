@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Award, Loader2, Search } from "lucide-react";
+import { Award, Loader2 } from "lucide-react";
 import {
   getCurrentTournaments,
   getStandings,
@@ -16,6 +16,13 @@ import type {
   TournamentOption,
 } from "../components/standings/types";
 import { filterAndRankSearchResults } from "../utils/search";
+import {
+  PageHeader,
+  PageShell,
+  SearchInput,
+  SurfacePanel,
+  standingsTheme,
+} from "../components/ui/design";
 
 // Minimal tournament record returned by the current-tournaments endpoint.
 // The page later converts these records into dropdown options.
@@ -424,22 +431,13 @@ export default function Standings() {
   }
 
   return (
-    // Main standings page shell with dark theme and responsive padding.
-    <div className="min-h-screen bg-slate-950 p-6 md:p-12 text-white font-sans selection:bg-blue-500/30">
-      <div className="max-w-6xl mx-auto">
-        {/* Header row contains page title and tournament/season filters. */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-12 gap-8">
-          <div>
-            <h1 className="text-6xl font-black italic uppercase tracking-tighter bg-gradient-to-r from-white via-blue-400 to-blue-600 bg-clip-text text-transparent leading-none">
-              Standings
-            </h1>
-            <p className="text-slate-500 font-bold uppercase tracking-[0.3em] text-[10px] mt-4 flex items-center gap-2">
-              <Award size={14} className="text-blue-500" /> Professional
-              Scouting Network
-            </p>
-          </div>
-
-          {/* StandingsFilters owns the dropdown UI, while this page owns the state. */}
+    <PageShell>
+      {/* Header row contains page title and tournament/season filters. */}
+      <PageHeader
+        title="Standings"
+        subtitle="Professional Scouting Network"
+        icon={Award}
+        actions={
           <StandingsFilters
             tournaments={uniqueLeagues}
             seasons={availableSeasons}
@@ -448,46 +446,37 @@ export default function Standings() {
             onTournamentChange={handleLeagueChange}
             onSeasonChange={handleSeasonChange}
           />
-        </div>
+        }
+      />
 
-        {/* Search box filters only the rows in the currently selected standings group. */}
-        <div className="relative mb-6 max-w-xl">
-          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-500">
-            <Search size={16} />
-          </div>
-          <input
-            // Controlled input for standings row search.
-            value={standingsSearchQuery}
-            onChange={(event) => setStandingsSearchQuery(event.target.value)}
-            placeholder="Search standings..."
-            className="w-full rounded-2xl border border-slate-800 bg-slate-950/70 py-3 pl-11 pr-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
+      {/* Search box filters only the rows in the currently selected standings group. */}
+      <SearchInput
+        value={standingsSearchQuery}
+        onChange={setStandingsSearchQuery}
+        placeholder="Search standings..."
+      />
+
+      {loading ? (
+        // Loading panel shown while standings or a selected group is being fetched.
+        <div className={standingsTheme.loadingPanel}>
+          <Loader2 className="animate-spin" size={40} />
+          Loading Standings...
+        </div>
+      ) : error ? (
+        // Error panel shown when the standings request fails.
+        <div className={standingsTheme.errorPanel}>{error}</div>
+      ) : (
+        // Successful state: tabs choose the stage/group, table renders filtered rows.
+        <SurfacePanel>
+          <StageTabs
+            groups={standingsGroups}
+            selectedGroupKey={selectedGroupKey}
+            onSelectGroup={handleGroupSelect}
           />
-        </div>
-
-        {loading ? (
-          // Loading panel shown while standings or a selected group is being fetched.
-          <div className="text-center p-32 bg-slate-900/20 border-2 border-dashed border-slate-800 rounded-[3rem] italic animate-pulse font-black uppercase tracking-widest text-blue-500 flex flex-col items-center gap-4">
-            <Loader2 className="animate-spin" size={40} />
-            Loading Standings...
-          </div>
-        ) : error ? (
-          // Error panel shown when the standings request fails.
-          <div className="text-center p-20 bg-rose-500/10 border border-rose-500/20 rounded-[3rem] text-rose-400 font-black uppercase tracking-widest">
-            {error}
-          </div>
-        ) : (
-          // Successful state: tabs choose the stage/group, table renders filtered rows.
-          <div className="bg-slate-900/40 border border-slate-800/60 rounded-[3rem] overflow-hidden shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <StageTabs
-              groups={standingsGroups}
-              selectedGroupKey={selectedGroupKey}
-              onSelectGroup={handleGroupSelect}
-            />
-            <StandingsTable rows={visibleStandingsRows} />
-          </div>
-        )}
-      </div>
-    </div>
+          <StandingsTable rows={visibleStandingsRows} />
+        </SurfacePanel>
+      )}
+    </PageShell>
   );
 }
 

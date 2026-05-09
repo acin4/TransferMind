@@ -40,6 +40,7 @@ import {
 import SearchableCheckboxPanel from "./SearchableCheckboxPanel";
 import StatCategoryFilterTabs from "./StatCategoryFilterTabs";
 import SegmentedTabs from "../ui/SegmentedTabs";
+import { ContentPanel, standingsTheme } from "../ui/design";
 
 const SERIES_COLORS = [
   "#3b82f6",
@@ -318,8 +319,8 @@ export default function CustomComparisonTab({
               }))}
               value={selectedCountryFilter}
               onChange={setSelectedCountryFilter}
-              className="flex flex-wrap gap-2 overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/40 p-1.5"
-              buttonClassName="shrink-0 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap"
+              className={standingsTheme.compactSegmentedTabs}
+              buttonClassName={standingsTheme.compactSegmentedTabButton}
               activeClassName="bg-blue-600 text-white shadow-[0_0_18px_rgba(37,99,235,0.25)]"
               inactiveClassName="text-slate-400 hover:bg-slate-800/70 hover:text-slate-100"
             />
@@ -348,7 +349,7 @@ export default function CustomComparisonTab({
         />
       </div>
 
-      <section className="bg-slate-900/50 border border-slate-800 rounded-[2.5rem] p-6 md:p-8 shadow-2xl">
+      <ContentPanel>
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
           <div>
             <h3 className="text-xl font-black uppercase tracking-tight text-white">
@@ -446,7 +447,7 @@ export default function CustomComparisonTab({
         ) : (
           <EmptyState message="No comparison values were returned for this selection." />
         )}
-      </section>
+      </ContentPanel>
     </div>
   );
 }
@@ -527,7 +528,7 @@ function calculateContextRelativeScore(
 
 function StatusPill({ label }: { label: string }) {
   return (
-    <span className="px-3 py-2 rounded-xl bg-slate-950/70 border border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-300">
+    <span className={standingsTheme.compactPill}>
       {label}
     </span>
   );
@@ -535,7 +536,7 @@ function StatusPill({ label }: { label: string }) {
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="min-h-[420px] rounded-[2rem] border-2 border-dashed border-slate-800 bg-slate-950/30 flex items-center justify-center text-center px-8">
+    <div className="min-h-[420px] rounded-[3rem] border-2 border-dashed border-slate-800 bg-slate-900/20 flex items-center justify-center text-center px-8">
       <p className="max-w-xl text-sm font-black uppercase tracking-widest text-slate-500">
         {message}
       </p>
@@ -618,7 +619,7 @@ function BarComparisonTooltip({
               <div className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-2">
                 Relative Score (0–100)
               </div>
-              <div className="text-sm font-bold text-blue-300">
+              <div className="text-sm font-bold text-blue-400">
                 {relativeScore == null
                   ? "N/A"
                   : formatRelativeScoreValue(relativeScore)}
@@ -719,7 +720,7 @@ function RadarComparisonTooltip({
               <div className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-2">
                 Relative Score (0–100)
               </div>
-              <div className="text-sm font-bold text-blue-300">
+              <div className="text-sm font-bold text-blue-400">
                 {relativeScore == null
                   ? "N/A"
                   : formatRelativeScoreValue(relativeScore)}

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Link, useNavigate, type To } from "react-router-dom";
+import { standingsTheme } from "../ui/design";
 
 type PlayerTableIdentity =
   | {
@@ -57,23 +58,23 @@ export default function PlayerTable<TPlayer extends PlayerTablePlayer>({
       ) : null}
 
       {players.length > 0 ? (
-        <div className="overflow-x-auto bg-slate-900/50 rounded-3xl border border-slate-800 p-2 shadow-inner">
+        <div className="overflow-x-auto rounded-[3rem] border border-slate-800/60 bg-slate-900/40 shadow-2xl backdrop-blur-xl">
           <table className="w-full min-w-[760px] text-left">
             <thead>
-              <tr className="text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-800/80 bg-slate-900/50">
-                <th className="w-28 py-5 pl-6 font-normal rounded-tl-2xl">
+              <tr className={standingsTheme.tableHead}>
+                <th className="w-28 py-6 pl-6">
                   Jersey number
                 </th>
-                <th className="py-5 font-normal">Player name</th>
-                <th className="w-24 py-5 font-normal">Age</th>
-                <th className="w-32 py-5 font-normal">Position</th>
-                <th className="w-28 py-5 font-normal">Foot</th>
-                <th className="w-36 py-5 pr-6 font-normal text-right rounded-tr-2xl">
+                <th className="py-6">Player name</th>
+                <th className="w-24 py-6">Age</th>
+                <th className="w-32 py-6">Position</th>
+                <th className="w-28 py-6">Foot</th>
+                <th className="w-36 py-6 pr-6 text-right">
                   Nationality
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/50">
+            <tbody className="divide-y divide-slate-800/30">
               {players.map((player) => (
                 <PlayerTableRow
                   key={getPlayerKey(player)}
@@ -91,7 +92,7 @@ export default function PlayerTable<TPlayer extends PlayerTablePlayer>({
           </table>
         </div>
       ) : (
-        <p className="text-slate-500 italic bg-slate-900/50 p-8 rounded-2xl border border-slate-800 text-center font-bold">
+        <p className={standingsTheme.emptyPanel}>
           {emptyMessage}
         </p>
       )}
@@ -130,7 +131,7 @@ function PlayerTableRow<TPlayer extends PlayerTablePlayer>({
   return (
     <tr
       onClick={isRowClickable ? handleRowClick : undefined}
-      className={`hover:bg-slate-800/40 transition-colors group ${
+      className={`hover:bg-blue-500/[0.03] transition-colors group ${
         isRowClickable ? "cursor-pointer" : ""
       }`}
     >
@@ -186,7 +187,7 @@ function PlayerNameContent<TPlayer extends PlayerTablePlayer>({
   linkTarget?: PlayerTableLinkTarget;
 }) {
   const className =
-    "block truncate max-w-[180px] sm:max-w-[280px] text-sm md:text-base group-hover:text-blue-400 transition-colors";
+    "block truncate max-w-[180px] sm:max-w-[280px] text-sm md:text-base font-black uppercase italic tracking-tighter group-hover:text-blue-400 transition-colors";
 
   if (!linkTarget) {
     return <span className={className}>{player.name}</span>;

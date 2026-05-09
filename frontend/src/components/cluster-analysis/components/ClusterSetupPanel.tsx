@@ -3,6 +3,7 @@ import { COUNTRY_FILTER_TABS } from "../../../utils/countryFilters";
 import SearchableCheckboxPanel from "../../teams-comparison/SearchableCheckboxPanel";
 import StatCategoryFilterTabs from "../../teams-comparison/StatCategoryFilterTabs";
 import SegmentedTabs from "../../ui/SegmentedTabs";
+import { ContentPanel, standingsTheme } from "../../ui/design";
 import type { ClusterSetupPanelProps } from "../types";
 import { MessageBox } from "./MessageBox";
 import { SelectField } from "./SelectField";
@@ -59,7 +60,7 @@ export const ClusterSetupPanel = memo(function ClusterSetupPanel({
   return (
     // Main panel styling: the rounded border and shadow make the setup form read
     // as one major section of the Cluster Analysis page.
-    <section className="bg-slate-900/50 border border-slate-800 rounded-[2.5rem] p-6 md:p-8 shadow-2xl">
+    <ContentPanel>
       {/* Header explains the clustering setup in practical UI terms:
           rows are selected entries and columns are selected statistics. */}
       <div className="mb-8">
@@ -120,8 +121,8 @@ export const ClusterSetupPanel = memo(function ClusterSetupPanel({
               }))}
               value={selectedCountryFilter}
               onChange={onCountryFilterChange}
-              className="flex flex-wrap gap-2 overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/40 p-1.5"
-              buttonClassName="shrink-0 rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap"
+              className={standingsTheme.compactSegmentedTabs}
+              buttonClassName={standingsTheme.compactSegmentedTabButton}
               activeClassName="bg-blue-600 text-white shadow-[0_0_18px_rgba(37,99,235,0.25)]"
               inactiveClassName="text-slate-400 hover:bg-slate-800/70 hover:text-slate-100"
             />
@@ -179,6 +180,6 @@ export const ClusterSetupPanel = memo(function ClusterSetupPanel({
       {requestError ? (
         <MessageBox tone="error" messages={[requestError]} />
       ) : null}
-    </section>
+    </ContentPanel>
   );
 });
