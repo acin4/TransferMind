@@ -7,7 +7,7 @@ import {
   type RefObject,
   type SetStateAction,
 } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { ArrowLeft, ChevronRight, Search, Users } from "lucide-react";
 import {
   getPlayerTeams,
@@ -16,11 +16,12 @@ import {
   type PlayerListItem,
   type TeamListItem,
 } from "../api/api";
+import PlayerTable from "../components/players/PlayerTable";
 import SegmentedTabs from "../components/ui/SegmentedTabs";
 import {
-  formatPlayerHeight,
-  getPlayerTeamName,
-} from "../utils/playerDisplay";
+  getPlayerRouteKey,
+  normalizePlayersPagePlayer,
+} from "../utils/playerTable";
 
 const COUNTRY_TABS = ["ALL", "ENGLAND", "GERMANY", "GREECE", "ITALY", "SPAIN"] as const;
 const TEAM_PAGE_SIZE = 24;
@@ -301,9 +302,10 @@ export default function Players() {
             </div>
           </div>
 
-          <PlayerGrid
+          <PlayerResultsTable
             players={players}
             isLoading={isLoadingPlayers}
+            selectedTeamName={selectedTeam.name}
             pageState={playerPageState}
           />
 
@@ -377,15 +379,25 @@ function TeamGrid({
   );
 }
 
-function PlayerGrid({
+function PlayerResultsTable({
   players,
   isLoading,
+  selectedTeamName,
   pageState,
 }: {
   players: PlayerListItem[];
   isLoading: boolean;
+  selectedTeamName: string | null;
   pageState: PlayersBrowserState;
 }) {
+  const tablePlayers = useMemo(
+    () =>
+      players.map((player) =>
+        normalizePlayersPagePlayer(player, selectedTeamName),
+      ),
+    [players, selectedTeamName],
+  );
+
   if (isLoading && players.length === 0) {
     return <div className="p-6">Loading players...</div>;
   }
@@ -399,46 +411,20 @@ function PlayerGrid({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      {players.map((player) => (
-        <PlayerCard
-          key={player.id}
-          player={player}
-          pageState={pageState}
-        />
-      ))}
-    </div>
-  );
-}
-
-function PlayerCard({
-  player,
-  pageState,
-}: {
-  player: PlayerListItem;
-  pageState: PlayersBrowserState;
-}) {
-  const teamName = getPlayerTeamName(player);
-
-  return (
-    <Link
-      key={player.id}
-      to={`/player/${player.id}`}
-      state={{
-        fromTeamId: player.team_id,
-        fromTeamName: teamName ?? pageState.teamName,
-        playersState: pageState,
+    <PlayerTable
+      players={tablePlayers}
+      teamName={selectedTeamName}
+      getPlayerLink={(player) => {
+        return {
+          to: `/player/${getPlayerRouteKey(player)}`,
+          state: {
+            fromTeamId: player.teamId,
+            fromTeamName: player.teamName ?? pageState.teamName,
+            playersState: pageState,
+          },
+        };
       }}
-    >
-      <div className="rounded-2xl border border-slate-800 bg-gradient-to-br from-gray-900 to-gray-800 p-4 text-white shadow-lg transition hover:border-blue-500">
-        <h2 className="text-lg font-semibold">{player.name}</h2>
-        <p className="text-sm text-gray-400">
-          {teamName ?? pageState.teamName ?? "-"}
-        </p>
-        <p className="text-sm">Position: {player.position ?? "-"}</p>
-        <p className="text-sm">Height: {formatPlayerHeight(player.height)}</p>
-      </div>
-    </Link>
+    />
   );
 }
 

@@ -53,8 +53,13 @@ export type PlayerListItem = {
   teamLogo?: string | null;
   tournament_name?: string | null;
   tournamentName?: string | null;
+  photo_url?: string | null;
+  nationality?: string | null;
   position?: string | null;
   height?: number | string | null;
+  date_of_birth?: string | null;
+  foot?: string | null;
+  jersey_num?: number | string | null;
   player_stats?: PlayerListStat[] | null;
   commonStats?: PlayerListStat;
   outfieldStats?: PlayerListStat | null;
@@ -131,6 +136,8 @@ export type TeamProfilePlayer = {
   position?: string | null;
   height?: number | string | null;
   date_of_birth?: string | null;
+  foot?: string | null;
+  jersey_num?: number | string | null;
   [key: string]: unknown;
 };
 

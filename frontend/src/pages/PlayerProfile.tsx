@@ -1,14 +1,11 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Ruler, Users } from "lucide-react";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useParams } from "react-router-dom";
 import {
   getPlayer,
   type PlayerListItem,
   type PlayerListStat,
-  type PlayerRelatedTeam,
 } from "../api/api";
 import ProfileLayout from "../components/profile/ProfileLayout";
-import SegmentedTabs from "../components/ui/SegmentedTabs";
 import {
   getOptionalPlayerField,
   getPlayerCommonStats,
@@ -25,9 +22,6 @@ import {
 } from "../utils/playerStats";
 import { formatBirthDate } from "../utils/dateFormat";
 
-// The player profile has two top-level tabs: one for stats and one for general info.
-type PlayerProfileTabId = "statistics" | "info";
-
 // Optional navigation state passed when the user opens a player from a team page.
 // It lets this page build a more helpful "Back to Team" label and preserve filters.
 type PlayerProfileLocationState = {
@@ -39,7 +33,7 @@ type PlayerProfileLocationState = {
 };
 
 // PlayerProfile is a route page. It reads the player id from the URL, fetches
-// that player's data from the backend, and renders profile tabs.
+// that player's data from the backend, and renders the profile summary and stats.
 export default function PlayerProfile() {
   // id comes from the route, for example /player/123.
   const { id } = useParams();
@@ -57,9 +51,6 @@ export default function PlayerProfile() {
   const [loading, setLoading] = useState(true);
   // error stores a user-facing message when the player cannot be loaded.
   const [error, setError] = useState<string | null>(null);
-  // activeTab controls whether the user sees Statistics or Info.
-  const [activeTab, setActiveTab] =
-    useState<PlayerProfileTabId>("statistics");
   // Fetch player data whenever the URL id changes.
   useEffect(() => {
     // cancelled prevents stale requests from updating state after the component
@@ -138,7 +129,6 @@ export default function PlayerProfile() {
   // header consistent with the team page the user came from.
   const displayTeamName =
     playerProfileLocationState?.fromTeamName ?? getPlayerTeamName(player);
-  const relatedTeams = getRelatedTeams(player, displayTeamName);
   // backState preserves team-page filters when ProfileLayout navigates back.
   const backState = playerProfileLocationState
     ? playerProfileLocationState.playersState ?? {
@@ -156,66 +146,11 @@ export default function PlayerProfile() {
     <ProfileLayout backTo="/players" backLabel={backLabel} backState={backState}>
       <PlayerHeader player={player} teamName={displayTeamName} />
 
-      <PlayerTeamsPanel teams={relatedTeams} />
-
-      <PlayerProfileControls activeTab={activeTab} onTabChange={setActiveTab} />
-
-      {/* Main tab content switches between statistical data and general player info. */}
-      {activeTab === "statistics" ? (
-        <PlayerStatsPanel
-          sections={statSections}
-          isGoalkeeper={isGoalkeeper}
-        />
-      ) : (
-        <PlayerInfoPanel player={player} teamName={displayTeamName} />
-      )}
+      <PlayerStatsPanel
+        sections={statSections}
+        isGoalkeeper={isGoalkeeper}
+      />
     </ProfileLayout>
-  );
-}
-
-function PlayerTeamsPanel({ teams }: { teams: PlayerRelatedTeam[] }) {
-  if (teams.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="mb-8 rounded-3xl border border-slate-800 bg-slate-900/40 p-5">
-      <h3 className="mb-4 text-xs font-black uppercase tracking-widest text-slate-500">
-        Teams
-      </h3>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {teams.map((team) => (
-          <Link
-            key={team.id}
-            to="/players"
-            state={{
-              page: 1,
-              search: "",
-              teamId: team.id,
-              teamName: team.name,
-            }}
-            className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-950/50 p-3 text-white transition hover:border-blue-500"
-          >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-slate-950/70 text-blue-400">
-              {team.logo_url ? (
-                <img
-                  src={team.logo_url}
-                  alt={`${team.name} logo`}
-                  loading="lazy"
-                  decoding="async"
-                  className="h-full w-full object-contain p-1.5"
-                />
-              ) : (
-                <Users size={18} />
-              )}
-            </span>
-            <span className="min-w-0 truncate text-sm font-black uppercase tracking-wide">
-              {team.name}
-            </span>
-          </Link>
-        ))}
-      </div>
-    </div>
   );
 }
 
@@ -228,47 +163,62 @@ function PlayerHeader({
 }) {
   return (
     // Header area: player name and key metadata appear at the top of the profile.
-    // It stacks on mobile and can spread horizontally on wider screens.
-    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 mb-10 pb-8 border-b border-slate-800">
-      <div>
+    <div className="mb-10 border-b border-slate-800 pb-8">
+      <div className="max-w-4xl">
         <h1 className="text-5xl font-black uppercase text-white tracking-tight italic">
           {player.name}
         </h1>
-        {/* Metadata lines only render when they have a value, keeping the header clean. */}
-        <div className="mt-4 space-y-2">
-          <HeaderMetaLine
-            icon={<Users size={14} />}
-            value={teamName}
-          />
-          <HeaderMetaLine
-            icon={<Ruler size={14} />}
-            value={formatHeight(player.height)}
-          />
-        </div>
+        <PlayerProfileSummary player={player} teamName={teamName} />
       </div>
     </div>
   );
 }
 
-function PlayerProfileControls({
-  activeTab,
-  onTabChange,
+function PlayerProfileSummary({
+  player,
+  teamName,
 }: {
-  activeTab: PlayerProfileTabId;
-  onTabChange: (tab: PlayerProfileTabId) => void;
+  player: PlayerListItem;
+  teamName: string | null;
 }) {
+  const summaryItems = [
+    { label: "Team", value: formatProfileValue(teamName), hideLabel: true },
+    {
+      label: "Nationality",
+      value: formatProfileValue(getOptionalPlayerField(player, "nationality")),
+    },
+    { label: "Position", value: formatProfileValue(player.position) },
+    {
+      label: "Date of Birth",
+      value: formatBirthDateValue(
+        getOptionalPlayerField(player, "date_of_birth"),
+      ),
+    },
+    {
+      label: "Preferred Foot",
+      value: formatProfileValue(getOptionalPlayerField(player, "foot")),
+    },
+    { label: "Height", value: formatHeight(player.height) },
+  ] as const;
+
   return (
-    // SegmentedTabs gives the user a compact two-option switch between page views.
-    <SegmentedTabs
-      items={[
-        { value: "statistics", label: "Statistics" },
-        { value: "info", label: "Info" },
-      ]}
-      value={activeTab}
-      onChange={onTabChange}
-      className="flex gap-2 mb-8 bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800 w-full md:w-max"
-      buttonClassName="px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all"
-    />
+    <dl className="mt-5 grid gap-x-12 gap-y-3 sm:grid-cols-2">
+      {summaryItems.map(({ label, value, hideLabel }) => (
+        <div
+          key={label}
+          className="flex min-w-0 flex-wrap gap-x-2 text-sm font-bold text-slate-300"
+        >
+          {!hideLabel ? (
+            <dt className="shrink-0 text-slate-500">{label}:</dt>
+          ) : (
+            <dt className="sr-only">{label}</dt>
+          )}
+          <dd className="min-w-0 truncate text-slate-200" title={value}>
+            {value}
+          </dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
@@ -280,7 +230,7 @@ function PlayerStatsPanel({
   isGoalkeeper: boolean;
 }) {
   return (
-    // Fade-in gives the tab switch a small visual transition.
+    // Fade-in keeps the statistics card aligned with the app's profile-page motion.
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="bg-slate-900/40 rounded-[2.5rem] border border-slate-800/60 p-6 md:p-10 shadow-2xl backdrop-blur-sm">
         <div className="mb-6">
@@ -369,76 +319,6 @@ function PlayerStatLine({
   );
 }
 
-function PlayerInfoPanel({
-  player,
-  teamName,
-}: {
-  player: PlayerListItem;
-  teamName: string | null;
-}) {
-  // infoRows is a simple label/value list so the JSX below can render one
-  // consistent row for every profile detail.
-  const infoRows = [
-    ["Team", teamName],
-    ["Height", formatHeight(player.height)],
-    ["Position", player.position],
-    ["Nationality", getOptionalPlayerField(player, "nationality")],
-    ["Date of Birth", formatBirthDate(getOptionalPlayerField(player, "date_of_birth"))],
-    ["Preferred Foot", getOptionalPlayerField(player, "foot")],
-    ["Jersey Number", getOptionalPlayerField(player, "jersey_num")],
-    ["Contract", getOptionalPlayerField(player, "contract")],
-    ["Market Value", formatMarketValue(player)],
-  ] as const;
-
-  return (
-    // Info panel matches the stats panel styling so tab switches feel consistent.
-    <div className="bg-slate-900/40 rounded-[2.5rem] border border-slate-800/60 p-6 md:p-10 shadow-2xl backdrop-blur-sm animate-in fade-in duration-300">
-      <h3 className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-6">
-        Player Info
-      </h3>
-      <div className="bg-slate-900/50 rounded-3xl border border-slate-800 overflow-hidden shadow-inner">
-        {infoRows.map(([label, value]) => (
-          // The label is stable and unique in this list, so it works as the key.
-          <div
-            key={label}
-            className="grid gap-3 border-b border-slate-800/80 px-5 py-5 last:border-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] sm:items-center sm:px-8"
-          >
-            <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">
-              {label}
-            </span>
-            {/* truncate prevents long values, such as contract text, from breaking
-                the row layout. Missing values show an em dash. */}
-            <span className="min-w-0 truncate text-sm font-bold text-slate-200">
-              {value || "\u2014"}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function HeaderMetaLine({
-  icon,
-  value,
-}: {
-  icon: ReactNode;
-  value: string | null | undefined;
-}) {
-  if (!value) {
-    // Do not render empty metadata rows; blank labels would add visual noise.
-    return null;
-  }
-
-  return (
-    // title exposes the full value on hover if the visible text gets truncated.
-    <div className="flex items-center gap-2 min-w-0" title={value}>
-      <span className="shrink-0 text-blue-500">{icon}</span>
-      <span className="truncate text-sm font-bold text-slate-300">{value}</span>
-    </div>
-  );
-}
-
 // Reusable empty-state message for stat categories and missing player stats.
 function EmptyPanelMessage({ message }: { message: string }) {
   return (
@@ -452,45 +332,27 @@ function EmptyPanelMessage({ message }: { message: string }) {
 // row still has a clear placeholder.
 function formatHeight(value: PlayerListItem["height"]) {
   if (value === null || value === undefined || value === "") {
-    return "\u2014";
+    return "-";
   }
 
   return `${value} cm`;
 }
 
-// Combines market value and currency fields into one display string.
-// If the player has no market value, return null so the info table shows a dash.
-function formatMarketValue(player: PlayerListItem) {
-  const value = player.market_value;
-
-  if (typeof value !== "number" && typeof value !== "string") {
-    return null;
+function formatProfileValue(value: string | number | null | undefined) {
+  if (value === null || value === undefined || value === "") {
+    return "-";
   }
 
-  const currency = getOptionalPlayerField(player, "market_value_currency");
-  return [value, currency].filter(Boolean).join(" ");
+  return String(value);
 }
 
-function getRelatedTeams(
-  player: PlayerListItem,
-  fallbackTeamName: string | null,
-) {
-  if (Array.isArray(player.related_teams) && player.related_teams.length > 0) {
-    return player.related_teams;
+function formatBirthDateValue(value: string | null) {
+  if (!value) {
+    return "-";
   }
 
-  if (!player.team_id || !fallbackTeamName) {
-    return [];
-  }
-
-  return [
-    {
-      id: player.team_id,
-      name: fallbackTeamName,
-      logo_url:
-        typeof player.team_logo === "string" ? player.team_logo : null,
-    },
-  ];
+  const formattedDate = formatBirthDate(value);
+  return formattedDate === "Unknown" ? "-" : formattedDate;
 }
 
 function buildPlayerStatSections(

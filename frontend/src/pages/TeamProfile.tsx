@@ -396,7 +396,11 @@ export default function TeamProfile() {
 
           {/* Squad tab shows the selected season's squad rows. */}
           {activeTab === "squad" && (
-            <TeamSquadTable squad={teamSquad} teamName={team.name} />
+            <TeamSquadTable
+              squad={teamSquad}
+              teamId={team.id}
+              teamName={team.name}
+            />
           )}
         </div>
       )}
