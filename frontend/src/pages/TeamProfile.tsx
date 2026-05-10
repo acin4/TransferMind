@@ -25,11 +25,16 @@ import TeamHeader from "../components/team-profile/TeamHeader";
 import TeamProfileControls from "../components/team-profile/TeamProfileControls";
 import TeamStandingsPreview from "../components/team-profile/TeamStandingsPreview";
 import TeamStatsPanel from "../components/team-profile/TeamStatsPanel";
-import TeamSquadTable from "../components/team-profile/TeamSquadTable";
+import PlayerRosterTable from "../components/shared/PlayerRosterTable";
 import type { TeamProfileTabId } from "../components/team-profile/types";
 import type { TeamSeasonStatEntry } from "../utils/teamsComparison";
 import { getTeamsBySeasonTournament } from "../utils/teamStatsPerformance";
 import ProfileLayout from "../components/profile/ProfileLayout";
+import {
+  getPlayerRouteKey,
+  normalizeTeamSquadPlayer,
+} from "../utils/playerTable";
+import { sortPlayersByPosition } from "../utils/sortPlayersByPosition";
 
 // TeamProfile is a route page. It reads a team id from the URL, loads profile
 // data from the backend, and lets the user switch between statistics, standings,
@@ -323,6 +328,14 @@ export default function TeamProfile() {
     selectedCompetitionId,
     selectedCompetitionName,
   ]);
+  const teamName = team?.name ?? null;
+  const normalizedSquadPlayers = useMemo(
+    () =>
+      sortPlayersByPosition(
+        teamSquad.map((player) => normalizeTeamSquadPlayer(player, teamName)),
+      ),
+    [teamSquad, teamName],
+  );
 
   if (loading)
     // Full-screen loading state for the initial team profile request.
@@ -396,10 +409,17 @@ export default function TeamProfile() {
 
           {/* Squad tab shows the selected season's squad rows. */}
           {activeTab === "squad" && (
-            <TeamSquadTable
-              squad={teamSquad}
-              teamId={team.id}
-              teamName={team.name}
+            <PlayerRosterTable
+              title="Current Squad"
+              players={normalizedSquadPlayers}
+              emptyMessage="No squad players found."
+              getPlayerLink={(player) => ({
+                to: `/player/${getPlayerRouteKey(player)}`,
+                state: {
+                  fromTeamId: team.id,
+                  fromTeamName: team.name,
+                },
+              })}
             />
           )}
         </div>

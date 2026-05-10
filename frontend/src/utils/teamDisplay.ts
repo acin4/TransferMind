@@ -33,6 +33,10 @@ function normalizeDisplayText(value: string | null | undefined) {
   return text || null;
 }
 
+export function getDisplayTeamName(teamName: string): string {
+  return teamName.replace(/^\d+\.\s*/, "");
+}
+
 export function getTeamCountry(
   team: TeamDisplayLocationLike | null | undefined,
 ) {

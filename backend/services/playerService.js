@@ -276,10 +276,14 @@ export async function getTeamSquad(teamId, seasonId, options = {}) {
     options.teamMaps ??
     buildTeamMaps(await listTeamMappings({ includeTournament: true }));
   const players = await listTeamSquadPlayers(team, seasonId);
-
-  return players.map((player) =>
-    sanitizePlayer(player, teamMaps, { teamReference: team.id }),
+  const positionsByPlayerId = await listPlayerPositionsByPlayerIds(
+    players.map((player) => player.id),
   );
+
+  return players.map((player) => ({
+    ...sanitizePlayer(player, teamMaps, { teamReference: team.id }),
+    position: positionsByPlayerId.get(player.id) ?? null,
+  }));
 }
 
 export async function getPlayerTeamSquads() {
