@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { 
   Search, Trophy, User, Table2, Shield, Brain, 
-  ChevronRight, Activity, X, LineChart, Database 
+  ChevronRight, Activity, X, LineChart, Database, BarChart3, Network
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -313,16 +313,16 @@ export default function Home() {
       {/* 🟢 ΤΟ POP-UP (MODAL) ΤΗΣ ΠΛΑΤΦΟΡΜΑΣ */}
       {/* Modal is conditionally rendered only while isAboutOpen is true. */}
       {isAboutOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto px-4 py-6 md:py-10">
           {/* Σκοτεινό background - όταν πατάς έξω, κλείνει */}
           <div 
-            className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
             // Clicking the backdrop closes the modal.
             onClick={() => setIsAboutOpen(false)}
           ></div>
           
           {/* Το κυρίως παραθυράκι */}
-          <div className="relative bg-slate-900 border border-slate-700 rounded-[3rem] p-8 md:p-12 max-w-2xl w-full shadow-2xl animate-in zoom-in-95 duration-300">
+          <div className="relative my-auto w-full max-w-3xl rounded-[3rem] border border-slate-700 bg-slate-900 p-8 shadow-2xl animate-in zoom-in-95 duration-300 md:p-12">
             
             {/* Κουμπί κλεισίματος (X) */}
             <button 
@@ -346,7 +346,7 @@ export default function Home() {
             <div className="space-y-6">
               
               {/* Feature 1 */}
-              <div className="flex items-start gap-5 p-4 bg-slate-800/30 rounded-3xl border border-slate-800">
+              <div className="flex items-start gap-5 p-4 bg-slate-800/30 rounded-3xl border border-slate-800 transition-all duration-300 hover:bg-slate-800/50 hover:border-blue-500/40">
                 <div className="bg-blue-500/20 p-4 rounded-2xl">
                   <Table2 size={28} className="text-blue-400" />
                 </div>
@@ -359,7 +359,7 @@ export default function Home() {
               </div>
 
               {/* Feature 2 */}
-              <div className="flex items-start gap-5 p-4 bg-slate-800/30 rounded-3xl border border-slate-800">
+              <div className="flex items-start gap-5 p-4 bg-slate-800/30 rounded-3xl border border-slate-800 transition-all duration-300 hover:bg-slate-800/50 hover:border-purple-500/40">
                 <div className="bg-purple-500/20 p-4 rounded-2xl">
                   <LineChart size={28} className="text-purple-400" />
                 </div>
@@ -372,7 +372,7 @@ export default function Home() {
               </div>
 
               {/* Feature 3 */}
-              <div className="flex items-start gap-5 p-4 bg-slate-800/30 rounded-3xl border border-slate-800">
+              <div className="flex items-start gap-5 p-4 bg-slate-800/30 rounded-3xl border border-slate-800 transition-all duration-300 hover:bg-slate-800/50 hover:border-emerald-500/40">
                 <div className="bg-emerald-500/20 p-4 rounded-2xl">
                   <Database size={28} className="text-emerald-400" />
                 </div>
@@ -380,6 +380,36 @@ export default function Home() {
                   <h3 className="text-xl font-bold text-white mb-1">Τεράστια Βάση Δεδομένων</h3>
                   <p className="text-slate-400 text-sm leading-relaxed">
                     Χιλιάδες παίκτες και ομάδες στο δάχτυλό σου, μέσω της γρήγορης και έξυπνης αναζήτησης του TransferMind.
+                  </p>
+                </div>
+              </div>
+
+              <p className="px-1 pt-2 text-sm font-medium leading-relaxed text-slate-400">
+                Το TransferMind περιλαμβάνει επίσης advanced comparison tools για αναλυτές που θέλουν να αξιολογούν ομάδες ανά σεζόν, διοργάνωση και στατιστική κατηγορία.
+              </p>
+
+              {/* Feature 4 */}
+              <div className="flex items-start gap-5 p-4 bg-slate-800/30 rounded-3xl border border-slate-800 transition-all duration-300 hover:bg-slate-800/50 hover:border-cyan-500/40">
+                <div className="bg-cyan-500/20 p-4 rounded-2xl">
+                  <BarChart3 size={28} className="text-cyan-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-1">Team Comparison</h3>
+                  <p className="text-slate-400 text-sm leading-relaxed">
+                    Σύγκρινε πολλές ομάδες και σεζόν μεταξύ τους με κανονικοποιημένα performance scores. Επίλεξε ομάδες, πρωταθλήματα, σεζόν και στατιστικά και δες τα αποτελέσματα σε bar chart ή radar chart.
+                  </p>
+                </div>
+              </div>
+
+              {/* Feature 5 */}
+              <div className="flex items-start gap-5 p-4 bg-slate-800/30 rounded-3xl border border-slate-800 transition-all duration-300 hover:bg-slate-800/50 hover:border-indigo-500/40">
+                <div className="bg-indigo-500/20 p-4 rounded-2xl">
+                  <Network size={28} className="text-indigo-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-1">Cluster Analysis</h3>
+                  <p className="text-slate-400 text-sm leading-relaxed">
+                    Ομαδοποίησε παρόμοιες team-seasons με K-Means clustering. Χρησιμοποίησε το elbow method για το ιδανικό K και ανέλυσε cluster profiles, parallel coordinates και membership summaries.
                   </p>
                 </div>
               </div>
