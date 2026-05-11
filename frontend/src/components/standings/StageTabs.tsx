@@ -1,5 +1,6 @@
 import type { StandingsGroup } from "../../api/api";
 import SegmentedTabs from "../ui/SegmentedTabs";
+import { standingsTheme } from "../ui/design";
 
 type StageTabsProps = {
   groups: StandingsGroup[];
@@ -32,8 +33,8 @@ export default function StageTabs({
         }))}
         value={selectedGroupKey}
         onChange={onSelectGroup}
-        className="flex w-full gap-2 overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/50 p-1.5 md:w-max"
-        buttonClassName="px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap"
+        className={standingsTheme.segmentedTabs}
+        buttonClassName={standingsTheme.segmentedTabButton}
       />
     </div>
   );

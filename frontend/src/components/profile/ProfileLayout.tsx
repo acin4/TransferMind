@@ -1,6 +1,6 @@
-import { Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
+import BackButton from "../shared/BackButton";
 
 type ProfileLayoutProps = {
   backTo: string;
@@ -15,16 +15,23 @@ export default function ProfileLayout({
   backState,
   children,
 }: ProfileLayoutProps) {
+  const navigate = useNavigate();
+  const shouldUseStatefulBack = backState !== undefined;
+
   return (
     <div className="min-h-screen bg-slate-950 p-6 md:p-12 text-white font-sans">
       <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <Link
-          to={backTo}
-          state={backState}
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-white mb-8 transition-colors font-bold uppercase text-xs tracking-widest"
-        >
-          <ArrowLeft size={16} /> {backLabel}
-        </Link>
+        <div className="mb-8">
+          <BackButton
+            href={shouldUseStatefulBack ? undefined : backTo}
+            label={backLabel}
+            onClick={
+              shouldUseStatefulBack
+                ? () => navigate(backTo, { state: backState })
+                : undefined
+            }
+          />
+        </div>
 
         {children}
       </div>

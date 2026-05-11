@@ -3,15 +3,14 @@ const TEAM_STATS_CATEGORIES = [
     label: "Attack",
     stats: [
       ["goals_scored", "Goals Scored"],
-      ["assists", "Assists"],
       ["shots", "Shots"],
       ["shots_ontarget", "Shots On Target"],
       ["shots_offtarget", "Shots Off Target"],
       ["shots_blocked", "Shots Blocked"],
       ["shots_ontarget_ratio", "Shots On Target Ratio", "percent"],
       ["goalspershot_ratio", "Goals per Shot Ratio", "ratio"],
-      ["dribbles_success", "Successful Dribbles"],
-      ["dribbles_attempts", "Dribble Attempts"],
+      ["dribbles_success", "Dribbles Successful"],
+      ["dribbles_attempts", "Dribbles Attempted"],
       ["dribbles_success_ratio", "Dribble Success Ratio", "percent"],
       ["big_chances_created", "Big Chances Created"],
       ["big_chances", "Big Chances"],
@@ -37,6 +36,7 @@ const TEAM_STATS_CATEGORIES = [
   {
     label: "Passing",
     stats: [
+      ["assists", "Assists"],
       ["avg_ball_possession", "Average Ball Possession", "percent"],
       ["pass_total", "Total Passes"],
       ["pass_acc", "Accurate Passes"],
@@ -155,8 +155,8 @@ const TEAM_STATS_CATEGORIES = [
       ["cross_against_total", "Crosses Against"],
       ["cross_against_acc", "Accurate Crosses Against"],
       ["cross_against_ratio", "Cross Accuracy Against %", "percent"],
-      ["dribbles_against_total", "Dribble Attempts Against"],
-      ["dribbles_against_acc", "Successful Dribbles Against"],
+      ["dribbles_against_total", "Dribbles Attempted Against"],
+      ["dribbles_against_acc", "Dribbles Successful Against"],
       ["dribbles_against_ratio", "Dribble Success Against %", "percent"],
       ["tackles_against", "Tackles Against"],
       ["clearences_against", "Clearances Against"],
@@ -184,6 +184,45 @@ const NEGATIVE_TEAM_STATS = new Set([
   "redcards",
   "offsides",
   "possession_lost",
+  "shots_against",
+  "shots_ontarget_against",
+  "shots_ontarget_against_ratio",
+  "shots_offtarget_against",
+  "shots_blocked_against",
+  "shots_inside_against",
+  "shots_outside_against",
+  "big_chances_against",
+  "big_chances_against_created",
+  "big_chances_against_missed",
+  "big_chances_goal_against_ratio",
+  "woodwork_against",
+  "pass_against_total",
+  "pass_against_acc",
+  "finalthirdpass_against_total",
+  "finalthirdpass_against_acc",
+  "finalthirdpass_against_ratio",
+  "opphalfpass_against_total",
+  "opphalfpass_against_acc",
+  "opphalfpass_against_ratio",
+  "ownhalfpass_against_total",
+  "ownhalfpass_against_acc",
+  "ownhalfpass_against_ratio",
+  "keypass_against",
+  "longballs_against_total",
+  "longballs_against_acc",
+  "longballs_against_ratio",
+  "cross_against_total",
+  "cross_against_acc",
+  "cross_against_ratio",
+  "dribbles_against_total",
+  "dribbles_against_acc",
+  "dribbles_against_ratio",
+  "tackles_against",
+  "clearences_against",
+  "interceptions_against",
+  "corners_against",
+  "errors_to_goals_against",
+  "errors_to_shot_against",
 ]);
 
 const TEAM_STAT_METADATA = new Map();
@@ -196,7 +235,7 @@ for (const category of TEAM_STATS_CATEGORIES) {
       category: category.label,
       unit,
       direction:
-        NEGATIVE_TEAM_STATS.has(key) || key.includes("against")
+        NEGATIVE_TEAM_STATS.has(key) 
           ? "negative"
           : "positive",
     });
@@ -207,6 +246,10 @@ export const TEAM_COMPARISON_STAT_KEYS = [...TEAM_STAT_METADATA.keys()];
 
 export function getTeamStatMetadata(statKey) {
   return TEAM_STAT_METADATA.get(statKey) ?? null;
+}
+
+export function isNegativeTeamStatKey(statKey) {
+  return getTeamStatMetadata(statKey)?.direction === "negative";
 }
 
 export function listTeamStatMetadata() {

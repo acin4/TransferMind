@@ -5,7 +5,6 @@ import {
   useMemo,
   useState,
 } from "react";
-import type { ChangeEvent } from "react";
 import type { TeamStatKey } from "../../../teamStatsConfig";
 import {
   CHART_Y_TICKS,
@@ -37,6 +36,7 @@ import { ClusterFilterControls } from "./ClusterFilterControls";
 import { EntrySelectionList } from "./EntrySelectionList";
 import { ClusterLegend } from "./ClusterLegend";
 import { SelectedEntryDetailsPanel } from "./SelectedEntryDetailsPanel";
+import { standingsTheme } from "../../ui/design";
 
 export const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
   result,
@@ -183,12 +183,9 @@ export const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
   const clearDetailEntry = useCallback(() => {
     setSelectedParallelEntryIds([]);
   }, []);
-  const handleEntrySearchChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      setEntrySearch(event.target.value);
-    },
-    [],
-  );
+  const handleEntrySearchChange = useCallback((value: string) => {
+    setEntrySearch(value);
+  }, []);
   const clearEntrySearch = useCallback(() => {
     setEntrySearch("");
   }, []);
@@ -223,7 +220,7 @@ export const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
   }, [result.assignments]);
 
   return (
-    <div className="mt-6 rounded-[2rem] border border-slate-800 bg-slate-950/40 p-5">
+    <div className={`mt-6 ${standingsTheme.nestedPanel}`}>
       <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h5 className="text-sm font-black uppercase tracking-widest text-white">
@@ -232,7 +229,7 @@ export const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
           <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
             Normalized 0-1 team-stat profiles grouped by cluster.
           </p>
-          <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-blue-300">
+          <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-blue-400">
             Showing {renderedPathCount} of {assignmentCount} entries
           </p>
         </div>

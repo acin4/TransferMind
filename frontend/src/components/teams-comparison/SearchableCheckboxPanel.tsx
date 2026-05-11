@@ -3,7 +3,6 @@ import {
   useCallback,
   useMemo,
   useState,
-  type ChangeEvent,
   type ReactNode,
 } from "react";
 import {
@@ -20,7 +19,6 @@ import {
   Handshake,
   Percent,
   RectangleHorizontal,
-  Search,
   Send,
   Shield,
   ShieldCheck,
@@ -37,6 +35,7 @@ import {
   filterAndRankSearchResults,
   type SearchFieldValue,
 } from "../../utils/search";
+import { SearchInput, standingsTheme } from "../ui/design";
 
 type CheckboxItem = {
   value: string;
@@ -116,10 +115,6 @@ const SearchableCheckboxPanel = memo(function SearchableCheckboxPanel({
     [selectableItemsByValue, selectedValues],
   );
 
-  const handleQueryChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    setQuery(event.target.value);
-  }, []);
-
   const handleSelectVisible = useCallback(() => {
     if (onSelectVisible) {
       onSelectVisible(visibleValues);
@@ -139,7 +134,7 @@ const SearchableCheckboxPanel = memo(function SearchableCheckboxPanel({
   }, [onClear, onClearVisible, visibleValues]);
 
   return (
-    <section className="bg-slate-900/50 border border-slate-800 rounded-[2rem] p-5 shadow-xl">
+    <section className="rounded-[2.5rem] border border-slate-800/60 bg-slate-900/40 p-5 shadow-2xl backdrop-blur-xl">
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <h3 className="text-sm font-black uppercase tracking-widest text-white">
@@ -163,7 +158,7 @@ const SearchableCheckboxPanel = memo(function SearchableCheckboxPanel({
             <button
               type="button"
               onClick={handleClearVisible}
-              className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:text-white transition-colors"
+              className={standingsTheme.compactPill}
             >
               Clear
             </button>
@@ -185,17 +180,12 @@ const SearchableCheckboxPanel = memo(function SearchableCheckboxPanel({
         </div>
       ) : null}
 
-      <div className="relative mb-4">
-        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-500">
-          <Search size={16} />
-        </div>
-        <input
-          value={query}
-          onChange={handleQueryChange}
-          placeholder={searchPlaceholder}
-          className="w-full rounded-2xl border border-slate-800 bg-slate-950/70 py-3 pl-11 pr-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500"
-        />
-      </div>
+      <SearchInput
+        value={query}
+        onChange={setQuery}
+        placeholder={searchPlaceholder}
+        className="!mb-4 !max-w-none"
+      />
 
       <div
         className={`overflow-y-auto rounded-2xl border border-slate-800 bg-slate-950/40 ${maxHeightClassName}`}
@@ -253,7 +243,7 @@ const SelectionTag = memo(function SelectionTag({
   }, [item.value, onRemove]);
 
   return (
-    <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-xs font-bold text-blue-100">
+    <span className="inline-flex max-w-full items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-xs font-bold text-blue-400">
       {item.kind === "stat" || item.statKey ? (
         <StatIcon statKey={item.statKey ?? item.value} sizeClassName="h-3.5 w-3.5" />
       ) : (
@@ -266,14 +256,14 @@ const SelectionTag = memo(function SelectionTag({
       <span className="min-w-0 truncate">
         <span className="truncate">{tagLabel}</span>
         {tagHelperText ? (
-          <span className="ml-1 text-blue-300/80">{tagHelperText}</span>
+          <span className="ml-1 text-blue-400/80">{tagHelperText}</span>
         ) : null}
       </span>
       <button
         type="button"
         onClick={handleRemove}
         aria-label={`Remove ${tagLabel}`}
-        className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-blue-200 transition-colors hover:bg-blue-400/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+        className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-blue-400 transition-colors hover:bg-blue-400/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
       >
         <X size={12} />
       </button>
@@ -302,7 +292,7 @@ const TeamSeasonOptionRow = memo(function TeamSeasonOptionRow({
       className={`flex w-full items-start gap-3 px-4 py-4 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 ${
         isSelected
           ? "bg-blue-500/10 hover:bg-blue-500/15"
-          : "hover:bg-white/[0.03]"
+          : "hover:bg-blue-500/[0.03]"
       }`}
     >
       <TeamLogoBadge logoUrl={item.logoUrl} teamName={item.label} />
@@ -332,13 +322,13 @@ const StatisticOptionRow = memo(function StatisticOptionRow({
       className={`flex w-full items-start gap-3 px-4 py-4 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 ${
         isSelected
           ? "bg-blue-500/10 hover:bg-blue-500/15"
-          : "hover:bg-white/[0.03]"
+          : "hover:bg-blue-500/[0.03]"
       }`}
     >
       <span
         className={`mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${
           isSelected
-            ? "border-blue-400/40 bg-blue-500/20 text-blue-200"
+            ? "border-blue-400/40 bg-blue-500/20 text-blue-400"
             : "border-slate-700 bg-slate-900/80 text-slate-400"
         }`}
       >
@@ -403,7 +393,7 @@ function TeamLogoBadge({
   return (
     <span
       aria-hidden="true"
-      className={`inline-flex shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 font-black uppercase text-blue-200 ${className}`}
+      className={`inline-flex shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 font-black uppercase text-blue-400 ${className}`}
     >
       {initials}
     </span>

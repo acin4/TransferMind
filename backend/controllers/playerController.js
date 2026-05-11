@@ -5,14 +5,36 @@ import {
   getPlayerTeamSquads,
 } from "../services/playerService.js";
 
-export async function listPlayersController(req, res) {
-  const teamId =
-    req.query.teamId !== undefined
-      ? parseInteger(req.query.teamId, "teamId")
-      : undefined;
+const DEFAULT_PLAYER_LIMIT = 20;
+const MAX_PLAYER_LIMIT = 50;
 
-  const players = await getPlayers(teamId);
-  res.status(200).json({ data: players });
+function parseOptionalInteger(value, fieldName) {
+  return value !== undefined ? parseInteger(value, fieldName) : undefined;
+}
+
+function parsePlayerListQuery(query) {
+  const page = parseOptionalInteger(query.page, "page") ?? 1;
+  const requestedLimit =
+    parseOptionalInteger(query.limit, "limit") ?? DEFAULT_PLAYER_LIMIT;
+  const limit = Math.min(requestedLimit, MAX_PLAYER_LIMIT);
+  const search =
+    typeof query.search === "string" ? query.search.trim() : "";
+  const position =
+    typeof query.position === "string" ? query.position.trim() : "";
+  const teamId = parseOptionalInteger(query.teamId, "teamId");
+
+  return {
+    page,
+    limit,
+    search,
+    position,
+    teamId,
+  };
+}
+
+export async function listPlayersController(req, res) {
+  const players = await getPlayers(parsePlayerListQuery(req.query));
+  res.status(200).json(players);
 }
 
 export async function listPlayerTeamSquadsController(req, res) {
