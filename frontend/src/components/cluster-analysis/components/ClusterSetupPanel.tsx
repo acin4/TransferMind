@@ -69,7 +69,9 @@ export const ClusterSetupPanel = memo(function ClusterSetupPanel({
         </h3>
         <p className="text-xs font-black uppercase tracking-widest text-slate-500 mt-3 max-w-4xl">
           Rows are selected team-seasons. Columns are selected statistics. Each
-          statistic column is Min-Max normalized to 0-1 before K-Means.
+          statistic column is Min-Max normalized to 0-1 before K-Means, with
+          higher-is-worse stats direction-adjusted so higher values mean better
+          performance.
         </p>
       </div>
 

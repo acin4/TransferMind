@@ -1,6 +1,9 @@
 import { HttpError } from "../lib/http.js";
 import { runPythonKMeans } from "../lib/pythonKMeansClient.js";
-import { getTeamStatMetadata } from "../lib/teamStatsMetadata.js";
+import {
+  getTeamStatMetadata,
+  isNegativeTeamStatKey,
+} from "../lib/teamStatsMetadata.js";
 import { listTeamComparisonRowsByEntries } from "../repositories/teamRepository.js";
 
 const MAX_CLUSTER_K = 20;
@@ -228,10 +231,13 @@ function buildNormalizedMatrix(rows, statKeys) {
       const values = matrixSourceRows.map((row) => row.rawStats[statKey]);
       const min = Math.min(...values);
       const max = Math.max(...values);
+      const isNegativeDirection = isNegativeTeamStatKey(statKey);
 
       if (min === max) {
+        const constantNormalizedValue = isNegativeDirection ? 1 : 0;
+
         warnings.push(
-          `${getTeamStatMetadata(statKey).label} is constant across the selected entries; its normalized column was set to 0.`,
+          `${getTeamStatMetadata(statKey).label} is constant across the selected entries; its normalized column was set to ${constantNormalizedValue}.`,
         );
       }
 
@@ -241,6 +247,7 @@ function buildNormalizedMatrix(rows, statKeys) {
           min,
           max,
           isConstant: min === max,
+          isNegativeDirection,
         },
       ];
     }),
@@ -254,10 +261,13 @@ function buildNormalizedMatrix(rows, statKeys) {
         const normalizedValue = column.isConstant
           ? 0
           : (rawValue - column.min) / (column.max - column.min);
+        const adjustedValue = column.isNegativeDirection
+          ? 1 - normalizedValue
+          : normalizedValue;
 
         return [
           statKey,
-          Number(Math.max(0, Math.min(1, normalizedValue)).toFixed(6)),
+          Number(Math.max(0, Math.min(1, adjustedValue)).toFixed(6)),
         ];
       }),
     );

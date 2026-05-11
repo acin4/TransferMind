@@ -165,8 +165,9 @@ export default function ClusterAnalysisTab({
               Clustered Entries
             </h4>
             <p className="text-xs font-black uppercase tracking-widest text-slate-500 mt-3">
-              Final K-Means used normalized 0-1 values only. Raw values are
-              displayed for interpretation.
+              Final K-Means used normalized 0-1 values only, direction-adjusted
+              so higher normalized values mean better performance. Raw values
+              are displayed for interpretation.
             </p>
           </div>
 
