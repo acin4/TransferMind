@@ -75,7 +75,7 @@ const PLAYER_STAT_DEFINITIONS: PlayerStatDefinition[] = [
   defineStat("scoring_frequency", "Scoring Frequency", "attack"),
   defineStat("big_chances_created", "Big Chances Created", "attack"),
   defineStat("big_chances_missed", "Big Chances Missed", "attack"),
-  defineStat("successful_dribbles", "Successful Dribbles", "attack"),
+  defineStat("successful_dribbles", "Dribbles Successful", "attack"),
   defineStat("successful_dribbles_percentage", "Dribble Success", "attack", "percent"),
   defineStat("goals_from_inside_the_box", "Goals Inside Box", "attack"),
   defineStat("goals_from_outside_the_box", "Goals Outside Box", "attack"),
