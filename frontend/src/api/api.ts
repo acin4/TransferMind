@@ -281,13 +281,17 @@ export type TeamComparisonMatrixRequest = {
   statKeys: TeamStatKey[];
 };
 
-// One selected team-season entry for clustering. The IDs describe exactly which
-// team, tournament, and season should be included in the analysis.
-export type TeamClusterEntryRequest = {
+// One selected team-season entry. These are internal database IDs that describe
+// exactly which team, tournament, and season should be included in an analysis.
+export type TeamSeasonEntryRequest = {
   teamId: number;
   tournamentId: number;
   seasonId: number;
 };
+
+// Existing clustering callers use this name, so keep it as an alias while
+// sharing the same internal-id contract with future analysis features.
+export type TeamClusterEntryRequest = TeamSeasonEntryRequest;
 
 // Shared request shape for cluster-related actions. The user chooses entries and
 // stats in the UI, then the backend calculates clustering data from them.
@@ -383,6 +387,56 @@ export type TeamClusterRunPayload = {
   stats: TeamClusterStat[];
   assignments: TeamClusterAssignment[];
   centroids: TeamClusterCentroid[];
+  warnings: string[];
+};
+
+// First-version Apriori discretization uses three equal-width bins. Keeping the
+// settings explicit lets the eventual UI/backend show exactly how rules were made.
+export type TeamAssociationRuleBin = "low" | "medium" | "high";
+
+export type TeamAssociationRuleDiscretizationSettings = {
+  method: "equal-width";
+  bins: TeamAssociationRuleBin[];
+};
+
+// Request body for the Association Rules Mining endpoint. It mirrors the
+// team-season/stat selection used by clustering but adds Apriori thresholds.
+export type TeamAssociationRulesRequest = {
+  teamSeasonEntries: TeamSeasonEntryRequest[];
+  statKeys: TeamStatKey[];
+  minSupport: number;
+  minConfidence: number;
+  minLift?: number;
+};
+
+export type TeamAssociationRule = {
+  antecedents: string[];
+  consequents: string[];
+  support: number;
+  confidence: number;
+  lift: number;
+};
+
+// Response payload for Association Rules Mining. Empty results are represented
+// by rules: [], with warnings reserved for non-fatal analysis notes.
+export type TeamAssociationRulesPayload = {
+  context: {
+    selectedEntryCount: number;
+    selectedStatCount: number;
+    rowCount: number;
+    itemCount: number;
+    ruleCount: number;
+  };
+  settings: {
+    minSupport: number;
+    minConfidence: number;
+    minLift: number | null;
+    discretization: TeamAssociationRuleDiscretizationSettings;
+    minimumTeamSeasonEntries: number;
+    minimumStats: number;
+  };
+  statKeys: TeamStatKey[];
+  rules: TeamAssociationRule[];
   warnings: string[];
 };
 
@@ -679,6 +733,20 @@ export const runTeamClusters = async (
   return request("/api/teams/clustering/run", {
     // The backend needs the full selected dataset and k value, so the frontend
     // sends them as JSON in the request body.
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+};
+
+// Runs Apriori Association Rules Mining for selected team-season entries.
+// This is intentionally separate from clustering endpoints and UI flows.
+export const runTeamAssociationRules = async (
+  payload: TeamAssociationRulesRequest,
+): Promise<TeamAssociationRulesPayload> => {
+  return request("/api/team-season-stats/association-rules", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

@@ -169,6 +169,40 @@
           "response": []
         },
         {
+          "name": "POST /api/team-season-stats/association-rules",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teamSeasonEntries\": [\n    { \"teamId\": 1, \"tournamentId\": 1, \"seasonId\": 1 },\n    { \"teamId\": 2, \"tournamentId\": 1, \"seasonId\": 1 },\n    { \"teamId\": 3, \"tournamentId\": 1, \"seasonId\": 1 },\n    { \"teamId\": 4, \"tournamentId\": 1, \"seasonId\": 1 },\n    { \"teamId\": 5, \"tournamentId\": 1, \"seasonId\": 1 }\n  ],\n  \"statKeys\": [\"goals_scored\", \"avg_ball_possession\"],\n  \"minSupport\": 0.2,\n  \"minConfidence\": 0.6,\n  \"minLift\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/team-season-stats/association-rules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "team-season-stats",
+                "association-rules"
+              ]
+            },
+            "description": "Apriori Association Rules Mining for selected team-season entries. Update the example body with real internal DB ids from the Teams Comparison dataset before running. The response uses { data: ... } and omits full transactions from the public payload."
+          },
+          "response": []
+        },
+        {
           "name": "GET /api/teams/:id",
           "event": [
             {

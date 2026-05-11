@@ -20,6 +20,7 @@ import {
   listTeamPlayersController,
   getTeamStatsController,
   listTeamsController,
+  runTeamAssociationRulesController,
   runTeamClustersController,
 } from "../controllers/teamController.js";
 import { searchController } from "../controllers/searchController.js";
@@ -44,6 +45,10 @@ router.post(
 router.post(
   "/teams/clustering/run",
   asyncHandler(runTeamClustersController),
+);
+router.post(
+  "/team-season-stats/association-rules",
+  asyncHandler(runTeamAssociationRulesController),
 );
 router.get("/teams/:id/profile", asyncHandler(getTeamProfileController));
 router.get("/teams/:id/players", asyncHandler(listTeamPlayersController));

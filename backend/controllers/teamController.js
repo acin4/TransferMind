@@ -1,4 +1,5 @@
-import { parseInteger } from "../lib/http.js";
+import { HttpError, parseInteger } from "../lib/http.js";
+import { runTeamAssociationRules } from "../services/teamAssociationRulesService.js";
 import {
   calculateTeamClusterElbow,
   runTeamClusters,
@@ -45,6 +46,95 @@ function hasPaginatedTeamQuery(query) {
   );
 }
 
+function parseProbabilityThreshold(value, fieldName) {
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 1) {
+    throw new HttpError(
+      400,
+      `${fieldName} must be greater than 0 and at most 1.`,
+    );
+  }
+
+  return parsed;
+}
+
+function parseOptionalPositiveThreshold(value, fieldName) {
+  if (value === undefined || value === null || value === "") {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new HttpError(400, `${fieldName} must be greater than 0.`);
+  }
+
+  return parsed;
+}
+
+function parseTeamSeasonEntries(value) {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new HttpError(400, "teamSeasonEntries must be a non-empty array.");
+  }
+
+  const entries = [];
+  const seenEntryKeys = new Set();
+
+  value.forEach((item, index) => {
+    const entry = {
+      teamId: parseInteger(item?.teamId, `teamSeasonEntries[${index}].teamId`),
+      tournamentId: parseInteger(
+        item?.tournamentId,
+        `teamSeasonEntries[${index}].tournamentId`,
+      ),
+      seasonId: parseInteger(
+        item?.seasonId,
+        `teamSeasonEntries[${index}].seasonId`,
+      ),
+    };
+    const entryKey = `${entry.teamId}:${entry.tournamentId}:${entry.seasonId}`;
+
+    if (!seenEntryKeys.has(entryKey)) {
+      seenEntryKeys.add(entryKey);
+      entries.push(entry);
+    }
+  });
+
+  return entries;
+}
+
+function parseStatKeys(value) {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new HttpError(400, "statKeys must be a non-empty array.");
+  }
+
+  const statKeys = [
+    ...new Set(
+      value.map((item) => String(item ?? "").trim()).filter(Boolean),
+    ),
+  ];
+
+  if (statKeys.length === 0) {
+    throw new HttpError(400, "statKeys must include at least one value.");
+  }
+
+  return statKeys;
+}
+
+function parseAssociationRulesPayload(payload) {
+  return {
+    teamSeasonEntries: parseTeamSeasonEntries(payload?.teamSeasonEntries),
+    statKeys: parseStatKeys(payload?.statKeys),
+    minSupport: parseProbabilityThreshold(payload?.minSupport, "minSupport"),
+    minConfidence: parseProbabilityThreshold(
+      payload?.minConfidence,
+      "minConfidence",
+    ),
+    minLift: parseOptionalPositiveThreshold(payload?.minLift, "minLift"),
+  };
+}
+
 export async function listTeamsController(req, res) {
   if (hasPaginatedTeamQuery(req.query)) {
     const teams = await getPaginatedTeams(parsePaginatedQuery(req.query));
@@ -86,6 +176,13 @@ export async function calculateTeamClusterElbowController(req, res) {
 
 export async function runTeamClustersController(req, res) {
   const dataset = await runTeamClusters(req.body);
+  res.status(200).json({ data: dataset });
+}
+
+export async function runTeamAssociationRulesController(req, res) {
+  const dataset = await runTeamAssociationRules(
+    parseAssociationRulesPayload(req.body),
+  );
   res.status(200).json({ data: dataset });
 }
 
