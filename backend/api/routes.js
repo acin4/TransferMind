@@ -17,6 +17,7 @@ import {
   getTeamProfileController,
   getTeamsComparisonDatasetController,
   listTeamSeasonsController,
+  listTeamPlayersController,
   getTeamStatsController,
   listTeamsController,
   runTeamClustersController,
@@ -45,9 +46,10 @@ router.post(
   asyncHandler(runTeamClustersController),
 );
 router.get("/teams/:id/profile", asyncHandler(getTeamProfileController));
-router.get("/teams/:id", asyncHandler(getTeamController));
+router.get("/teams/:id/players", asyncHandler(listTeamPlayersController));
 router.get("/teams/:id/seasons", asyncHandler(listTeamSeasonsController));
 router.get("/teams/:id/stats", asyncHandler(getTeamStatsController));
+router.get("/teams/:id", asyncHandler(getTeamController));
 
 router.get("/players", asyncHandler(listPlayersController));
 router.get("/players/team-squads", asyncHandler(listPlayerTeamSquadsController));

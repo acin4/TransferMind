@@ -1,5 +1,7 @@
 import { supabase } from "../lib/supabaseClient.js";
 
+const PLAYER_LIST_SELECT = "*";
+
 async function runPlayersQuery(teamReference) {
   let query = supabase.from("players").select("*").order("name", {
     ascending: true,
@@ -49,8 +51,135 @@ function mergePlayers(...playerGroups) {
   );
 }
 
+function normalizePositiveInteger(value) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+async function listPlayerIdsByPosition(position) {
+  const searchText = String(position ?? "").trim();
+
+  if (!searchText) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("player_positions")
+    .select("player_id, positions!inner(position)")
+    .ilike("positions.position", `%${searchText}%`);
+
+  if (error) {
+    throw error;
+  }
+
+  return uniqueReferences((data ?? []).map((row) => row.player_id));
+}
+
+async function listPlayerReferencesByTeamReferences(teamReferences) {
+  const references = uniqueReferences(teamReferences);
+
+  if (references.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("player_stats")
+    .select("player_id")
+    .in("team_id", references)
+    .not("player_id", "is", null);
+
+  if (error) {
+    throw error;
+  }
+
+  return uniqueReferences((data ?? []).map((row) => row.player_id));
+}
+
+function toSupabaseInList(values) {
+  return `(${values.join(",")})`;
+}
+
+function applyPlayerListFilters(query, filters) {
+  const teamReferences = filters.teamReferences ?? [];
+  const teamPlayerReferences = filters.teamPlayerReferences ?? [];
+
+  if (teamReferences.length > 0 && teamPlayerReferences.length > 0) {
+    const teamValues = toSupabaseInList(teamReferences);
+    const playerValues = toSupabaseInList(teamPlayerReferences);
+    query = query.or(
+      [
+        `team_id.in.${teamValues}`,
+        `id.in.${playerValues}`,
+        `api_id.in.${playerValues}`,
+      ].join(","),
+    );
+  } else if (teamReferences.length > 0) {
+    query = query.in("team_id", teamReferences);
+  } else if (teamPlayerReferences.length > 0) {
+    const playerValues = toSupabaseInList(teamPlayerReferences);
+    query = query.or(`id.in.${playerValues},api_id.in.${playerValues}`);
+  }
+
+  if (filters.playerIds?.length > 0) {
+    query = query.in("id", filters.playerIds);
+  }
+
+  if (filters.search) {
+    query = query.ilike("name", `%${filters.search}%`);
+  }
+
+  return query;
+}
+
 export async function listPlayers() {
   return runPlayersQuery();
+}
+
+export async function listPaginatedPlayers({
+  page,
+  limit,
+  search,
+  teamReferences = [],
+  position,
+} = {}) {
+  const normalizedPage = normalizePositiveInteger(page) ?? 1;
+  const normalizedLimit = normalizePositiveInteger(limit) ?? 20;
+  const offset = (normalizedPage - 1) * normalizedLimit;
+  const positionPlayerIds = await listPlayerIdsByPosition(position);
+  const normalizedTeamReferences = uniqueReferences(teamReferences);
+  const teamPlayerReferences = await listPlayerReferencesByTeamReferences(
+    normalizedTeamReferences,
+  );
+
+  if (positionPlayerIds && positionPlayerIds.length === 0) {
+    return { rows: [], total: 0 };
+  }
+
+  const filters = {
+    search: String(search ?? "").trim(),
+    teamReferences: normalizedTeamReferences,
+    teamPlayerReferences,
+    playerIds: positionPlayerIds,
+  };
+
+  const query = applyPlayerListFilters(
+    supabase
+      .from("players")
+      .select(PLAYER_LIST_SELECT, { count: "exact" })
+      .order("name", { ascending: true })
+      .range(offset, offset + normalizedLimit - 1),
+    filters,
+  );
+  const { data, error, count } = await query;
+
+  if (error) {
+    throw error;
+  }
+
+  return {
+    rows: data ?? [],
+    total: count ?? 0,
+  };
 }
 
 export async function listPlayersByTeamReferences(internalTeamId, apiTeamId) {
@@ -182,4 +311,24 @@ export async function getLatestPlayerStatsByPlayerReferences(player) {
   }
 
   return data?.[0] ?? null;
+}
+
+export async function listPlayerTeamReferencesByPlayer(player) {
+  const playerReferences = uniqueReferences([player?.id, player?.api_id]);
+
+  if (playerReferences.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("player_stats")
+    .select("team_id")
+    .in("player_id", playerReferences)
+    .not("team_id", "is", null);
+
+  if (error) {
+    throw error;
+  }
+
+  return uniqueReferences((data ?? []).map((row) => row.team_id));
 }

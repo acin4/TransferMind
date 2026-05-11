@@ -1,7 +1,7 @@
 import { supabase } from "../lib/supabaseClient.js";
 
 const TEAM_SEARCH_SELECT = "id, name, city, stadium, logo_url";
-const PLAYER_SEARCH_SELECT = "id, name, nationality, team_id";
+const PLAYER_SEARCH_SELECT = "id, name, nationality, team_id, height";
 const SEARCH_LIMIT = 8;
 const SEARCH_CANDIDATE_LIMIT = 5000;
 

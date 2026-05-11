@@ -1,4 +1,5 @@
 import type { SelectFieldProps } from "../types";
+import { standingsTheme } from "../../ui/design";
 
 export function SelectField({
   label,
@@ -14,7 +15,7 @@ export function SelectField({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-2xl border border-slate-800 bg-slate-950/80 px-4 py-4 text-sm font-black uppercase tracking-widest text-white focus:border-blue-500 focus:outline-none"
+        className={standingsTheme.bareSelect}
       >
         {options.length === 0 ? (
           <option value="">No options</option>

@@ -1,4 +1,5 @@
 import { Calendar, ChevronRight, Shield } from "lucide-react";
+import { standingsTheme } from "../ui/design";
 import type { SeasonOption, TournamentOption } from "./types";
 
 type StandingsFiltersProps = {
@@ -21,11 +22,11 @@ export default function StandingsFilters({
   return (
     <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto animate-in fade-in slide-in-from-right-8 duration-700">
       <div className="relative w-full sm:w-auto group">
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500 pointer-events-none group-hover:text-white transition-colors">
+        <div className={standingsTheme.selectIcon}>
           <Shield size={18} />
         </div>
         <select
-          className="w-full sm:w-[240px] appearance-none bg-slate-900 border-2 border-slate-800 text-white pl-12 pr-10 py-4 rounded-[2rem] font-black uppercase text-xs tracking-widest focus:outline-none focus:border-blue-500 transition-all cursor-pointer hover:bg-slate-800 shadow-xl truncate"
+          className={`${standingsTheme.select} sm:w-[240px]`}
           value={selectedTournamentId ?? ""}
           onChange={(event) =>
             onTournamentChange(
@@ -39,17 +40,17 @@ export default function StandingsFilters({
             </option>
           ))}
         </select>
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none group-hover:text-blue-400 transition-colors">
+        <div className={standingsTheme.selectChevron}>
           <ChevronRight size={16} className="rotate-90" />
         </div>
       </div>
 
       <div className="relative w-full sm:w-auto group">
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500 pointer-events-none group-hover:text-white transition-colors">
+        <div className={standingsTheme.selectIcon}>
           <Calendar size={18} />
         </div>
         <select
-          className="w-full sm:w-[200px] appearance-none bg-slate-900 border-2 border-slate-800 text-white pl-12 pr-10 py-4 rounded-[2rem] font-black uppercase text-xs tracking-widest focus:outline-none focus:border-emerald-500 transition-all cursor-pointer hover:bg-slate-800 shadow-xl disabled:opacity-50 truncate"
+          className={`${standingsTheme.select} sm:w-[200px]`}
           value={selectedSeasonId ?? ""}
           onChange={(event) =>
             onSeasonChange(event.target.value ? Number(event.target.value) : null)
@@ -62,7 +63,7 @@ export default function StandingsFilters({
             </option>
           ))}
         </select>
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none group-hover:text-emerald-400 transition-colors">
+        <div className={standingsTheme.selectChevron}>
           <ChevronRight size={16} className="rotate-90" />
         </div>
       </div>

@@ -49,6 +49,50 @@ function sanitizeTeam(team, { includeCompetition = false } = {}) {
   return sanitizedTeam;
 }
 
+function buildPaginationPayload(rows, { page, limit, total }) {
+  const totalPages = total > 0 ? Math.ceil(total / limit) : 0;
+
+  return {
+    data: rows,
+    page,
+    limit,
+    total,
+    totalPages,
+    hasNextPage: page < totalPages,
+    hasPreviousPage: page > 1,
+  };
+}
+
+function normalizeText(value) {
+  return String(value ?? "").trim().toLocaleLowerCase();
+}
+
+function teamMatchesSearch(team, search) {
+  const query = normalizeText(search);
+
+  if (!query) {
+    return true;
+  }
+
+  return [
+    team.name,
+    team.country,
+    team.city,
+    team.stadium,
+    team.badge_label,
+  ].some((field) => normalizeText(field).includes(query));
+}
+
+function teamMatchesCountry(team, country) {
+  const selectedCountry = normalizeText(country);
+
+  if (!selectedCountry || selectedCountry === "all") {
+    return true;
+  }
+
+  return normalizeText(team.country) === selectedCountry;
+}
+
 function sanitizeTeamStats(stats, teamId) {
   if (!stats) {
     return null;
@@ -402,6 +446,26 @@ async function getOptionalStandings(tournamentId, seasonId) {
 export async function getTeams() {
   const teams = await listTeams();
   return teams.map(sanitizeTeam);
+}
+
+export async function getPaginatedTeams({
+  page = 1,
+  limit = 20,
+  search = "",
+  country = "",
+} = {}) {
+  const teams = (await listTeams()).map(sanitizeTeam);
+  const filteredTeams = teams.filter(
+    (team) => teamMatchesCountry(team, country) && teamMatchesSearch(team, search),
+  );
+  const offset = (page - 1) * limit;
+  const data = filteredTeams.slice(offset, offset + limit);
+
+  return buildPaginationPayload(data, {
+    page,
+    limit,
+    total: filteredTeams.length,
+  });
 }
 
 export async function getTeam(id) {

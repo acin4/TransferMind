@@ -4,6 +4,7 @@ import {
   getAssignmentSeasonLabel,
   getAssignmentTournamentLabel,
 } from "../utils/clusterFormatters";
+import { standingsTheme } from "../../ui/design";
 
 export const SelectedEntryDetailsPanel = memo(function SelectedEntryDetailsPanel({
   rows,
@@ -12,7 +13,7 @@ export const SelectedEntryDetailsPanel = memo(function SelectedEntryDetailsPanel
   onClearSelection,
 }: SelectedEntryDetailsPanelProps) {
   return (
-    <div className="mt-4 min-h-[5.5rem] rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+    <div className={`mt-4 min-h-[5.5rem] ${standingsTheme.nestedPanel}`}>
       {rows.length > 0 ? (
         <>
           <button
@@ -67,7 +68,7 @@ export const SelectedEntryDetailsPanel = memo(function SelectedEntryDetailsPanel
                           <span className="text-right font-black tabular-nums text-white">
                             {point?.rawDisplayValue ?? "—"}
                           </span>
-                          <span className="text-right font-black tabular-nums text-blue-300">
+                          <span className="text-right font-black tabular-nums text-blue-400">
                             {point?.normalizedDisplayValue ?? "0.000"}
                           </span>
                         </div>
