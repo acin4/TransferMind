@@ -86,11 +86,11 @@ export const AgglomerativeResultsPanel = memo(
             </p>
           </div>
           {dendrogramSource ? (
-            <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-white p-4">
+            <div className="overflow-x-auto rounded-[2rem] border border-white/10 bg-[linear-gradient(135deg,rgba(15,23,42,0.94),rgba(10,16,40,0.96))] p-3 shadow-2xl shadow-black/30">
               <img
                 src={dendrogramSource}
                 alt="Agglomerative clustering dendrogram"
-                className="mx-auto max-h-[680px] min-w-[720px] max-w-none"
+                className="mx-auto block h-auto max-h-[680px] min-w-[680px] max-w-none rounded-[1.5rem] sm:min-w-0 sm:w-full"
               />
             </div>
           ) : (

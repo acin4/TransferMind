@@ -10,11 +10,30 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy.cluster.hierarchy import dendrogram, fcluster, linkage
+from scipy.cluster.hierarchy import (
+    dendrogram,
+    fcluster,
+    linkage,
+    set_link_color_palette,
+)
 from sklearn.cluster import AgglomerativeClustering
 
 
 ALLOWED_LINKAGES = {"ward", "complete", "average", "single"}
+DENDROGRAM_FIGURE_BACKGROUND = "#0b1020"
+DENDROGRAM_AXIS_BACKGROUND = "#0a1028"
+DENDROGRAM_TEXT_COLOR = "#ffffff"
+DENDROGRAM_AXIS_LINE_COLOR = (1, 1, 1, 0.6)
+DENDROGRAM_GRID_COLOR = "#ffffff"
+DENDROGRAM_GRID_ALPHA = 0.08
+DENDROGRAM_BRANCH_COLORS = [
+    "#4ea1ff",
+    "#ff9f43",
+    "#34d399",
+    "#f472b6",
+    "#a78bfa",
+    "#2dd4bf",
+]
 
 
 def read_payload():
@@ -160,23 +179,84 @@ def to_zero_based_labels(cluster_labels):
 def build_dendrogram_svg(linkage_matrix, labels, linkage_method):
     width = max(8, min(18, len(labels) * 0.65))
     height = max(5, min(12, len(labels) * 0.35))
-    figure, axis = plt.subplots(figsize=(width, height))
-
-    dendrogram(
-        linkage_matrix,
-        labels=labels,
-        leaf_rotation=90,
-        leaf_font_size=8,
-        ax=axis,
-        color_threshold=None,
+    figure, axis = plt.subplots(
+        figsize=(width, height),
+        facecolor=DENDROGRAM_FIGURE_BACKGROUND,
     )
-    axis.set_title(f"Agglomerative Clustering ({linkage_method})")
-    axis.set_xlabel("Team-season entries")
-    axis.set_ylabel("Merge distance")
-    figure.tight_layout()
+
+    figure.patch.set_facecolor(DENDROGRAM_FIGURE_BACKGROUND)
+    axis.set_facecolor(DENDROGRAM_AXIS_BACKGROUND)
+
+    set_link_color_palette(DENDROGRAM_BRANCH_COLORS[1:])
+
+    try:
+        dendrogram(
+            linkage_matrix,
+            labels=labels,
+            leaf_rotation=90,
+            leaf_font_size=8,
+            ax=axis,
+            color_threshold=None,
+            above_threshold_color=DENDROGRAM_BRANCH_COLORS[0],
+        )
+    finally:
+        set_link_color_palette(None)
+
+    axis.set_title(
+        f"Agglomerative Clustering ({linkage_method})",
+        color=DENDROGRAM_TEXT_COLOR,
+        fontweight="bold",
+        pad=14,
+    )
+    axis.set_xlabel(
+        "Team-season entries",
+        color=DENDROGRAM_TEXT_COLOR,
+        labelpad=14,
+    )
+    axis.set_ylabel("Merge distance", color=DENDROGRAM_TEXT_COLOR, labelpad=12)
+    axis.tick_params(
+        axis="both",
+        color=DENDROGRAM_AXIS_LINE_COLOR,
+        labelcolor=DENDROGRAM_TEXT_COLOR,
+        width=1.1,
+        grid_color=DENDROGRAM_GRID_COLOR,
+        grid_alpha=DENDROGRAM_GRID_ALPHA,
+    )
+    axis.yaxis.grid(
+        True,
+        color=DENDROGRAM_GRID_COLOR,
+        alpha=DENDROGRAM_GRID_ALPHA,
+        linewidth=0.8,
+        linestyle="-",
+    )
+    axis.xaxis.grid(False)
+    axis.set_axisbelow(True)
+
+    for tick_label in axis.get_xticklabels() + axis.get_yticklabels():
+        tick_label.set_color(DENDROGRAM_TEXT_COLOR)
+
+    for label in [axis.xaxis.label, axis.yaxis.label, axis.title]:
+        label.set_color(DENDROGRAM_TEXT_COLOR)
+
+    for spine in axis.spines.values():
+        spine.set_color(DENDROGRAM_AXIS_LINE_COLOR)
+        spine.set_linewidth(1.1)
+
+    for collection in axis.collections:
+        collection.set_linewidth(2.2)
+        collection.set_antialiased(True)
+
+    axis.margins(x=0.03, y=0.08)
+    figure.tight_layout(pad=1.4)
 
     buffer = io.StringIO()
-    figure.savefig(buffer, format="svg", bbox_inches="tight")
+    figure.savefig(
+        buffer,
+        format="svg",
+        bbox_inches="tight",
+        facecolor=figure.get_facecolor(),
+        edgecolor="none",
+    )
     plt.close(figure)
 
     return buffer.getvalue()
