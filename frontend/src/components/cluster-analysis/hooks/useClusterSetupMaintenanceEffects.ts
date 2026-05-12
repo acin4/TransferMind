@@ -15,6 +15,7 @@ export type UseClusterSetupMaintenanceEffectsParams = {
   selectedStatKeys: TeamStatKey[];
   setSelectedStatKeys: Dispatch<SetStateAction<TeamStatKey[]>>;
   setMaxK: Dispatch<SetStateAction<number>>;
+  setAgglomerativeK: Dispatch<SetStateAction<number>>;
 };
 
 export function useClusterSetupMaintenanceEffects({
@@ -25,6 +26,7 @@ export function useClusterSetupMaintenanceEffects({
   selectedStatKeys,
   setSelectedStatKeys,
   setMaxK,
+  setAgglomerativeK,
 }: UseClusterSetupMaintenanceEffectsParams) {
   useEffect(() => {
     const availableEntryIds = new Set(clusterEntries.map((entry) => entry.id));
@@ -42,4 +44,8 @@ export function useClusterSetupMaintenanceEffects({
   useEffect(() => {
     setMaxK(maxAllowedK);
   }, [maxAllowedK, setMaxK]);
+
+  useEffect(() => {
+    setAgglomerativeK((current) => Math.min(Math.max(2, current), maxAllowedK));
+  }, [maxAllowedK, setAgglomerativeK]);
 }

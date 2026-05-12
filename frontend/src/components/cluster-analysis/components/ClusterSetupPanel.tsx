@@ -12,10 +12,15 @@ import { SelectField } from "./SelectField";
 // The parent owns the selected teams, selected stats, loading state, and API
 // errors; this component only renders controls and sends user actions upward.
 export const ClusterSetupPanel = memo(function ClusterSetupPanel({
+  selectedAlgorithm,
   // maxK is the largest number of clusters the elbow calculation should test.
   maxK,
   // maxKOptions are the dropdown choices shown to the user.
   maxKOptions,
+  agglomerativeK,
+  agglomerativeKOptions,
+  agglomerativeLinkage,
+  linkageOptions,
   // These counts preview the size of the data matrix that will be sent for
   // clustering: selected team-seasons as rows and selected stats as columns.
   matrixRowCount,
@@ -42,11 +47,15 @@ export const ClusterSetupPanel = memo(function ClusterSetupPanel({
   validationMessage,
   // loadingElbow is true while the elbow API request is running.
   loadingElbow,
+  loadingAgglomerative,
   // requestError contains an API or request-level error message to show below.
   requestError,
   // The remaining props are event handlers from the parent. This keeps state
   // changes centralized in the parent while this panel stays focused on layout.
+  onAlgorithmChange,
   onMaxKChange,
+  onAgglomerativeKChange,
+  onAgglomerativeLinkageChange,
   onEntryToggle,
   onSelectVisibleEntries,
   onClearVisibleEntries,
@@ -56,7 +65,18 @@ export const ClusterSetupPanel = memo(function ClusterSetupPanel({
   onClearVisibleStats,
   onStatCategoryChange,
   onCalculateElbow,
+  onRunAgglomerative,
 }: ClusterSetupPanelProps) {
+  const isKMeans = selectedAlgorithm === "kmeans";
+  const isActionLoading = isKMeans ? loadingElbow : loadingAgglomerative;
+  let actionLabel = "Run Agglomerative";
+
+  if (isKMeans) {
+    actionLabel = loadingElbow ? "Calculating..." : "Calculate Elbow";
+  } else if (loadingAgglomerative) {
+    actionLabel = "Running...";
+  }
+
   return (
     // Main panel styling: the rounded border and shadow make the setup form read
     // as one major section of the Cluster Analysis page.
@@ -69,23 +89,56 @@ export const ClusterSetupPanel = memo(function ClusterSetupPanel({
         </h3>
         <p className="text-xs font-black uppercase tracking-widest text-slate-500 mt-3 max-w-4xl">
           Rows are selected team-seasons. Columns are selected statistics. Each
-          statistic column is Min-Max normalized to 0-1 before K-Means, with
+          statistic column is Min-Max normalized to 0-1 before clustering, with
           higher-is-worse stats direction-adjusted so higher values mean better
           performance.
         </p>
       </div>
 
+      <div className="mb-6">
+        <span className="mb-3 block text-[10px] font-black uppercase tracking-widest text-slate-500">
+          Algorithm
+        </span>
+        <SegmentedTabs
+          items={[
+            { value: "kmeans", label: "K-means" },
+            { value: "agglomerative", label: "Agglomerative" },
+          ]}
+          value={selectedAlgorithm}
+          onChange={onAlgorithmChange}
+          className={standingsTheme.compactSegmentedTabs}
+          buttonClassName={standingsTheme.compactSegmentedTabButton}
+          activeClassName="bg-blue-600 text-white shadow-[0_0_18px_rgba(37,99,235,0.25)]"
+          inactiveClassName="text-slate-400 hover:bg-slate-800/70 hover:text-slate-100"
+        />
+      </div>
+
       {/* The top grid contains small setup metadata. On medium screens and wider,
           Max K gets a fixed-width column and the matrix preview fills the rest. */}
       <div className="grid grid-cols-1 md:grid-cols-[minmax(0,220px)_minmax(0,1fr)] gap-4 mb-6">
-        {/* SelectField is a reusable dropdown. Changing it tells the parent to
-            update maxK, which controls how many k values the elbow test tries. */}
-        <SelectField
-          label="Max K"
-          value={maxK}
-          onChange={onMaxKChange}
-          options={maxKOptions}
-        />
+        {isKMeans ? (
+          <SelectField
+            label="Max K"
+            value={maxK}
+            onChange={onMaxKChange}
+            options={maxKOptions}
+          />
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-1">
+            <SelectField
+              label="Clusters"
+              value={agglomerativeK}
+              onChange={onAgglomerativeKChange}
+              options={agglomerativeKOptions}
+            />
+            <SelectField
+              label="Linkage"
+              value={agglomerativeLinkage}
+              onChange={onAgglomerativeLinkageChange}
+              options={linkageOptions}
+            />
+          </div>
+        )}
         {/* Matrix preview gives immediate feedback about the dataset size before
             the user runs clustering. */}
         <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4">
@@ -160,20 +213,25 @@ export const ClusterSetupPanel = memo(function ClusterSetupPanel({
           the right. It stacks on mobile so both pieces remain readable. */}
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-xs font-bold uppercase tracking-widest text-slate-500">
-          {validationMessage ?? "Ready to calculate one global elbow curve."}
+          {validationMessage ??
+            (isKMeans
+              ? "Ready to calculate one global elbow curve."
+              : "Ready to run Agglomerative clustering.")}
         </div>
         <button
           type="button"
           // Clicking starts the elbow calculation in the parent component, which
           // usually calls the backend and then renders the elbow chart/results.
-          onClick={onCalculateElbow}
+          onClick={isKMeans ? onCalculateElbow : onRunAgglomerative}
           // Disable the button when the form is invalid or a request is already
           // running. This prevents duplicate requests and incomplete submissions.
-          disabled={Boolean(validationMessage) || loadingElbow}
+          disabled={
+            Boolean(validationMessage) || isActionLoading
+          }
           className="rounded-2xl bg-blue-600 px-6 py-4 text-xs font-black uppercase tracking-widest text-white shadow-[0_0_20px_rgba(37,99,235,0.25)] transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
         >
           {/* The label changes during loading so the user knows the click worked. */}
-          {loadingElbow ? "Calculating..." : "Calculate Elbow"}
+          {actionLabel}
         </button>
       </div>
 

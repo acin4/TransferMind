@@ -1,0 +1,234 @@
+import io
+import json
+import math
+import sys
+
+import matplotlib
+
+matplotlib.use("Agg")
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from scipy.cluster.hierarchy import dendrogram, fcluster, linkage
+from sklearn.cluster import AgglomerativeClustering
+
+
+ALLOWED_LINKAGES = {"ward", "complete", "average", "single"}
+
+
+def read_payload():
+    try:
+        return json.load(sys.stdin)
+    except json.JSONDecodeError as error:
+        raise ValueError(f"Invalid JSON input: {error.msg}") from error
+
+
+def require_number_matrix(value):
+    if not isinstance(value, list) or len(value) == 0:
+        raise ValueError("points must be a non-empty matrix.")
+
+    if len(value) < 3:
+        raise ValueError("points must include at least three rows.")
+
+    expected_width = None
+
+    for row_index, row in enumerate(value):
+        if not isinstance(row, list) or len(row) == 0:
+            raise ValueError(f"points[{row_index}] must be a non-empty row.")
+
+        if len(row) < 2:
+            raise ValueError("points must include at least two columns.")
+
+        if expected_width is None:
+            expected_width = len(row)
+        elif len(row) != expected_width:
+            raise ValueError("All point rows must have the same length.")
+
+        for column_index, item in enumerate(row):
+            if item is None:
+                raise ValueError(
+                    f"points[{row_index}][{column_index}] must not be null."
+                )
+
+            if not isinstance(item, (int, float)) or isinstance(item, bool):
+                raise ValueError(
+                    f"points[{row_index}][{column_index}] must be numeric."
+                )
+
+            if not math.isfinite(item):
+                raise ValueError(
+                    f"points[{row_index}][{column_index}] must be finite."
+                )
+
+    matrix = pd.DataFrame(value)
+
+    print("MATRIX SHAPE:", matrix.shape, file=sys.stderr)
+    print(matrix.head(), file=sys.stderr)
+    print(matrix.columns.tolist(), file=sys.stderr)
+
+    if matrix.empty or matrix.shape[0] == 0 or matrix.shape[1] == 0:
+        raise ValueError("points must produce a non-empty dataframe.")
+
+    numeric_matrix = matrix.apply(pd.to_numeric, errors="coerce")
+
+    if numeric_matrix.isna().all().all():
+        raise ValueError("points must not be a NaN-only matrix.")
+
+    nan_only_columns = [
+        str(column)
+        for column in numeric_matrix.columns
+        if numeric_matrix[column].isna().all()
+    ]
+
+    if nan_only_columns:
+        raise ValueError(
+            f"points contains non-numeric columns: {', '.join(nan_only_columns)}."
+        )
+
+    if numeric_matrix.isna().any().any():
+        raise ValueError("points must not contain NaN values.")
+
+    values = numeric_matrix.to_numpy(dtype=float)
+
+    if not np.isfinite(values).all():
+        raise ValueError("points must contain only finite numeric values.")
+
+    if (values < 0).any() or (values > 1).any():
+        raise ValueError("points must contain normalized values between 0 and 1.")
+
+    return numeric_matrix
+
+
+def require_integer(value, field_name, minimum=None, maximum=None):
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise ValueError(f"{field_name} must be an integer.")
+
+    if minimum is not None and value < minimum:
+        raise ValueError(f"{field_name} must be at least {minimum}.")
+
+    if maximum is not None and value > maximum:
+        raise ValueError(f"{field_name} must be at most {maximum}.")
+
+    return value
+
+
+def require_linkage(value):
+    if value is None:
+        return "ward"
+
+    if not isinstance(value, str):
+        raise ValueError("linkage must be a string.")
+
+    normalized = value.strip().lower()
+
+    if normalized not in ALLOWED_LINKAGES:
+        raise ValueError(
+            'linkage must be one of "ward", "complete", "average", or "single".'
+        )
+
+    return normalized
+
+
+def require_labels(value, row_count):
+    if value is None:
+        return [f"Entry {index + 1}" for index in range(row_count)]
+
+    if not isinstance(value, list) or len(value) != row_count:
+        raise ValueError("labels must match the number of point rows.")
+
+    labels = []
+
+    for label_index, label in enumerate(value):
+        if not isinstance(label, str) or label.strip() == "":
+            labels.append(f"Entry {label_index + 1}")
+            continue
+
+        labels.append(label.strip())
+
+    return labels
+
+
+def to_zero_based_labels(cluster_labels):
+    label_map = {
+        label: index
+        for index, label in enumerate(sorted(set(int(label) for label in cluster_labels)))
+    }
+    return [label_map[int(label)] for label in cluster_labels]
+
+
+def build_dendrogram_svg(linkage_matrix, labels, linkage_method):
+    width = max(8, min(18, len(labels) * 0.65))
+    height = max(5, min(12, len(labels) * 0.35))
+    figure, axis = plt.subplots(figsize=(width, height))
+
+    dendrogram(
+        linkage_matrix,
+        labels=labels,
+        leaf_rotation=90,
+        leaf_font_size=8,
+        ax=axis,
+        color_threshold=None,
+    )
+    axis.set_title(f"Agglomerative Clustering ({linkage_method})")
+    axis.set_xlabel("Team-season entries")
+    axis.set_ylabel("Merge distance")
+    figure.tight_layout()
+
+    buffer = io.StringIO()
+    figure.savefig(buffer, format="svg", bbox_inches="tight")
+    plt.close(figure)
+
+    return buffer.getvalue()
+
+
+def run(payload):
+    print("REQUEST:", payload, file=sys.stderr)
+    points = require_number_matrix(payload.get("points"))
+    k = require_integer(payload.get("k"), "k", minimum=2, maximum=len(points))
+    linkage_method = require_linkage(payload.get("linkage"))
+    labels = require_labels(payload.get("labels"), len(points))
+    warnings = []
+    point_values = points.to_numpy(dtype=float)
+
+    model = AgglomerativeClustering(
+        n_clusters=k,
+        linkage=linkage_method,
+    )
+    assignments = [int(label) for label in model.fit_predict(point_values).tolist()]
+    linkage_matrix = linkage(point_values, method=linkage_method)
+    cluster_labels = fcluster(linkage_matrix, t=k, criterion="maxclust")
+    dendrogram_assignments = to_zero_based_labels(cluster_labels)
+    actual_cluster_count = len(set(dendrogram_assignments))
+
+    if actual_cluster_count < k:
+        warnings.append(
+            f"Agglomerative clustering produced {actual_cluster_count} "
+            f"cluster groups after cutting the hierarchy at k={k}."
+        )
+
+    return {
+        "assignments": assignments,
+        "dendrogramSvg": build_dendrogram_svg(
+            linkage_matrix,
+            labels,
+            linkage_method,
+        ),
+        "warnings": warnings,
+    }
+
+
+def main():
+    try:
+        payload = read_payload()
+        result = run(payload)
+        sys.stdout.write(json.dumps(result, separators=(",", ":")))
+    except Exception as error:
+        print(f"{type(error).__name__}: {error}", file=sys.stderr)
+        return 1
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

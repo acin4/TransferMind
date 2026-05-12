@@ -1,4 +1,5 @@
 import { HttpError } from "../lib/http.js";
+import { runPythonAgglomerative } from "../lib/pythonAgglomerativeClient.js";
 import { runPythonKMeans } from "../lib/pythonKMeansClient.js";
 import {
   getTeamStatMetadata,
@@ -9,6 +10,12 @@ import { listTeamComparisonRowsByEntries } from "../repositories/teamRepository.
 const MAX_CLUSTER_K = 20;
 const MAX_ITERATIONS = 100;
 const KMEANS_SEED = 42;
+const AGGLOMERATIVE_LINKAGES = new Set([
+  "ward",
+  "complete",
+  "average",
+  "single",
+]);
 
 function parsePositiveIntegerField(value, fieldName) {
   const parsed = Number(value);
@@ -30,6 +37,11 @@ function parseStatKeys(value) {
       value.map((item) => String(item ?? "").trim()).filter(Boolean),
     ),
   ];
+
+  if (statKeys.length === 0) {
+    throw new HttpError(400, "Select at least one statistic.");
+  }
+
   const invalidStatKeys = statKeys.filter(
     (statKey) => !getTeamStatMetadata(statKey),
   );
@@ -125,23 +137,203 @@ function parseSelectedK(value, validRowCount) {
   return k;
 }
 
+function parseAgglomerativeK(value, validRowCount) {
+  const k = parsePositiveIntegerField(value, "k");
+
+  if (k < 2) {
+    throw new HttpError(400, "k must be at least 2.");
+  }
+
+  if (k > validRowCount) {
+    throw new HttpError(
+      400,
+      `k must be at most ${validRowCount} for the selected entries.`,
+    );
+  }
+
+  return k;
+}
+
+function parseAgglomerativeLinkage(value) {
+  if (value == null) {
+    return "ward";
+  }
+
+  const linkage = String(value).trim().toLowerCase();
+
+  if (!AGGLOMERATIVE_LINKAGES.has(linkage)) {
+    throw new HttpError(
+      400,
+      'linkage must be one of "ward", "complete", "average", or "single".',
+    );
+  }
+
+  return linkage;
+}
+
 function sanitizeClusterStatValue(value) {
   if (typeof value === "number") {
-    return Number.isFinite(value) ? value : 0;
+    return Number.isFinite(value) ? value : null;
   }
 
   if (typeof value === "string") {
     const trimmedValue = value.trim();
 
     if (trimmedValue === "") {
-      return 0;
+      return null;
     }
 
     const parsed = Number(trimmedValue);
-    return Number.isFinite(parsed) ? parsed : 0;
+    return Number.isFinite(parsed) ? parsed : null;
   }
 
-  return 0;
+  if (value == null) {
+    return null;
+  }
+
+  return Number.NaN;
+}
+
+function getClusterRowLabel(row) {
+  return [
+    row.team_name ?? `Team ${row.team_id}`,
+    row.season_name ?? `Season ${row.season_id}`,
+    row.tournament_name,
+  ]
+    .filter(Boolean)
+    .join(" - ");
+}
+
+function assertFiniteVector(vector, rowLabel) {
+  if (!Array.isArray(vector) || vector.length === 0) {
+    throw new HttpError(400, `Clustering matrix row is empty for ${rowLabel}.`);
+  }
+
+  const hasInvalidValue = vector.some((value) => !Number.isFinite(value));
+
+  if (hasInvalidValue) {
+    throw new HttpError(
+      400,
+      `Clustering matrix contains a non-numeric value for ${rowLabel}.`,
+    );
+  }
+}
+
+function validateNormalizedPointMatrix(points, statKeys) {
+  if (!Array.isArray(points) || points.length === 0) {
+    throw new HttpError(400, "Clustering matrix must contain at least one row.");
+  }
+
+  if (!Array.isArray(statKeys) || statKeys.length === 0) {
+    throw new HttpError(
+      400,
+      "Clustering matrix must contain at least one column.",
+    );
+  }
+
+  const columnCount = statKeys.length;
+
+  if (columnCount === 0) {
+    throw new HttpError(
+      400,
+      "Clustering matrix must contain at least one column.",
+    );
+  }
+
+  const hasInvalidRow = points.some(
+    (row) => !Array.isArray(row) || row.length !== columnCount,
+  );
+
+  if (hasInvalidRow) {
+    throw new HttpError(
+      400,
+      "Clustering matrix rows must all contain one value per selected statistic.",
+    );
+  }
+
+  const allValues = points.flat();
+
+  if (allValues.length === 0) {
+    throw new HttpError(400, "Clustering matrix must not be empty.");
+  }
+
+  if (allValues.every((value) => value == null || Number.isNaN(value))) {
+    throw new HttpError(
+      400,
+      "Clustering matrix must not contain only null values.",
+    );
+  }
+
+  const nonNumericColumns = statKeys.filter((_, columnIndex) =>
+    points.some((row) => typeof row[columnIndex] !== "number"),
+  );
+
+  if (nonNumericColumns.length > 0) {
+    throw new HttpError(
+      400,
+      `Clustering matrix contains non-numeric columns: ${nonNumericColumns.join(", ")}.`,
+    );
+  }
+
+  const hasInvalidValue = allValues.some((value) => !Number.isFinite(value));
+
+  if (hasInvalidValue) {
+    throw new HttpError(
+      400,
+      "Clustering matrix must contain only finite numeric values.",
+    );
+  }
+
+  const hasOutOfRangeValue = allValues.some((value) => value < 0 || value > 1);
+
+  if (hasOutOfRangeValue) {
+    throw new HttpError(
+      400,
+      "Clustering matrix must contain normalized values between 0 and 1.",
+    );
+  }
+}
+
+function validateMatrixSourceRows(matrixSourceRows, statKeys) {
+  if (!Array.isArray(statKeys) || statKeys.length === 0) {
+    throw new HttpError(400, "Select at least one statistic.");
+  }
+
+  if (!Array.isArray(matrixSourceRows) || matrixSourceRows.length === 0) {
+    throw new HttpError(400, "Clustering matrix must contain at least one row.");
+  }
+
+  const invalidStat = matrixSourceRows.flatMap((row) =>
+    statKeys
+      .filter((statKey) => Number.isNaN(row.rawStats[statKey]))
+      .map((statKey) => ({
+        statKey,
+        rowLabel: row.label,
+      })),
+  )[0];
+
+  if (invalidStat) {
+    const metadata = getTeamStatMetadata(invalidStat.statKey);
+
+    throw new HttpError(
+      400,
+      `${metadata.label} contains a non-numeric value for ${invalidStat.rowLabel}.`,
+    );
+  }
+
+  statKeys.forEach((statKey) => {
+    const metadata = getTeamStatMetadata(statKey);
+    const numericValues = matrixSourceRows
+      .map((row) => row.rawStats[statKey])
+      .filter((value) => Number.isFinite(value));
+
+    if (numericValues.length === 0) {
+      throw new HttpError(
+        400,
+        `${metadata.label} has no numeric values in the selected team-season entries.`,
+      );
+    }
+  });
 }
 
 function squaredDistance(a, b) {
@@ -219,25 +411,36 @@ function toClusterRow(row, statKeys) {
     seasonId: row.season_id,
     seasonName: row.season_name ?? null,
     rawStats,
+    label: getClusterRowLabel(row),
   };
 }
 
 function buildNormalizedMatrix(rows, statKeys) {
   const warnings = [];
   const matrixSourceRows = rows.map((row) => toClusterRow(row, statKeys));
+  validateMatrixSourceRows(matrixSourceRows, statKeys);
 
   const columnStats = Object.fromEntries(
     statKeys.map((statKey) => {
-      const values = matrixSourceRows.map((row) => row.rawStats[statKey]);
+      const values = matrixSourceRows
+        .map((row) => row.rawStats[statKey])
+        .filter((value) => Number.isFinite(value));
       const min = Math.min(...values);
       const max = Math.max(...values);
       const isNegativeDirection = isNegativeTeamStatKey(statKey);
+      const missingCount = matrixSourceRows.length - values.length;
 
       if (min === max) {
         const constantNormalizedValue = isNegativeDirection ? 1 : 0;
 
         warnings.push(
           `${getTeamStatMetadata(statKey).label} is constant across the selected entries; its normalized column was set to ${constantNormalizedValue}.`,
+        );
+      }
+
+      if (missingCount > 0) {
+        warnings.push(
+          `${getTeamStatMetadata(statKey).label} had ${missingCount} missing value${missingCount === 1 ? "" : "s"}; missing normalized values were filled with the column minimum.`,
         );
       }
 
@@ -258,9 +461,12 @@ function buildNormalizedMatrix(rows, statKeys) {
       statKeys.map((statKey) => {
         const column = columnStats[statKey];
         const rawValue = row.rawStats[statKey];
+        const numericRawValue = Number.isFinite(rawValue)
+          ? rawValue
+          : column.min;
         const normalizedValue = column.isConstant
           ? 0
-          : (rawValue - column.min) / (column.max - column.min);
+          : (numericRawValue - column.min) / (column.max - column.min);
         const adjustedValue = column.isNegativeDirection
           ? 1 - normalizedValue
           : normalizedValue;
@@ -285,6 +491,10 @@ function buildNormalizedMatrix(rows, statKeys) {
       normalizedStats,
       vector: statKeys.map((statKey) => normalizedStats[statKey]),
     };
+  });
+
+  matrixRows.forEach((row) => {
+    assertFiniteVector(row.vector, row.teamName);
   });
 
   return {
@@ -319,10 +529,22 @@ async function buildClusterDataset(payload) {
   const orderedRows = teamSeasonEntries.map((entry) =>
     rowsByEntryId.get(buildEntryId(entry)),
   );
+
+  if (orderedRows.some((row) => !row)) {
+    throw new HttpError(
+      400,
+      "One or more selected team-season entries do not exist.",
+    );
+  }
+
   const { matrixRows, columnStats, warnings } = buildNormalizedMatrix(
     orderedRows,
     statKeys,
   );
+
+  if (matrixRows.length === 0 || statKeys.length === 0) {
+    throw new HttpError(400, "Clustering matrix must not be empty.");
+  }
 
   return {
     teamSeasonEntries,
@@ -348,6 +570,25 @@ function buildStatsMetadata(statKeys, columnStats) {
       isConstant: column.isConstant,
     };
   });
+}
+
+function buildAgglomerativeLabel(row) {
+  return [
+    row.teamName,
+    row.seasonName ?? `Season ${row.seasonId}`,
+    row.tournamentName,
+  ]
+    .filter(Boolean)
+    .join(" - ");
+}
+
+function buildMatrixPreview(rows, statKeys) {
+  return rows.slice(0, 5).map((row) => ({
+    entryId: row.entryId,
+    ...Object.fromEntries(
+      statKeys.map((statKey) => [statKey, row.normalizedStats[statKey]]),
+    ),
+  }));
 }
 
 export async function calculateTeamClusterElbow(payload) {
@@ -440,4 +681,74 @@ export async function runTeamClusters(payload) {
     centroids,
     warnings: dataset.warnings,
   };
+}
+
+export async function runTeamAgglomerativeClusters(payload) {
+  console.log("REQUEST:", payload);
+  const linkage = parseAgglomerativeLinkage(payload?.linkage);
+  const dataset = await buildClusterDataset(payload);
+  const k = parseAgglomerativeK(payload?.k, dataset.rows.length);
+  const points = dataset.rows.map((row) => row.vector);
+  const columnCount = points[0]?.length ?? 0;
+
+  validateNormalizedPointMatrix(points, dataset.statKeys);
+
+  console.log("MATRIX SHAPE:", [points.length, columnCount]);
+  console.log(buildMatrixPreview(dataset.rows, dataset.statKeys));
+  console.log("MATRIX COLUMNS:", dataset.statKeys);
+
+  const result = await runPythonAgglomerative({
+    points,
+    k,
+    linkage,
+    labels: dataset.rows.map(buildAgglomerativeLabel),
+  });
+
+  if (result.assignments.length !== dataset.rows.length) {
+    throw new HttpError(500, "Unable to complete Agglomerative clustering.");
+  }
+
+  const assignments = dataset.rows.map((row, index) => {
+    const clusterIndex = result.assignments[index] ?? 0;
+
+    return {
+      entryId: row.entryId,
+      teamId: row.teamId,
+      teamName: row.teamName,
+      teamLogo: row.teamLogo,
+      tournamentId: row.tournamentId,
+      tournamentName: row.tournamentName,
+      seasonId: row.seasonId,
+      seasonName: row.seasonName,
+      clusterId: clusterIndex + 1,
+      rawStats: row.rawStats,
+      normalizedStats: row.normalizedStats,
+    };
+  });
+
+  const response = {
+    context: {
+      selectedEntryCount: dataset.rows.length,
+    },
+    algorithm: "agglomerative",
+    k,
+    linkage,
+    stats: buildStatsMetadata(dataset.statKeys, dataset.columnStats),
+    assignments,
+    warnings: [...dataset.warnings, ...result.warnings],
+  };
+
+  if (result.dendrogramSvg) {
+    response.dendrogramSvg = result.dendrogramSvg;
+  }
+
+  if (result.dendrogramImage) {
+    response.dendrogramImage = result.dendrogramImage;
+  }
+
+  if (result.linkageMatrix) {
+    response.linkageMatrix = result.linkageMatrix;
+  }
+
+  return response;
 }

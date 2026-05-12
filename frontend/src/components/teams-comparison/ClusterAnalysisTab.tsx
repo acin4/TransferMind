@@ -1,4 +1,6 @@
+import { useMemo } from "react";
 import {
+  AgglomerativeResultsPanel,
   ClusterAverageProfilesChart,
   ClusterMembershipSummary,
   ClusterSetupPanel,
@@ -12,7 +14,15 @@ import { useClusterSelectionState } from "../cluster-analysis/hooks/useClusterSe
 import { useClusterSetupData } from "../cluster-analysis/hooks/useClusterSetupData";
 import { useClusterSetupMaintenanceEffects } from "../cluster-analysis/hooks/useClusterSetupMaintenanceEffects";
 import type { ClusterAnalysisTabProps } from "../cluster-analysis/types";
+import { buildClusterGroups } from "../cluster-analysis/utils/clusterAnalysisUtils";
 import { ContentPanel } from "../ui/design";
+
+const AGGLOMERATIVE_LINKAGE_OPTIONS = [
+  { value: "ward" as const, label: "Ward" },
+  { value: "complete" as const, label: "Complete" },
+  { value: "average" as const, label: "Average" },
+  { value: "single" as const, label: "Single" },
+];
 
 // ClusterAnalysisTab is the Cluster Analysis view inside Teams Comparison.
 // It connects the raw team-season entries and supported stat keys to the reusable
@@ -26,6 +36,8 @@ export default function ClusterAnalysisTab({
   // This hook owns the user's setup selections:
   // selected entries, selected stats, filters, Max K, and toggle/select handlers.
   const {
+    selectedAlgorithm,
+    setSelectedAlgorithm,
     selectedEntryIds,
     setSelectedEntryIds,
     selectedStatKeys,
@@ -36,6 +48,9 @@ export default function ClusterAnalysisTab({
     setSelectedStatCategory,
     maxK,
     setMaxK,
+    agglomerativeK,
+    setAgglomerativeK,
+    agglomerativeLinkage,
     toggleEntry,
     toggleStat,
     selectVisibleEntries,
@@ -43,6 +58,8 @@ export default function ClusterAnalysisTab({
     selectVisibleStats,
     clearVisibleStats,
     handleMaxKChange,
+    handleAgglomerativeKChange,
+    handleAgglomerativeLinkageChange,
   } = useClusterSelectionState({ statKeys: supportedStatKeys });
 
   // This hook converts raw entries/selections into UI-ready setup data:
@@ -80,6 +97,7 @@ export default function ClusterAnalysisTab({
     selectedStatKeys,
     setSelectedStatKeys,
     setMaxK,
+    setAgglomerativeK,
   });
 
   // This hook owns the two backend request flows:
@@ -90,16 +108,22 @@ export default function ClusterAnalysisTab({
     setSelectedK,
     elbowResult,
     clusterResult,
+    agglomerativeResult,
     loadingElbow,
     loadingClusters,
+    loadingAgglomerative,
     requestError,
     handleCalculateElbow,
     handleRunClusters,
+    handleRunAgglomerative,
     kOptions,
   } = useClusterRequests({
     requestPayloadEntries: selectedTeamSeasonEntries,
     cleanedSelectedStatKeys,
     maxK,
+    selectedAlgorithm,
+    agglomerativeK,
+    agglomerativeLinkage,
     selectedEntryIds,
     validationMessage,
   });
@@ -109,6 +133,16 @@ export default function ClusterAnalysisTab({
     clusterResult,
     cleanedSelectedStatKeys,
   );
+  const agglomerativeClusters = useMemo(
+    () =>
+      agglomerativeResult
+        ? buildClusterGroups(
+            agglomerativeResult.assignments,
+            agglomerativeResult.k,
+          )
+        : [],
+    [agglomerativeResult],
+  );
 
   return (
     // Vertical spacing separates the setup panel, elbow panel, and final results.
@@ -116,8 +150,13 @@ export default function ClusterAnalysisTab({
       {/* Setup panel is the main form: choose team-season rows, stat columns, and
           Max K, then start the elbow calculation. */}
       <ClusterSetupPanel
+        selectedAlgorithm={selectedAlgorithm}
         maxK={maxK}
         maxKOptions={maxKOptions}
+        agglomerativeK={agglomerativeK}
+        agglomerativeKOptions={maxKOptions}
+        agglomerativeLinkage={agglomerativeLinkage}
+        linkageOptions={AGGLOMERATIVE_LINKAGE_OPTIONS}
         matrixRowCount={selectedEntries.length}
         matrixColumnCount={cleanedSelectedStatKeys.length}
         entryOptions={entryOptions}
@@ -130,8 +169,12 @@ export default function ClusterAnalysisTab({
         selectedStatCategory={selectedStatCategory}
         validationMessage={validationMessage}
         loadingElbow={loadingElbow}
+        loadingAgglomerative={loadingAgglomerative}
         requestError={requestError}
+        onAlgorithmChange={setSelectedAlgorithm}
         onMaxKChange={handleMaxKChange}
+        onAgglomerativeKChange={handleAgglomerativeKChange}
+        onAgglomerativeLinkageChange={handleAgglomerativeLinkageChange}
         onEntryToggle={toggleEntry}
         onSelectVisibleEntries={selectVisibleEntries}
         onClearVisibleEntries={clearVisibleEntries}
@@ -141,10 +184,11 @@ export default function ClusterAnalysisTab({
         onClearVisibleStats={clearVisibleStats}
         onStatCategoryChange={setSelectedStatCategory}
         onCalculateElbow={handleCalculateElbow}
+        onRunAgglomerative={handleRunAgglomerative}
       />
 
       {/* Show the elbow panel only after the elbow request has returned data. */}
-      {elbowResult ? (
+      {selectedAlgorithm === "kmeans" && elbowResult ? (
         <ElbowMethodPanel
           elbowResult={elbowResult}
           selectedK={selectedK}
@@ -156,7 +200,7 @@ export default function ClusterAnalysisTab({
       ) : null}
 
       {/* Show final cluster visualizations only after k-means has successfully run. */}
-      {clusterResult ? (
+      {selectedAlgorithm === "kmeans" && clusterResult ? (
         <ContentPanel>
           {/* Results header explains that clustering used normalized values, while
               raw values are still available for human interpretation. */}
@@ -194,6 +238,13 @@ export default function ClusterAnalysisTab({
           {/* Membership summary lists which team-season entries belong to each cluster. */}
           <ClusterMembershipSummary clusters={clusters} />
         </ContentPanel>
+      ) : null}
+
+      {selectedAlgorithm === "agglomerative" && agglomerativeResult ? (
+        <AgglomerativeResultsPanel
+          result={agglomerativeResult}
+          clusters={agglomerativeClusters}
+        />
       ) : null}
     </div>
   );

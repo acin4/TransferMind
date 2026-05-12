@@ -2,6 +2,7 @@ import { HttpError, parseInteger } from "../lib/http.js";
 import { runTeamAssociationRules } from "../services/teamAssociationRulesService.js";
 import {
   calculateTeamClusterElbow,
+  runTeamAgglomerativeClusters,
   runTeamClusters,
 } from "../services/teamClusteringService.js";
 import {
@@ -176,6 +177,11 @@ export async function calculateTeamClusterElbowController(req, res) {
 
 export async function runTeamClustersController(req, res) {
   const dataset = await runTeamClusters(req.body);
+  res.status(200).json({ data: dataset });
+}
+
+export async function runTeamAgglomerativeClustersController(req, res) {
+  const dataset = await runTeamAgglomerativeClusters(req.body);
   res.status(200).json({ data: dataset });
 }
 

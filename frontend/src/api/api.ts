@@ -300,6 +300,8 @@ export type TeamClusterRequest = {
   statKeys: TeamStatKey[];
 };
 
+export type TeamClusterAlgorithm = "kmeans" | "agglomerative";
+
 // Elbow analysis tries several k values, so maxK limits how many cluster counts
 // the backend should test.
 export type TeamClusterElbowRequest = TeamClusterRequest & {
@@ -310,6 +312,18 @@ export type TeamClusterElbowRequest = TeamClusterRequest & {
 // the elbow result.
 export type TeamClusterRunRequest = TeamClusterRequest & {
   k: number;
+};
+
+export type TeamAgglomerativeLinkage =
+  | "ward"
+  | "complete"
+  | "average"
+  | "single";
+
+export type TeamAgglomerativeClusterRunRequest = TeamClusterRequest & {
+  algorithm: "agglomerative";
+  k: number;
+  linkage?: TeamAgglomerativeLinkage;
 };
 
 // Metadata for one stat used in clustering. The min/max values let the UI explain
@@ -335,7 +349,7 @@ export type TeamClusterMatrixRow = {
   tournamentName: string | null;
   seasonId: number;
   seasonName: string | null;
-  rawStats: Partial<Record<TeamStatKey, number>>;
+  rawStats: Partial<Record<TeamStatKey, number | null>>;
   normalizedStats: Partial<Record<TeamStatKey, number>>;
 };
 
@@ -365,7 +379,7 @@ export type TeamClusterElbowPayload = {
 // assigned cluster plus distance from the cluster center.
 export type TeamClusterAssignment = TeamClusterMatrixRow & {
   clusterId: number;
-  distanceToCentroid: number;
+  distanceToCentroid?: number;
 };
 
 // The center point for one cluster. Charts can use centroids to describe the
@@ -387,6 +401,21 @@ export type TeamClusterRunPayload = {
   stats: TeamClusterStat[];
   assignments: TeamClusterAssignment[];
   centroids: TeamClusterCentroid[];
+  warnings: string[];
+};
+
+export type TeamAgglomerativeClusterRunPayload = {
+  context: {
+    selectedEntryCount: number;
+  };
+  algorithm: "agglomerative";
+  k: number;
+  linkage: TeamAgglomerativeLinkage;
+  stats: TeamClusterStat[];
+  assignments: TeamClusterAssignment[];
+  dendrogramSvg?: string;
+  dendrogramImage?: string;
+  linkageMatrix?: number[][];
   warnings: string[];
 };
 
@@ -733,6 +762,20 @@ export const runTeamClusters = async (
   return request("/api/teams/clustering/run", {
     // The backend needs the full selected dataset and k value, so the frontend
     // sends them as JSON in the request body.
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+};
+
+// Runs Agglomerative clustering for a selected team-season/stat matrix.
+// The backend returns a static SVG dendrogram plus one-based cluster assignments.
+export const runTeamAgglomerativeClusters = async (
+  payload: TeamAgglomerativeClusterRunRequest,
+): Promise<TeamAgglomerativeClusterRunPayload> => {
+  return request("/api/teams/clustering/agglomerative/run", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

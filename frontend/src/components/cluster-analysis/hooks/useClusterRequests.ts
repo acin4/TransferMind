@@ -7,9 +7,12 @@ import {
 import type { Dispatch, SetStateAction } from "react";
 import {
   calculateTeamClusterElbow,
+  runTeamAgglomerativeClusters,
   runTeamClusters,
 } from "../../../api/api";
 import type {
+  TeamAgglomerativeClusterRunPayload,
+  TeamAgglomerativeLinkage,
   TeamClusterElbowPayload,
   TeamClusterEntryRequest,
   TeamClusterRunPayload,
@@ -17,10 +20,46 @@ import type {
 import type { TeamStatKey } from "../../../teamStatsConfig";
 import { getErrorMessage } from "../utils/clusterFormatters";
 
+const AGGLOMERATIVE_LINKAGES: ReadonlySet<TeamAgglomerativeLinkage> = new Set([
+  "ward",
+  "complete",
+  "average",
+  "single",
+]);
+
+function getMatrixValidationMessage({
+  entryCount,
+  statCount,
+}: {
+  entryCount: number;
+  statCount: number;
+}) {
+  if (entryCount === 0) {
+    return "Select at least one team-season entry.";
+  }
+
+  if (statCount === 0) {
+    return "Select at least one statistic.";
+  }
+
+  if (entryCount < 3) {
+    return "Select at least three team-season entries.";
+  }
+
+  if (statCount < 2) {
+    return "Select at least two statistics.";
+  }
+
+  return null;
+}
+
 export type UseClusterRequestsParams = {
   requestPayloadEntries: TeamClusterEntryRequest[];
   cleanedSelectedStatKeys: TeamStatKey[];
   maxK: number;
+  selectedAlgorithm: "kmeans" | "agglomerative";
+  agglomerativeK: number;
+  agglomerativeLinkage: TeamAgglomerativeLinkage;
   selectedEntryIds: string[];
   validationMessage: string | null;
 };
@@ -30,18 +69,59 @@ export type UseClusterRequestsResult = {
   setSelectedK: Dispatch<SetStateAction<number | null>>;
   elbowResult: TeamClusterElbowPayload | null;
   clusterResult: TeamClusterRunPayload | null;
+  agglomerativeResult: TeamAgglomerativeClusterRunPayload | null;
   loadingElbow: boolean;
   loadingClusters: boolean;
+  loadingAgglomerative: boolean;
   requestError: string | null;
   handleCalculateElbow: () => Promise<void>;
   handleRunClusters: () => Promise<void>;
+  handleRunAgglomerative: () => Promise<void>;
   kOptions: number[];
 };
+
+function getAgglomerativeValidationMessage({
+  entryCount,
+  k,
+  linkage,
+  statCount,
+}: {
+  entryCount: number;
+  k: number;
+  linkage: TeamAgglomerativeLinkage;
+  statCount: number;
+}) {
+  const matrixValidationMessage = getMatrixValidationMessage({
+    entryCount,
+    statCount,
+  });
+
+  if (matrixValidationMessage) {
+    return matrixValidationMessage;
+  }
+
+  if (!Number.isInteger(k) || k < 2) {
+    return "Choose at least two Agglomerative clusters.";
+  }
+
+  if (k > entryCount) {
+    return `Choose no more than ${entryCount} Agglomerative clusters.`;
+  }
+
+  if (!AGGLOMERATIVE_LINKAGES.has(linkage)) {
+    return 'Choose a linkage method: "ward", "complete", "average", or "single".';
+  }
+
+  return null;
+}
 
 export function useClusterRequests({
   requestPayloadEntries,
   cleanedSelectedStatKeys,
   maxK,
+  selectedAlgorithm,
+  agglomerativeK,
+  agglomerativeLinkage,
   selectedEntryIds,
   validationMessage,
 }: UseClusterRequestsParams): UseClusterRequestsResult {
@@ -50,20 +130,33 @@ export function useClusterRequests({
     useState<TeamClusterElbowPayload | null>(null);
   const [clusterResult, setClusterResult] =
     useState<TeamClusterRunPayload | null>(null);
+  const [agglomerativeResult, setAgglomerativeResult] =
+    useState<TeamAgglomerativeClusterRunPayload | null>(null);
   const [loadingElbow, setLoadingElbow] = useState(false);
   const [loadingClusters, setLoadingClusters] = useState(false);
+  const [loadingAgglomerative, setLoadingAgglomerative] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
 
   useEffect(() => {
     setElbowResult(null);
     setClusterResult(null);
+    setAgglomerativeResult(null);
     setSelectedK(null);
     setRequestError(null);
-  }, [cleanedSelectedStatKeys, maxK, selectedEntryIds]);
+  }, [
+    cleanedSelectedStatKeys,
+    maxK,
+    selectedAlgorithm,
+    selectedEntryIds,
+  ]);
 
   useEffect(() => {
     setClusterResult(null);
   }, [selectedK]);
+
+  useEffect(() => {
+    setAgglomerativeResult(null);
+  }, [agglomerativeK, agglomerativeLinkage]);
 
   const buildRequestPayload = useCallback(() => {
     return {
@@ -74,9 +167,17 @@ export function useClusterRequests({
 
   const handleCalculateElbow = useCallback(async () => {
     const payload = buildRequestPayload();
+    const matrixValidationMessage = getMatrixValidationMessage({
+      entryCount: payload.teamSeasonEntries.length,
+      statCount: payload.statKeys.length,
+    });
 
-    if (validationMessage) {
-      setRequestError(validationMessage ?? "Complete the clustering inputs.");
+    if (matrixValidationMessage || validationMessage) {
+      setRequestError(
+        matrixValidationMessage ??
+          validationMessage ??
+          "Complete the clustering inputs.",
+      );
       return;
     }
 
@@ -84,6 +185,7 @@ export function useClusterRequests({
       setLoadingElbow(true);
       setRequestError(null);
       setClusterResult(null);
+      setAgglomerativeResult(null);
 
       const result = await calculateTeamClusterElbow({
         ...payload,
@@ -102,6 +204,15 @@ export function useClusterRequests({
 
   const handleRunClusters = useCallback(async () => {
     const payload = buildRequestPayload();
+    const matrixValidationMessage = getMatrixValidationMessage({
+      entryCount: payload.teamSeasonEntries.length,
+      statCount: payload.statKeys.length,
+    });
+
+    if (matrixValidationMessage) {
+      setRequestError(matrixValidationMessage);
+      return;
+    }
 
     if (selectedK == null) {
       setRequestError("Calculate elbow data and choose K first.");
@@ -111,6 +222,7 @@ export function useClusterRequests({
     try {
       setLoadingClusters(true);
       setRequestError(null);
+      setAgglomerativeResult(null);
 
       const result = await runTeamClusters({
         ...payload,
@@ -126,6 +238,73 @@ export function useClusterRequests({
     }
   }, [buildRequestPayload, selectedK]);
 
+  const handleRunAgglomerative = useCallback(async () => {
+    if (loadingAgglomerative) {
+      return;
+    }
+
+    const payload = buildRequestPayload();
+    const matrixValidationMessage = getMatrixValidationMessage({
+      entryCount: payload.teamSeasonEntries.length,
+      statCount: payload.statKeys.length,
+    });
+
+    if (matrixValidationMessage || validationMessage) {
+      setRequestError(
+        matrixValidationMessage ??
+          validationMessage ??
+          "Complete the clustering inputs.",
+      );
+      return;
+    }
+
+    const agglomerativeValidationMessage = getAgglomerativeValidationMessage({
+      entryCount: payload.teamSeasonEntries.length,
+      k: agglomerativeK,
+      linkage: agglomerativeLinkage,
+      statCount: payload.statKeys.length,
+    });
+
+    if (agglomerativeValidationMessage) {
+      setRequestError(agglomerativeValidationMessage);
+      return;
+    }
+
+    try {
+      setLoadingAgglomerative(true);
+      setRequestError(null);
+      setElbowResult(null);
+      setClusterResult(null);
+
+      const agglomerativePayload = {
+        ...payload,
+        algorithm: "agglomerative",
+        k: agglomerativeK,
+        linkage: agglomerativeLinkage,
+      } as const;
+
+      console.log(
+        "Agglomerative payload:",
+        JSON.parse(JSON.stringify(agglomerativePayload)),
+      );
+
+      const result = await runTeamAgglomerativeClusters(agglomerativePayload);
+
+      setAgglomerativeResult(result);
+    } catch (error) {
+      setAgglomerativeResult(null);
+      setRequestError(getErrorMessage(error));
+    } finally {
+      setLoadingAgglomerative(false);
+    }
+  }, [
+    agglomerativeK,
+    agglomerativeLinkage,
+    buildRequestPayload,
+    loadingAgglomerative,
+    validationMessage,
+  ]);
+
   const kOptions = useMemo(
     () =>
       elbowResult
@@ -139,11 +318,14 @@ export function useClusterRequests({
     setSelectedK,
     elbowResult,
     clusterResult,
+    agglomerativeResult,
     loadingElbow,
     loadingClusters,
+    loadingAgglomerative,
     requestError,
     handleCalculateElbow,
     handleRunClusters,
+    handleRunAgglomerative,
     kOptions,
   };
 }

@@ -1,6 +1,10 @@
 import { useCallback, useMemo, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { TeamStatKey } from "../../../teamStatsConfig";
+import type {
+  ClusterAlgorithm,
+  TeamAgglomerativeLinkage,
+} from "../types";
 import { ALL_COUNTRIES_TAB } from "../../../utils/countryFilters";
 import type { CountryFilterTab } from "../../../utils/countryFilters";
 import { ALL_STAT_CATEGORIES } from "../../../utils/statCategories";
@@ -11,6 +15,8 @@ export type UseClusterSelectionStateParams = {
 };
 
 export type UseClusterSelectionStateResult = {
+  selectedAlgorithm: ClusterAlgorithm;
+  setSelectedAlgorithm: Dispatch<SetStateAction<ClusterAlgorithm>>;
   selectedEntryIds: string[];
   setSelectedEntryIds: Dispatch<SetStateAction<string[]>>;
   selectedStatKeys: TeamStatKey[];
@@ -21,6 +27,10 @@ export type UseClusterSelectionStateResult = {
   setSelectedStatCategory: Dispatch<SetStateAction<StatCategoryFilterId>>;
   maxK: number;
   setMaxK: Dispatch<SetStateAction<number>>;
+  agglomerativeK: number;
+  setAgglomerativeK: Dispatch<SetStateAction<number>>;
+  agglomerativeLinkage: TeamAgglomerativeLinkage;
+  setAgglomerativeLinkage: Dispatch<SetStateAction<TeamAgglomerativeLinkage>>;
   toggleEntry: (entryId: string) => void;
   toggleStat: (statKey: string) => void;
   selectVisibleEntries: (visibleEntryIds: string[]) => void;
@@ -28,11 +38,15 @@ export type UseClusterSelectionStateResult = {
   selectVisibleStats: (visibleStatKeys: string[]) => void;
   clearVisibleStats: (visibleStatKeys: string[]) => void;
   handleMaxKChange: (value: string) => void;
+  handleAgglomerativeKChange: (value: string) => void;
+  handleAgglomerativeLinkageChange: (value: string) => void;
 };
 
 export function useClusterSelectionState(
   { statKeys }: UseClusterSelectionStateParams,
 ): UseClusterSelectionStateResult {
+  const [selectedAlgorithm, setSelectedAlgorithm] =
+    useState<ClusterAlgorithm>("kmeans");
   const [selectedEntryIds, setSelectedEntryIds] = useState<string[]>([]);
   const [selectedStatKeys, setSelectedStatKeys] = useState<TeamStatKey[]>([]);
   const [selectedCountryFilter, setSelectedCountryFilter] =
@@ -40,6 +54,9 @@ export function useClusterSelectionState(
   const [selectedStatCategory, setSelectedStatCategory] =
     useState<StatCategoryFilterId>(ALL_STAT_CATEGORIES);
   const [maxK, setMaxK] = useState(8);
+  const [agglomerativeK, setAgglomerativeK] = useState(2);
+  const [agglomerativeLinkage, setAgglomerativeLinkage] =
+    useState<TeamAgglomerativeLinkage>("ward");
 
   const availableStatKeySet = useMemo(
     () => new Set(statKeys.filter((statKey) => Boolean(statKey))),
@@ -114,7 +131,17 @@ export function useClusterSelectionState(
     setMaxK(Number(value));
   }, []);
 
+  const handleAgglomerativeKChange = useCallback((value: string) => {
+    setAgglomerativeK(Number(value));
+  }, []);
+
+  const handleAgglomerativeLinkageChange = useCallback((value: string) => {
+    setAgglomerativeLinkage(value as TeamAgglomerativeLinkage);
+  }, []);
+
   return {
+    selectedAlgorithm,
+    setSelectedAlgorithm,
     selectedEntryIds,
     setSelectedEntryIds,
     selectedStatKeys,
@@ -125,6 +152,10 @@ export function useClusterSelectionState(
     setSelectedStatCategory,
     maxK,
     setMaxK,
+    agglomerativeK,
+    setAgglomerativeK,
+    agglomerativeLinkage,
+    setAgglomerativeLinkage,
     toggleEntry,
     toggleStat,
     selectVisibleEntries,
@@ -132,5 +163,7 @@ export function useClusterSelectionState(
     selectVisibleStats,
     clearVisibleStats,
     handleMaxKChange,
+    handleAgglomerativeKChange,
+    handleAgglomerativeLinkageChange,
   };
 }

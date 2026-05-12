@@ -1,3 +1,4 @@
+export { AgglomerativeResultsPanel } from "./AgglomerativeResultsPanel";
 export { ClusterAverageProfilesChart } from "./ClusterAverageProfilesChart";
 export { ClusterMembershipSummary } from "./ClusterMembershipSummary";
 export { ClusterSetupPanel } from "./ClusterSetupPanel";

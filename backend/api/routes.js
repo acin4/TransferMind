@@ -20,6 +20,7 @@ import {
   listTeamPlayersController,
   getTeamStatsController,
   listTeamsController,
+  runTeamAgglomerativeClustersController,
   runTeamAssociationRulesController,
   runTeamClustersController,
 } from "../controllers/teamController.js";
@@ -45,6 +46,10 @@ router.post(
 router.post(
   "/teams/clustering/run",
   asyncHandler(runTeamClustersController),
+);
+router.post(
+  "/teams/clustering/agglomerative/run",
+  asyncHandler(runTeamAgglomerativeClustersController),
 );
 router.post(
   "/team-season-stats/association-rules",

@@ -1,4 +1,7 @@
 import type {
+  TeamAgglomerativeClusterRunPayload,
+  TeamAgglomerativeLinkage as ApiTeamAgglomerativeLinkage,
+  TeamClusterAlgorithm,
   TeamClusterAssignment,
   TeamClusterElbowPayload,
   TeamClusterElbowPoint,
@@ -27,6 +30,10 @@ export type MessageBoxProps = {
   messages: string[];
 };
 
+export type ClusterAlgorithm = TeamClusterAlgorithm;
+
+export type TeamAgglomerativeLinkage = ApiTeamAgglomerativeLinkage;
+
 export type ClusterSetupOption<TValue extends string = string> = {
   value: TValue;
   label: string;
@@ -42,8 +49,13 @@ export type ClusterSetupOption<TValue extends string = string> = {
 };
 
 export type ClusterSetupPanelProps = {
+  selectedAlgorithm: ClusterAlgorithm;
   maxK: number;
   maxKOptions: Array<{ value: number; label: string }>;
+  agglomerativeK: number;
+  agglomerativeKOptions: Array<{ value: number; label: string }>;
+  agglomerativeLinkage: TeamAgglomerativeLinkage;
+  linkageOptions: Array<{ value: TeamAgglomerativeLinkage; label: string }>;
   matrixRowCount: number;
   matrixColumnCount: number;
   entryOptions: ClusterSetupOption[];
@@ -56,8 +68,12 @@ export type ClusterSetupPanelProps = {
   selectedStatCategory: StatCategoryFilterId;
   validationMessage: string | null;
   loadingElbow: boolean;
+  loadingAgglomerative: boolean;
   requestError: string | null;
+  onAlgorithmChange: (value: ClusterAlgorithm) => void;
   onMaxKChange: (value: string) => void;
+  onAgglomerativeKChange: (value: string) => void;
+  onAgglomerativeLinkageChange: (value: string) => void;
   onEntryToggle: (entryId: string) => void;
   onSelectVisibleEntries: (visibleEntryIds: string[]) => void;
   onClearVisibleEntries: (visibleEntryIds: string[]) => void;
@@ -67,6 +83,7 @@ export type ClusterSetupPanelProps = {
   onClearVisibleStats: (visibleStatKeys: string[]) => void;
   onStatCategoryChange: (value: StatCategoryFilterId) => void;
   onCalculateElbow: () => void;
+  onRunAgglomerative: () => void;
 };
 
 export type ClusterAverageProfilesChartProps = {
@@ -113,6 +130,11 @@ export type SelectedEntryDetailsPanelProps = {
 };
 
 export type ClusterMembershipSummaryProps = {
+  clusters: ClusterGroup[];
+};
+
+export type AgglomerativeResultsPanelProps = {
+  result: TeamAgglomerativeClusterRunPayload;
   clusters: ClusterGroup[];
 };
 
