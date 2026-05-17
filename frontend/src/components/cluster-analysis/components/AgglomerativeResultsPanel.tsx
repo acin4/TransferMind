@@ -8,8 +8,10 @@ import {
   safeCompareLabels,
 } from "../utils/clusterFormatters";
 import { ContentPanel, standingsTheme } from "../../ui/design";
+import { ClusterAverageProfilesChart } from "./ClusterAverageProfilesChart";
 import { ClusterMembershipSummary } from "./ClusterMembershipSummary";
 import { MessageBox } from "./MessageBox";
+import { ParallelCoordinatesPlot } from "./ParallelCoordinatesPlot";
 
 function buildSvgDataUrl(svg: string) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
@@ -19,6 +21,7 @@ export const AgglomerativeResultsPanel = memo(
   function AgglomerativeResultsPanel({
     result,
     clusters,
+    profiles,
   }: AgglomerativeResultsPanelProps) {
     const dendrogramSource = useMemo(
       () =>
@@ -26,6 +29,10 @@ export const AgglomerativeResultsPanel = memo(
           ? buildSvgDataUrl(result.dendrogramSvg)
           : result.dendrogramImage,
       [result.dendrogramImage, result.dendrogramSvg],
+    );
+    const statKeys = useMemo(
+      () => result.stats.map((stat) => stat.key),
+      [result.stats],
     );
     const sortedAssignments = useMemo(
       () =>
@@ -88,6 +95,7 @@ export const AgglomerativeResultsPanel = memo(
           {dendrogramSource ? (
             <div className="overflow-x-auto rounded-[2rem] border border-white/10 bg-[linear-gradient(135deg,rgba(15,23,42,0.94),rgba(10,16,40,0.96))] p-3 shadow-2xl shadow-black/30">
               <img
+                key={`${result.k}-${result.linkage}-${result.context.selectedEntryCount}`}
                 src={dendrogramSource}
                 alt="Agglomerative clustering dendrogram"
                 className="mx-auto block h-auto max-h-[680px] min-w-[680px] max-w-none rounded-[1.5rem] sm:min-w-0 sm:w-full"
@@ -99,6 +107,14 @@ export const AgglomerativeResultsPanel = memo(
             </div>
           )}
         </div>
+
+        <ClusterAverageProfilesChart
+          profiles={profiles}
+          resetAssignments={result.assignments}
+          statKeys={statKeys}
+        />
+
+        <ParallelCoordinatesPlot result={result} />
 
         <div className={`mt-6 ${standingsTheme.nestedPanel}`}>
           <div className="mb-5">

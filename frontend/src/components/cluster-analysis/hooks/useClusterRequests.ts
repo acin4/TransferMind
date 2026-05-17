@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { Dispatch, SetStateAction } from "react";
@@ -91,17 +92,24 @@ function getAgglomerativeValidationMessage({
   linkage: TeamAgglomerativeLinkage;
   statCount: number;
 }) {
-  const matrixValidationMessage = getMatrixValidationMessage({
-    entryCount,
-    statCount,
-  });
-
-  if (matrixValidationMessage) {
-    return matrixValidationMessage;
-  }
-
   if (!Number.isInteger(k) || k < 2) {
     return "Choose at least two Agglomerative clusters.";
+  }
+
+  if (entryCount === 0) {
+    return "Select at least one team-season entry.";
+  }
+
+  if (entryCount < k) {
+    return `Select at least ${k} team-season entries for ${k} Agglomerative clusters.`;
+  }
+
+  if (entryCount < 3) {
+    return "Select at least three team-season entries.";
+  }
+
+  if (statCount === 0) {
+    return "Select at least one statistic.";
   }
 
   if (k > entryCount) {
@@ -136,6 +144,7 @@ export function useClusterRequests({
   const [loadingClusters, setLoadingClusters] = useState(false);
   const [loadingAgglomerative, setLoadingAgglomerative] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
+  const latestAgglomerativeRequestIdRef = useRef(0);
 
   useEffect(() => {
     setElbowResult(null);
@@ -239,24 +248,12 @@ export function useClusterRequests({
   }, [buildRequestPayload, selectedK]);
 
   const handleRunAgglomerative = useCallback(async () => {
-    if (loadingAgglomerative) {
+    if (selectedAlgorithm !== "agglomerative") {
+      setRequestError("Switch to Agglomerative clustering before running it.");
       return;
     }
 
     const payload = buildRequestPayload();
-    const matrixValidationMessage = getMatrixValidationMessage({
-      entryCount: payload.teamSeasonEntries.length,
-      statCount: payload.statKeys.length,
-    });
-
-    if (matrixValidationMessage || validationMessage) {
-      setRequestError(
-        matrixValidationMessage ??
-          validationMessage ??
-          "Complete the clustering inputs.",
-      );
-      return;
-    }
 
     const agglomerativeValidationMessage = getAgglomerativeValidationMessage({
       entryCount: payload.teamSeasonEntries.length,
@@ -270,11 +267,15 @@ export function useClusterRequests({
       return;
     }
 
+    const requestId = latestAgglomerativeRequestIdRef.current + 1;
+    latestAgglomerativeRequestIdRef.current = requestId;
+
     try {
       setLoadingAgglomerative(true);
       setRequestError(null);
       setElbowResult(null);
       setClusterResult(null);
+      setAgglomerativeResult(null);
 
       const agglomerativePayload = {
         ...payload,
@@ -283,26 +284,26 @@ export function useClusterRequests({
         linkage: agglomerativeLinkage,
       } as const;
 
-      console.log(
-        "Agglomerative payload:",
-        JSON.parse(JSON.stringify(agglomerativePayload)),
-      );
-
       const result = await runTeamAgglomerativeClusters(agglomerativePayload);
 
-      setAgglomerativeResult(result);
+      if (latestAgglomerativeRequestIdRef.current === requestId) {
+        setAgglomerativeResult(result);
+      }
     } catch (error) {
-      setAgglomerativeResult(null);
-      setRequestError(getErrorMessage(error));
+      if (latestAgglomerativeRequestIdRef.current === requestId) {
+        setAgglomerativeResult(null);
+        setRequestError(getErrorMessage(error));
+      }
     } finally {
-      setLoadingAgglomerative(false);
+      if (latestAgglomerativeRequestIdRef.current === requestId) {
+        setLoadingAgglomerative(false);
+      }
     }
   }, [
     agglomerativeK,
     agglomerativeLinkage,
     buildRequestPayload,
-    loadingAgglomerative,
-    validationMessage,
+    selectedAlgorithm,
   ]);
 
   const kOptions = useMemo(

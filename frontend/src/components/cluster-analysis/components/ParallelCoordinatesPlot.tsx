@@ -22,7 +22,7 @@ import {
   getNormalizedDisplayValue,
 } from "../utils/clusterChartUtils";
 import {
-  buildStatDisplayItems,
+  buildStatDisplayItemsFromStats,
   formatDisplayRawStatValue,
   formatNormalizedStatValue,
   getAssignmentSearchText,
@@ -40,7 +40,6 @@ import { standingsTheme } from "../../ui/design";
 
 export const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
   result,
-  statKeys,
 }: ParallelCoordinatesPlotProps) {
   const [selectedParallelClusterIds, setSelectedParallelClusterIds] = useState<
     number[]
@@ -49,7 +48,10 @@ export const ParallelCoordinatesPlot = memo(function ParallelCoordinatesPlot({
     string[]
   >([]);
   const [entrySearch, setEntrySearch] = useState("");
-  const statItems = useMemo(() => buildStatDisplayItems(statKeys), [statKeys]);
+  const statItems = useMemo(
+    () => buildStatDisplayItemsFromStats(result.stats),
+    [result.stats],
+  );
   const width = getChartWidth(statItems.length);
   const height = PARALLEL_COORDINATES_CHART_HEIGHT;
   const plotWidth = width - CHART_MARGIN.left - CHART_MARGIN.right;

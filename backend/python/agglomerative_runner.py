@@ -16,7 +16,6 @@ from scipy.cluster.hierarchy import (
     linkage,
     set_link_color_palette,
 )
-from sklearn.cluster import AgglomerativeClustering
 
 
 ALLOWED_LINKAGES = {"ward", "complete", "average", "single"}
@@ -26,6 +25,7 @@ DENDROGRAM_TEXT_COLOR = "#ffffff"
 DENDROGRAM_AXIS_LINE_COLOR = (1, 1, 1, 0.6)
 DENDROGRAM_GRID_COLOR = "#ffffff"
 DENDROGRAM_GRID_ALPHA = 0.08
+DENDROGRAM_CUT_LINE_COLOR = "#facc15"
 DENDROGRAM_BRANCH_COLORS = [
     "#4ea1ff",
     "#ff9f43",
@@ -81,10 +81,6 @@ def require_number_matrix(value):
                 )
 
     matrix = pd.DataFrame(value)
-
-    print("MATRIX SHAPE:", matrix.shape, file=sys.stderr)
-    print(matrix.head(), file=sys.stderr)
-    print(matrix.columns.tolist(), file=sys.stderr)
 
     if matrix.empty or matrix.shape[0] == 0 or matrix.shape[1] == 0:
         raise ValueError("points must produce a non-empty dataframe.")
@@ -176,9 +172,32 @@ def to_zero_based_labels(cluster_labels):
     return [label_map[int(label)] for label in cluster_labels]
 
 
-def build_dendrogram_svg(linkage_matrix, labels, linkage_method):
+def get_cut_distance(linkage_matrix, cluster_count):
+    distances = np.asarray(linkage_matrix, dtype=float)[:, 2]
+    leaf_count = len(distances) + 1
+    next_merge_index = leaf_count - cluster_count
+
+    if next_merge_index <= 0:
+        first_distance = float(distances[0])
+        return first_distance / 2 if first_distance > 0 else 0.01
+
+    if next_merge_index >= len(distances):
+        last_distance = float(distances[-1])
+        return last_distance * 1.05 if last_distance > 0 else 0.01
+
+    lower_distance = float(distances[next_merge_index - 1])
+    upper_distance = float(distances[next_merge_index])
+
+    if upper_distance > lower_distance:
+        return lower_distance + ((upper_distance - lower_distance) / 2)
+
+    return upper_distance if upper_distance > 0 else 0.01
+
+
+def build_dendrogram_svg(linkage_matrix, labels, linkage_method, cluster_count):
     width = max(8, min(18, len(labels) * 0.65))
     height = max(5, min(12, len(labels) * 0.35))
+    cut_distance = get_cut_distance(linkage_matrix, cluster_count)
     figure, axis = plt.subplots(
         figsize=(width, height),
         facecolor=DENDROGRAM_FIGURE_BACKGROUND,
@@ -196,14 +215,41 @@ def build_dendrogram_svg(linkage_matrix, labels, linkage_method):
             leaf_rotation=90,
             leaf_font_size=8,
             ax=axis,
-            color_threshold=None,
+            color_threshold=cut_distance,
             above_threshold_color=DENDROGRAM_BRANCH_COLORS[0],
         )
     finally:
         set_link_color_palette(None)
 
+    axis.axhline(
+        y=cut_distance,
+        color=DENDROGRAM_CUT_LINE_COLOR,
+        linewidth=1.8,
+        linestyle=(0, (6, 4)),
+        alpha=0.95,
+        zorder=4,
+    )
+    axis.text(
+        0.99,
+        cut_distance,
+        f"k = {cluster_count} cut",
+        color=DENDROGRAM_CUT_LINE_COLOR,
+        fontsize=9,
+        fontweight="bold",
+        ha="right",
+        va="bottom",
+        transform=axis.get_yaxis_transform(),
+        bbox={
+            "boxstyle": "round,pad=0.35",
+            "facecolor": DENDROGRAM_AXIS_BACKGROUND,
+            "edgecolor": DENDROGRAM_CUT_LINE_COLOR,
+            "alpha": 0.88,
+        },
+        zorder=5,
+    )
+
     axis.set_title(
-        f"Agglomerative Clustering ({linkage_method})",
+        f"Agglomerative Clustering ({linkage_method}, k={cluster_count})",
         color=DENDROGRAM_TEXT_COLOR,
         fontweight="bold",
         pad=14,
@@ -263,19 +309,12 @@ def build_dendrogram_svg(linkage_matrix, labels, linkage_method):
 
 
 def run(payload):
-    print("REQUEST:", payload, file=sys.stderr)
     points = require_number_matrix(payload.get("points"))
     k = require_integer(payload.get("k"), "k", minimum=2, maximum=len(points))
     linkage_method = require_linkage(payload.get("linkage"))
     labels = require_labels(payload.get("labels"), len(points))
     warnings = []
     point_values = points.to_numpy(dtype=float)
-
-    model = AgglomerativeClustering(
-        n_clusters=k,
-        linkage=linkage_method,
-    )
-    assignments = [int(label) for label in model.fit_predict(point_values).tolist()]
     linkage_matrix = linkage(point_values, method=linkage_method)
     cluster_labels = fcluster(linkage_matrix, t=k, criterion="maxclust")
     dendrogram_assignments = to_zero_based_labels(cluster_labels)
@@ -288,12 +327,14 @@ def run(payload):
         )
 
     return {
-        "assignments": assignments,
+        "assignments": dendrogram_assignments,
         "dendrogramSvg": build_dendrogram_svg(
             linkage_matrix,
             labels,
             linkage_method,
+            k,
         ),
+        "linkageMatrix": linkage_matrix.tolist(),
         "warnings": warnings,
     }
 

@@ -1,4 +1,7 @@
-import type { TeamClusterAssignment } from "../../../api/api";
+import type {
+  TeamClusterAssignment,
+  TeamClusterStat,
+} from "../../../api/api";
 import {
   getTeamStatMeta,
   type TeamStatKey,
@@ -100,6 +103,20 @@ export function buildStatDisplayItems(statKeys: TeamStatKey[]): StatDisplayItem[
 
     return {
       statKey,
+      label,
+      shortLabel: truncateLabel(label, 14),
+    };
+  });
+}
+
+export function buildStatDisplayItemsFromStats(
+  stats: TeamClusterStat[],
+): StatDisplayItem[] {
+  return stats.map((stat) => {
+    const label = stat.label || getSafeStatLabel(stat.key);
+
+    return {
+      statKey: stat.key,
       label,
       shortLabel: truncateLabel(label, 14),
     };

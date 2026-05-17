@@ -69,12 +69,29 @@ export const ClusterSetupPanel = memo(function ClusterSetupPanel({
 }: ClusterSetupPanelProps) {
   const isKMeans = selectedAlgorithm === "kmeans";
   const isActionLoading = isKMeans ? loadingElbow : loadingAgglomerative;
+  let actionValidationMessage = validationMessage;
   let actionLabel = "Run Agglomerative";
 
   if (isKMeans) {
     actionLabel = loadingElbow ? "Calculating..." : "Calculate Elbow";
   } else if (loadingAgglomerative) {
     actionLabel = "Running...";
+  }
+
+  if (!isKMeans) {
+    actionValidationMessage = null;
+
+    if (matrixRowCount === 0) {
+      actionValidationMessage = "Select at least one team-season entry.";
+    } else if (matrixRowCount < agglomerativeK) {
+      actionValidationMessage = `Select at least ${agglomerativeK} team-season entries for ${agglomerativeK} Agglomerative clusters.`;
+    } else if (matrixRowCount < 3) {
+      actionValidationMessage = "Select at least three team-season entries.";
+    } else if (matrixColumnCount === 0) {
+      actionValidationMessage = "Select at least one statistic.";
+    } else if (!agglomerativeLinkage) {
+      actionValidationMessage = "Choose an Agglomerative linkage method.";
+    }
   }
 
   return (
@@ -213,7 +230,7 @@ export const ClusterSetupPanel = memo(function ClusterSetupPanel({
           the right. It stacks on mobile so both pieces remain readable. */}
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-xs font-bold uppercase tracking-widest text-slate-500">
-          {validationMessage ??
+          {actionValidationMessage ??
             (isKMeans
               ? "Ready to calculate one global elbow curve."
               : "Ready to run Agglomerative clustering.")}
@@ -226,7 +243,7 @@ export const ClusterSetupPanel = memo(function ClusterSetupPanel({
           // Disable the button when the form is invalid or a request is already
           // running. This prevents duplicate requests and incomplete submissions.
           disabled={
-            Boolean(validationMessage) || isActionLoading
+            Boolean(actionValidationMessage) || isActionLoading
           }
           className="rounded-2xl bg-blue-600 px-6 py-4 text-xs font-black uppercase tracking-widest text-white shadow-[0_0_20px_rgba(37,99,235,0.25)] transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
         >

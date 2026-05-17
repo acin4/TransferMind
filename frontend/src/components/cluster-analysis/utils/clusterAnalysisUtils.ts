@@ -1,6 +1,5 @@
 import type {
   TeamClusterAssignment,
-  TeamClusterRunPayload,
 } from "../../../api/api";
 import type { TeamStatKey } from "../../../teamStatsConfig";
 import type { TeamSeasonStatEntry } from "../../../utils/teamsComparison";
@@ -137,9 +136,9 @@ export function getClusterInsightStats(
   };
 }
 
-// Creates a simple cluster list for filter buttons or legends after k-means runs.
+// Creates a simple cluster list for filter buttons or legends after clustering runs.
 // It uses result.k instead of assignments so every expected cluster gets an option.
-export function getClusterFilterOptions(result: TeamClusterRunPayload): ClusterLegendItem[] {
+export function getClusterFilterOptions(result: { k: number }): ClusterLegendItem[] {
   return Array.from({ length: result.k }, (_, index) => ({
     clusterId: index + 1,
   })).sort((left, right) => left.clusterId - right.clusterId);

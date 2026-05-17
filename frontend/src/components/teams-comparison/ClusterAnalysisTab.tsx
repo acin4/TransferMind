@@ -14,7 +14,10 @@ import { useClusterSelectionState } from "../cluster-analysis/hooks/useClusterSe
 import { useClusterSetupData } from "../cluster-analysis/hooks/useClusterSetupData";
 import { useClusterSetupMaintenanceEffects } from "../cluster-analysis/hooks/useClusterSetupMaintenanceEffects";
 import type { ClusterAnalysisTabProps } from "../cluster-analysis/types";
-import { buildClusterGroups } from "../cluster-analysis/utils/clusterAnalysisUtils";
+import {
+  buildClusterGroups,
+  buildClusterProfiles,
+} from "../cluster-analysis/utils/clusterAnalysisUtils";
 import { ContentPanel } from "../ui/design";
 
 const AGGLOMERATIVE_LINKAGE_OPTIONS = [
@@ -133,15 +136,70 @@ export default function ClusterAnalysisTab({
     clusterResult,
     cleanedSelectedStatKeys,
   );
+  const selectedAgglomerativeEntryKeys = useMemo(
+    () =>
+      new Set(
+        selectedTeamSeasonEntries.map(
+          (entry) =>
+            `${entry.teamId}:${entry.tournamentId}:${entry.seasonId}`,
+        ),
+      ),
+    [selectedTeamSeasonEntries],
+  );
+  const freshAgglomerativeResult = useMemo(() => {
+    if (
+      !agglomerativeResult ||
+      agglomerativeResult.k !== agglomerativeK ||
+      agglomerativeResult.linkage !== agglomerativeLinkage ||
+      agglomerativeResult.assignments.length !==
+        selectedAgglomerativeEntryKeys.size ||
+      agglomerativeResult.stats.length !== cleanedSelectedStatKeys.length
+    ) {
+      return null;
+    }
+
+    const hasCurrentEntries = agglomerativeResult.assignments.every(
+      (assignment) => selectedAgglomerativeEntryKeys.has(assignment.entryId),
+    );
+    const hasCurrentStats = cleanedSelectedStatKeys.every(
+      (statKey, index) => agglomerativeResult.stats[index]?.key === statKey,
+    );
+
+    return hasCurrentEntries && hasCurrentStats ? agglomerativeResult : null;
+  }, [
+    agglomerativeK,
+    agglomerativeLinkage,
+    agglomerativeResult,
+    cleanedSelectedStatKeys,
+    selectedAgglomerativeEntryKeys,
+  ]);
   const agglomerativeClusters = useMemo(
     () =>
-      agglomerativeResult
+      freshAgglomerativeResult
         ? buildClusterGroups(
-            agglomerativeResult.assignments,
-            agglomerativeResult.k,
+            freshAgglomerativeResult.assignments,
+            freshAgglomerativeResult.k,
           )
         : [],
-    [agglomerativeResult],
+    [freshAgglomerativeResult],
+  );
+  const agglomerativeStatKeys = useMemo(
+    () =>
+      freshAgglomerativeResult
+        ? freshAgglomerativeResult.stats.map((stat) => stat.key)
+        : [],
+    [freshAgglomerativeResult],
+  );
+  const agglomerativeProfiles = useMemo(
+    () =>
+      freshAgglomerativeResult
+        ? buildClusterProfiles(
+            freshAgglomerativeResult.assignments,
+            agglomerativeStatKeys,
+            freshAgglomerativeResult.k,
+          )
+        : [],
+    [agglomerativeStatKeys, freshAgglomerativeResult],
   );
 
   return (
@@ -232,7 +290,6 @@ export default function ClusterAnalysisTab({
               the selected stat columns. */}
           <ParallelCoordinatesPlot
             result={clusterResult}
-            statKeys={cleanedSelectedStatKeys}
           />
 
           {/* Membership summary lists which team-season entries belong to each cluster. */}
@@ -240,10 +297,11 @@ export default function ClusterAnalysisTab({
         </ContentPanel>
       ) : null}
 
-      {selectedAlgorithm === "agglomerative" && agglomerativeResult ? (
+      {selectedAlgorithm === "agglomerative" && freshAgglomerativeResult ? (
         <AgglomerativeResultsPanel
-          result={agglomerativeResult}
+          result={freshAgglomerativeResult}
           clusters={agglomerativeClusters}
+          profiles={agglomerativeProfiles}
         />
       ) : null}
     </div>

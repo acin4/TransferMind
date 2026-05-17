@@ -777,6 +777,7 @@ export const runTeamAgglomerativeClusters = async (
 ): Promise<TeamAgglomerativeClusterRunPayload> => {
   return request("/api/teams/clustering/agglomerative/run", {
     method: "POST",
+    cache: "no-store",
     headers: {
       "Content-Type": "application/json",
     },

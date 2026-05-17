@@ -6,6 +6,7 @@ import type {
   TeamClusterElbowPayload,
   TeamClusterElbowPoint,
   TeamClusterRunPayload,
+  TeamClusterStat,
 } from "../../api/api";
 import type { CountryFilterTab } from "../../utils/countryFilters";
 import type { SearchFieldValue } from "../../utils/search";
@@ -108,9 +109,14 @@ export type ClusterAverageDetailsPanelProps = {
   statItems: StatDisplayItem[];
 };
 
+export type ParallelCoordinatesResult = {
+  k: number;
+  stats: TeamClusterStat[];
+  assignments: TeamClusterAssignment[];
+};
+
 export type ParallelCoordinatesPlotProps = {
-  result: TeamClusterRunPayload;
-  statKeys: TeamStatKey[];
+  result: ParallelCoordinatesResult;
 };
 
 export type EntrySelectionListProps = {
@@ -136,6 +142,7 @@ export type ClusterMembershipSummaryProps = {
 export type AgglomerativeResultsPanelProps = {
   result: TeamAgglomerativeClusterRunPayload;
   clusters: ClusterGroup[];
+  profiles: ClusterProfile[];
 };
 
 export type ClusterFilterControlsProps = {

@@ -582,15 +582,6 @@ function buildAgglomerativeLabel(row) {
     .join(" - ");
 }
 
-function buildMatrixPreview(rows, statKeys) {
-  return rows.slice(0, 5).map((row) => ({
-    entryId: row.entryId,
-    ...Object.fromEntries(
-      statKeys.map((statKey) => [statKey, row.normalizedStats[statKey]]),
-    ),
-  }));
-}
-
 export async function calculateTeamClusterElbow(payload) {
   const dataset = await buildClusterDataset(payload);
   const maxK = parseMaxK(payload?.maxK, dataset.rows.length);
@@ -684,18 +675,12 @@ export async function runTeamClusters(payload) {
 }
 
 export async function runTeamAgglomerativeClusters(payload) {
-  console.log("REQUEST:", payload);
   const linkage = parseAgglomerativeLinkage(payload?.linkage);
   const dataset = await buildClusterDataset(payload);
   const k = parseAgglomerativeK(payload?.k, dataset.rows.length);
   const points = dataset.rows.map((row) => row.vector);
-  const columnCount = points[0]?.length ?? 0;
 
   validateNormalizedPointMatrix(points, dataset.statKeys);
-
-  console.log("MATRIX SHAPE:", [points.length, columnCount]);
-  console.log(buildMatrixPreview(dataset.rows, dataset.statKeys));
-  console.log("MATRIX COLUMNS:", dataset.statKeys);
 
   const result = await runPythonAgglomerative({
     points,
