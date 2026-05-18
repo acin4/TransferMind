@@ -60,15 +60,15 @@ function parseProbabilityThreshold(value, fieldName) {
   return parsed;
 }
 
-function parseOptionalPositiveThreshold(value, fieldName) {
+function parseOptionalPositiveLiftThreshold(value, fieldName) {
   if (value === undefined || value === null || value === "") {
     return undefined;
   }
 
   const parsed = Number(value);
 
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    throw new HttpError(400, `${fieldName} must be greater than 0.`);
+  if (!Number.isFinite(parsed) || parsed <= 1) {
+    throw new HttpError(400, `${fieldName} must be greater than 1.`);
   }
 
   return parsed;
@@ -132,7 +132,7 @@ function parseAssociationRulesPayload(payload) {
       payload?.minConfidence,
       "minConfidence",
     ),
-    minLift: parseOptionalPositiveThreshold(payload?.minLift, "minLift"),
+    minLift: parseOptionalPositiveLiftThreshold(payload?.minLift, "minLift"),
   };
 }
 

@@ -8,6 +8,8 @@ const RUNNER_PATH = resolve(CURRENT_DIR, "../python/apriori_runner.py");
 const PYTHON_BIN = process.env.TRANSFERMIND_PYTHON_BIN ?? "python3";
 const DEFAULT_TIMEOUT_MS = 15000;
 const ERROR_MESSAGE = "Unable to complete Apriori association rules mining.";
+const TIMEOUT_ERROR_MESSAGE =
+  "Apriori mining took too long. Increase the minimum support value and try again.";
 
 function validateAprioriResult(result) {
   if (!result || typeof result !== "object" || Array.isArray(result)) {
@@ -57,7 +59,7 @@ export function runPythonApriori(payload, options = {}) {
     timeout = setTimeout(() => {
       child.kill("SIGKILL");
       settle(() => {
-        reject(new HttpError(500, ERROR_MESSAGE));
+        reject(new HttpError(408, TIMEOUT_ERROR_MESSAGE));
       });
     }, timeoutMs);
 

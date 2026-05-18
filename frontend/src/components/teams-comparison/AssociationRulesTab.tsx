@@ -40,7 +40,7 @@ const MIN_TEAM_SEASON_ENTRIES = 5;
 const MIN_STATS = 2;
 const DEFAULT_MIN_SUPPORT = 0.2;
 const DEFAULT_MIN_CONFIDENCE = 0.6;
-const DEFAULT_MIN_LIFT = "";
+const DEFAULT_MIN_LIFT = "1.01";
 const TOP_RULES_CHART_LIMIT = 10;
 const MAX_RULE_AXIS_LABEL_LENGTH = 46;
 const ASSOCIATION_RULES_ERROR_MESSAGE =
@@ -185,9 +185,9 @@ export default function AssociationRulesTab({
 
     if (
       parsedMinLift !== null &&
-      (!Number.isFinite(parsedMinLift) || parsedMinLift <= 0)
+      (!Number.isFinite(parsedMinLift) || parsedMinLift <= 1)
     ) {
-      return "Minimum lift must be greater than 0.";
+      return "Minimum lift must be greater than 1.";
     }
 
     return null;
@@ -284,7 +284,7 @@ export default function AssociationRulesTab({
     } catch (error) {
       console.error("Failed to run Association Rules Mining:", error);
       setResult(null);
-      setRequestError(ASSOCIATION_RULES_ERROR_MESSAGE);
+      setRequestError(getRequestErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -379,8 +379,8 @@ export default function AssociationRulesTab({
             <ThresholdInput
               label="Min Lift (Optional)"
               value={minLift}
-              min={0}
-              step={0.1}
+              min={1.01}
+              step={0.01}
               onChange={setMinLift}
             />
           </div>
@@ -388,7 +388,8 @@ export default function AssociationRulesTab({
           <p className="text-xs font-bold uppercase tracking-widest text-slate-500">
             Fixed low, medium, and high bins are used in this first version.
             Negative-direction stats are direction-adjusted before binning, so
-            high means better performance.
+            high means better performance. Only positive associations are shown:
+            lift must be greater than 1.
           </p>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -451,6 +452,12 @@ function hasAssociationRuleEntryIds(
 
 function isProbabilityThreshold(value: number) {
   return Number.isFinite(value) && value > 0 && value <= 1;
+}
+
+function getRequestErrorMessage(error: unknown) {
+  return error instanceof Error && error.message
+    ? error.message
+    : ASSOCIATION_RULES_ERROR_MESSAGE;
 }
 
 function TopAssociationRulesChart({

@@ -6,6 +6,7 @@ import { buildTeamAssociationRuleTransactions } from "./teamAssociationRulesDisc
 
 const MIN_TEAM_SEASON_ENTRIES = 5;
 const MIN_STATS = 2;
+const DEFAULT_MIN_LIFT = 1.01;
 const DISCRETIZATION_SETTINGS = {
   method: "equal-width",
   bins: ["low", "medium", "high"],
@@ -34,15 +35,15 @@ function parseProbabilityThreshold(value, fieldName) {
   return parsed;
 }
 
-function parseOptionalPositiveThreshold(value, fieldName) {
+function parseOptionalPositiveLiftThreshold(value, fieldName) {
   if (value === undefined || value === null || value === "") {
-    return null;
+    return DEFAULT_MIN_LIFT;
   }
 
   const parsed = Number(value);
 
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    throw new HttpError(400, `${fieldName} must be greater than 0.`);
+  if (!Number.isFinite(parsed) || parsed <= 1) {
+    throw new HttpError(400, `${fieldName} must be greater than 1.`);
   }
 
   return parsed;
@@ -55,7 +56,7 @@ function parseAssociationRuleThresholds(payload) {
       payload?.minConfidence,
       "minConfidence",
     ),
-    minLift: parseOptionalPositiveThreshold(payload?.minLift, "minLift"),
+    minLift: parseOptionalPositiveLiftThreshold(payload?.minLift, "minLift"),
   };
 }
 
@@ -233,7 +234,7 @@ export async function runTeamAssociationRules(payload) {
       minConfidence: thresholds.minConfidence,
       minLift: thresholds.minLift,
     },
-    rules: result.rules,
+    rules: result.rules.filter((rule) => rule.lift > 1),
     warnings: [...preparedInput.warnings, ...result.warnings],
   });
 }

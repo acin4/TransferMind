@@ -237,7 +237,7 @@ Potential request shape:
   "statKeys": ["goals", "possession", "fouls"],
   "minSupport": 0.2,
   "minConfidence": 0.6,
-  "minLift": 1
+  "minLift": 1.01
 }
 ```
 
@@ -262,7 +262,7 @@ Potential response shape:
     "settings": {
       "minSupport": 0.2,
       "minConfidence": 0.6,
-      "minLift": 1,
+      "minLift": 1.01,
       "bins": ["low", "medium", "high"]
     },
     "warnings": []
@@ -276,7 +276,7 @@ Safe validation rules:
 - Require at least a minimum number of selected stats. A practical first value is `2`.
 - `minSupport` must be greater than `0` and less than or equal to `1`.
 - `minConfidence` must be greater than `0` and less than or equal to `1`.
-- `minLift` is optional. If provided, it must be positive.
+- `minLift` is optional. Blank/null/undefined values resolve internally to `1.01`; if provided, it must be greater than `1`.
 - No rules found is a valid empty result, not an error.
 
 ## 8. Step-by-Step Plan
@@ -782,7 +782,7 @@ Acceptance criteria:
 
 - Controls prevent obviously invalid requests.
 - `minSupport` and `minConfidence` are between `0` and `1`.
-- `minLift` is optional and positive when provided.
+- `minLift` is optional and greater than `1` when provided.
 - Fixed bins are visible but not overbuilt.
 
 ```text
@@ -803,7 +803,7 @@ Do not add complex discretization methods yet.
 Add controls for:
 - minSupport between 0 and 1
 - minConfidence between 0 and 1
-- optional minLift greater than 0
+- optional minLift greater than 1
 
 Show that the first version uses fixed low, medium, high bins.
 Explain that negative-direction stats are direction-adjusted before binning so high means better performance.
@@ -1137,7 +1137,7 @@ Use a small stdin sample:
   ],
   "minSupport": 0.25,
   "minConfidence": 0.5,
-  "minLift": 1
+  "minLift": 1.01
 }
 ```
 
@@ -1225,14 +1225,15 @@ Check:
 - Set `minSupport` to a valid value such as `0.2`.
 - Set `minConfidence` to a valid value such as `0.6`.
 - Leave `minLift` empty and run.
-- Set `minLift` to `1` and run again.
+- Confirm blank `minLift` resolves internally to `1.01` before Python execution.
+- Set `minLift` to `1.01` and run again.
 - Confirm the request uses internal ids, not external API ids.
 - Confirm results show antecedents, consequents, support, confidence, and lift.
 - Confirm the top rules chart appears when rules exist.
 - Confirm no-rules result is displayed as a valid empty state.
 - Try invalid `minSupport` values like `0`, `-0.1`, and `1.5`.
 - Try invalid `minConfidence` values like `0`, `-0.1`, and `1.5`.
-- Try invalid `minLift` values like `0` and `-1`.
+- Try invalid `minLift` values like `0`, `-1`, and `1`.
 - Try too few selected team-season entries.
 - Try too few selected stats.
 - Confirm errors do not expose stack traces.
