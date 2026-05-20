@@ -1,10 +1,13 @@
 import type { TeamSeasonStatEntry } from "../utils/teamsComparison";
 import type { TeamStatKey, TeamStats } from "../teamStatsConfig";
 
-// The frontend reads the backend base URL from Vite environment variables.
-// Removing one trailing slash keeps later URLs predictable, so "/api/teams"
-// does not accidentally become "//api/teams" when both pieces are joined.
-const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+// The frontend reads the backend base URL from one Vite environment variable.
+// If it is empty, requests stay relative to the current origin. Removing one
+// trailing slash keeps joined URLs predictable.
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL?.trim() || "").replace(
+  /\/$/,
+  "",
+);
 
 // A small TypeScript model for one team row in list-style UI screens.
 // Optional fields use "?" because some backend responses may not include every
