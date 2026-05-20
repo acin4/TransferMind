@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -41,6 +41,8 @@ const MIN_STATS = 2;
 const DEFAULT_MIN_SUPPORT = 0.2;
 const DEFAULT_MIN_CONFIDENCE = 0.6;
 const DEFAULT_MIN_LIFT = "1.01";
+const ASSOCIATION_RULES_PAGE_SIZE = 50;
+const MAX_DISPLAY_RULES = 100;
 const TOP_RULES_CHART_LIMIT = 10;
 const MAX_RULE_AXIS_LABEL_LENGTH = 46;
 const ASSOCIATION_RULES_ERROR_MESSAGE =
@@ -76,11 +78,13 @@ export default function AssociationRulesTab({
   const [minSupport, setMinSupport] = useState(DEFAULT_MIN_SUPPORT);
   const [minConfidence, setMinConfidence] = useState(DEFAULT_MIN_CONFIDENCE);
   const [minLift, setMinLift] = useState(DEFAULT_MIN_LIFT);
+  const [associationRulesPage, setAssociationRulesPage] = useState(1);
   const [result, setResult] = useState<TeamAssociationRulesPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
 
   useEffect(() => {
+    setAssociationRulesPage(1);
     setResult(null);
     setRequestError(null);
   }, [
@@ -204,6 +208,15 @@ export default function AssociationRulesTab({
     [selectedStats],
   );
 
+  const displayRules = useMemo(() => {
+    if (!Array.isArray(result?.rules)) {
+      return [];
+    }
+
+    return result.rules.slice(0, MAX_DISPLAY_RULES);
+  }, [result?.rules]);
+  const currentAssociationRulesPage = result?.context.page ?? associationRulesPage;
+
   const toggleEntry = (entryId: string) => {
     setSelectedEntryIds((current) =>
       current.includes(entryId)
@@ -258,7 +271,7 @@ export default function AssociationRulesTab({
     );
   };
 
-  const handleRunAssociationRules = async () => {
+  const handleRunAssociationRules = async (page = 1) => {
     if (validationMessage || loading) {
       return;
     }
@@ -278,8 +291,11 @@ export default function AssociationRulesTab({
         minSupport,
         minConfidence,
         ...(parsedMinLift !== null ? { minLift: parsedMinLift } : {}),
+        page,
+        pageSize: ASSOCIATION_RULES_PAGE_SIZE,
       });
 
+      setAssociationRulesPage(nextResult.context.page);
       setResult(nextResult);
     } catch (error) {
       console.error("Failed to run Association Rules Mining:", error);
@@ -398,7 +414,7 @@ export default function AssociationRulesTab({
             </div>
             <button
               type="button"
-              onClick={handleRunAssociationRules}
+              onClick={() => handleRunAssociationRules(1)}
               disabled={Boolean(validationMessage) || loading}
               className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-6 py-4 text-xs font-black uppercase tracking-widest text-white shadow-[0_0_20px_rgba(37,99,235,0.25)] transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
             >
@@ -416,6 +432,15 @@ export default function AssociationRulesTab({
           </div>
         ) : null}
 
+        {result && displayRules.length > 0 ? (
+          <div className="mb-6">
+            <MessageBox
+              tone="info"
+              message={`Showing page ${currentAssociationRulesPage} of ${result.context.totalPages} sorted by lift, confidence, and support.`}
+            />
+          </div>
+        ) : null}
+
         {loading ? (
           <LoadingState />
         ) : validationMessage ? (
@@ -424,18 +449,23 @@ export default function AssociationRulesTab({
           <EmptyState message="The Apriori request could not be completed. Try again after checking the selected entries and thresholds." />
         ) : !result ? (
           <EmptyState message="Choose team-season entries and statistics, then run Apriori to discover repeated stat-bin patterns." />
-        ) : result && result.rules.length === 0 ? (
+        ) : result && displayRules.length === 0 ? (
           <EmptyState message="No association rules matched these thresholds. Lower support, confidence, or lift and run Apriori again." />
         ) : result ? (
           <div className="space-y-6">
             <AssociationRulesSuccessSummary result={result} />
             <TopAssociationRulesChart
-              rules={result.rules}
+              rules={displayRules}
               selectedStatKeySet={selectedStatKeySet}
             />
             <AssociationRulesTable
-              rules={result.rules}
+              rules={displayRules}
               selectedStatKeySet={selectedStatKeySet}
+            />
+            <AssociationRulesPaginationControls
+              context={result.context}
+              loading={loading}
+              onPageChange={handleRunAssociationRules}
             />
           </div>
         ) : null}
@@ -658,6 +688,48 @@ function AssociationRulesTable({
   );
 }
 
+function AssociationRulesPaginationControls({
+  context,
+  loading,
+  onPageChange,
+}: {
+  context: TeamAssociationRulesPayload["context"];
+  loading: boolean;
+  onPageChange: (page: number) => void;
+}) {
+  const previousPage = Math.max(context.page - 1, 1);
+  const nextPage = context.page + 1;
+
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-950/40 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="text-xs font-black uppercase tracking-widest text-slate-400">
+        Page {context.page} of {context.totalPages} • {context.returnedRuleCount} of{" "}
+        {context.totalRuleCount} rules
+      </div>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => onPageChange(previousPage)}
+          disabled={!context.hasPreviousPage || loading}
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-200 transition-colors hover:border-blue-400 hover:text-white disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-600"
+        >
+          <ChevronLeft size={16} />
+          Previous
+        </button>
+        <button
+          type="button"
+          onClick={() => onPageChange(nextPage)}
+          disabled={!context.hasNextPage || loading}
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-200 transition-colors hover:border-blue-400 hover:text-white disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-600"
+        >
+          Next
+          <ChevronRight size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function formatAssociationRuleLabel(
   rule: TeamAssociationRule,
   selectedStatKeySet: Set<TeamStatKey>,
@@ -836,13 +908,15 @@ function MessageBox({
   tone,
   message,
 }: {
-  tone: "error" | "warning";
+  tone: "error" | "warning" | "info";
   message: string;
 }) {
   const toneClassName =
     tone === "error"
       ? "border-rose-500/30 bg-rose-500/10 text-rose-300"
-      : "border-amber-500/30 bg-amber-500/10 text-amber-200";
+      : tone === "warning"
+        ? "border-amber-500/30 bg-amber-500/10 text-amber-200"
+        : "border-blue-500/30 bg-blue-500/10 text-blue-200";
 
   return (
     <div

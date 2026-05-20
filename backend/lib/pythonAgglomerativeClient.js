@@ -1,4 +1,4 @@
-import { spawn } from "child_process";
+import { spawn, spawnSync } from "child_process";
 import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
 import { HttpError } from "./http.js";
@@ -8,6 +8,41 @@ const RUNNER_PATH = resolve(CURRENT_DIR, "../python/agglomerative_runner.py");
 const PYTHON_BIN = process.env.TRANSFERMIND_PYTHON_BIN;
 const DEFAULT_TIMEOUT_MS = 15000;
 const ERROR_MESSAGE = "Unable to complete Agglomerative clustering.";
+
+function resolvePythonExecutablePath(command) {
+  if (command.includes("/") || command.includes("\\")) {
+    return command;
+  }
+
+  const lookupCommand = process.platform === "win32" ? "where" : "which";
+  const lookup = spawnSync(lookupCommand, [command], {
+    encoding: "utf8",
+  });
+
+  if (lookup.status !== 0) {
+    return command;
+  }
+
+  return lookup.stdout.trim().split(/\r?\n/)[0] || command;
+}
+
+function logPythonAgglomerativeFailure(
+  reason,
+  { pythonCommand, exitCode, signal, stderr, stdout, timeoutMs, error },
+) {
+  console.error("Python Agglomerative runner failure diagnostics:", {
+    reason,
+    pythonExecutablePath: resolvePythonExecutablePath(pythonCommand.command),
+    pythonCommand: pythonCommand.command,
+    commandArgs: pythonCommand.args,
+    exitCode: exitCode ?? null,
+    signal: signal ?? null,
+    stderr,
+    stdout,
+    timeoutMs,
+    error: error?.message,
+  });
+}
 
 function getPythonCommands() {
   if (PYTHON_BIN) {
@@ -89,6 +124,7 @@ export function runPythonAgglomerative(payload, options = {}) {
       let stderr = "";
       let settled = false;
       let timeout;
+      let timedOut = false;
 
       const settle = (callback) => {
         if (settled) {
@@ -107,11 +143,15 @@ export function runPythonAgglomerative(payload, options = {}) {
       } catch (error) {
         const hasFallback = commandIndex < pythonCommands.length - 1;
 
-        console.error(
-          "Unable to start Python Agglomerative runner:",
-          pythonCommand.command,
-          error.message,
-        );
+        logPythonAgglomerativeFailure("spawn exception", {
+          pythonCommand,
+          exitCode: null,
+          signal: null,
+          stderr,
+          stdout,
+          timeoutMs,
+          error,
+        });
 
         if (hasFallback) {
           runWithCommand(commandIndex + 1).then(resolveResult, reject);
@@ -123,10 +163,8 @@ export function runPythonAgglomerative(payload, options = {}) {
       }
 
       timeout = setTimeout(() => {
+        timedOut = true;
         child.kill("SIGKILL");
-        settle(() => {
-          reject(new HttpError(500, ERROR_MESSAGE));
-        });
       }, timeoutMs);
 
       child.stdout.setEncoding("utf8");
@@ -153,11 +191,15 @@ export function runPythonAgglomerative(payload, options = {}) {
         settle(() => {
           const hasFallback = commandIndex < pythonCommands.length - 1;
 
-          console.error(
-            "Unable to start Python Agglomerative runner:",
-            pythonCommand.command,
-            error.message,
-          );
+          logPythonAgglomerativeFailure("spawn error", {
+            pythonCommand,
+            exitCode: null,
+            signal: null,
+            stderr,
+            stdout,
+            timeoutMs,
+            error,
+          });
 
           if (hasFallback) {
             runWithCommand(commandIndex + 1).then(resolveResult, reject);
@@ -168,16 +210,20 @@ export function runPythonAgglomerative(payload, options = {}) {
         });
       });
 
-      child.on("close", (code) => {
+      child.on("close", (code, signal) => {
         settle(() => {
-          if (code !== 0) {
-            if (stderr.trim()) {
-              console.error(
-                "Python Agglomerative runner failed:",
-                stderr.trim(),
-              );
-            }
-
+          if (timedOut || code !== 0) {
+            logPythonAgglomerativeFailure(
+              timedOut ? "timeout" : "non-zero exit",
+              {
+                pythonCommand,
+                exitCode: code,
+                signal,
+                stderr,
+                stdout,
+                timeoutMs,
+              },
+            );
             reject(new HttpError(500, ERROR_MESSAGE));
             return;
           }
@@ -192,17 +238,15 @@ export function runPythonAgglomerative(payload, options = {}) {
 
             resolveResult(validateAgglomerativeResult(JSON.parse(stdout)));
           } catch (error) {
-            if (stderr.trim()) {
-              console.error(
-                "Python Agglomerative runner stderr:",
-                stderr.trim(),
-              );
-            }
-
-            console.error(
-              "Invalid Python Agglomerative JSON output:",
-              error.message,
-            );
+            logPythonAgglomerativeFailure("invalid Python output", {
+              pythonCommand,
+              exitCode: code,
+              signal,
+              stderr,
+              stdout,
+              timeoutMs,
+              error,
+            });
             reject(new HttpError(500, ERROR_MESSAGE));
           }
         });

@@ -19,9 +19,26 @@ import { getPlayers } from "../services/playerService.js";
 
 const DEFAULT_PAGE_LIMIT = 20;
 const MAX_PAGE_LIMIT = 50;
+const DEFAULT_ASSOCIATION_RULES_PAGE = 1;
+const DEFAULT_ASSOCIATION_RULES_PAGE_SIZE = 50;
+const MAX_ASSOCIATION_RULES_PAGE_SIZE = 100;
 
 function parseOptionalInteger(value, fieldName) {
   return value !== undefined ? parseInteger(value, fieldName) : undefined;
+}
+
+function parseOptionalClampedPositiveInteger(value, fieldName, defaultValue) {
+  if (value === undefined || value === null || value === "") {
+    return defaultValue;
+  }
+
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed) || !Number.isInteger(parsed)) {
+    throw new HttpError(400, `${fieldName} must be an integer.`);
+  }
+
+  return Math.max(parsed, 1);
 }
 
 function parsePaginatedQuery(query) {
@@ -124,6 +141,12 @@ function parseStatKeys(value) {
 }
 
 function parseAssociationRulesPayload(payload) {
+  const requestedPageSize = parseOptionalClampedPositiveInteger(
+    payload?.pageSize,
+    "pageSize",
+    DEFAULT_ASSOCIATION_RULES_PAGE_SIZE,
+  );
+
   return {
     teamSeasonEntries: parseTeamSeasonEntries(payload?.teamSeasonEntries),
     statKeys: parseStatKeys(payload?.statKeys),
@@ -133,6 +156,15 @@ function parseAssociationRulesPayload(payload) {
       "minConfidence",
     ),
     minLift: parseOptionalPositiveLiftThreshold(payload?.minLift, "minLift"),
+    page: parseOptionalClampedPositiveInteger(
+      payload?.page,
+      "page",
+      DEFAULT_ASSOCIATION_RULES_PAGE,
+    ),
+    pageSize: Math.min(
+      requestedPageSize,
+      MAX_ASSOCIATION_RULES_PAGE_SIZE,
+    ),
   };
 }
 

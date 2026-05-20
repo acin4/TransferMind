@@ -439,6 +439,8 @@ export type TeamAssociationRulesRequest = {
   minSupport: number;
   minConfidence: number;
   minLift?: number;
+  page?: number;
+  pageSize?: number;
 };
 
 export type TeamAssociationRule = {
@@ -458,6 +460,13 @@ export type TeamAssociationRulesPayload = {
     rowCount: number;
     itemCount: number;
     ruleCount: number;
+    totalRuleCount: number;
+    returnedRuleCount: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
   };
   settings: {
     minSupport: number;

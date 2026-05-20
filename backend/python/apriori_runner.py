@@ -5,6 +5,10 @@ import pandas as pd
 from mlxtend.frequent_patterns import apriori, association_rules
 from mlxtend.preprocessing import TransactionEncoder
 
+DEFAULT_PAGE = 1
+DEFAULT_PAGE_SIZE = 50
+MAX_PAGE_SIZE = 100
+
 
 def read_payload():
     try:
@@ -35,6 +39,21 @@ def require_positive_number(value, field_name):
         raise ValueError(f"{field_name} must be greater than 0.")
 
     return parsed
+
+
+def normalize_positive_integer(value, default_value, field_name):
+    if value is None:
+        return default_value
+
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        raise ValueError(f"{field_name} must be a number.")
+
+    parsed = int(value)
+
+    if parsed != float(value):
+        raise ValueError(f"{field_name} must be an integer.")
+
+    return max(parsed, 1)
 
 
 def require_transactions(value):
@@ -130,15 +149,42 @@ def generate_rules(frequent_itemsets, min_confidence, min_lift):
             }
         )
 
-    return sorted(
-        rules,
+    rules.sort(
         key=lambda rule: (
             -rule["lift"],
             -rule["confidence"],
             -rule["support"],
             build_rule_text(rule),
-        ),
+        )
     )
+
+    return rules
+
+
+def paginate_rules(rules, requested_page, requested_page_size):
+    page_size = min(max(requested_page_size, 1), MAX_PAGE_SIZE)
+    total_rule_count = len(rules)
+    total_pages = (
+        (total_rule_count + page_size - 1) // page_size
+        if total_rule_count > 0
+        else 0
+    )
+    page = min(max(requested_page, 1), total_pages) if total_pages > 0 else 1
+    start_index = (page - 1) * page_size
+    paginated_rules = rules[start_index : start_index + page_size]
+
+    return {
+        "rules": paginated_rules,
+        "pagination": {
+            "totalRuleCount": total_rule_count,
+            "returnedRuleCount": len(paginated_rules),
+            "page": page,
+            "pageSize": page_size,
+            "totalPages": total_pages,
+            "hasNextPage": page < total_pages,
+            "hasPreviousPage": total_pages > 0 and page > 1,
+        },
+    }
 
 
 def run(payload):
@@ -153,14 +199,25 @@ def run(payload):
     if "minLift" in payload and payload.get("minLift") is not None:
         min_lift = require_positive_number(payload.get("minLift"), "minLift")
 
+    page = normalize_positive_integer(payload.get("page"), DEFAULT_PAGE, "page")
+    page_size = normalize_positive_integer(
+        payload.get("pageSize"),
+        DEFAULT_PAGE_SIZE,
+        "pageSize",
+    )
     frequent_itemsets = build_frequent_itemsets(transactions, min_support)
     rules = generate_rules(
         frequent_itemsets,
         min_confidence,
         min_lift,
     )
+    paginated_result = paginate_rules(rules, page, page_size)
 
-    return {"rules": rules, "warnings": []}
+    return {
+        "rules": paginated_result["rules"],
+        "pagination": paginated_result["pagination"],
+        "warnings": [],
+    }
 
 
 def main():

@@ -7,6 +7,9 @@ import { buildTeamAssociationRuleTransactions } from "./teamAssociationRulesDisc
 const MIN_TEAM_SEASON_ENTRIES = 5;
 const MIN_STATS = 2;
 const DEFAULT_MIN_LIFT = 1.01;
+const DEFAULT_ASSOCIATION_RULES_PAGE = 1;
+const DEFAULT_ASSOCIATION_RULES_PAGE_SIZE = 50;
+const MAX_ASSOCIATION_RULES_PAGE_SIZE = 100;
 const DISCRETIZATION_SETTINGS = {
   method: "equal-width",
   bins: ["low", "medium", "high"],
@@ -49,6 +52,20 @@ function parseOptionalPositiveLiftThreshold(value, fieldName) {
   return parsed;
 }
 
+function parseOptionalPositiveInteger(value, fieldName, defaultValue) {
+  if (value === undefined || value === null || value === "") {
+    return defaultValue;
+  }
+
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed) || !Number.isInteger(parsed)) {
+    throw new HttpError(400, `${fieldName} must be an integer.`);
+  }
+
+  return Math.max(parsed, 1);
+}
+
 function parseAssociationRuleThresholds(payload) {
   return {
     minSupport: parseProbabilityThreshold(payload?.minSupport, "minSupport"),
@@ -57,6 +74,24 @@ function parseAssociationRuleThresholds(payload) {
       "minConfidence",
     ),
     minLift: parseOptionalPositiveLiftThreshold(payload?.minLift, "minLift"),
+  };
+}
+
+function parseAssociationRulesPagination(payload) {
+  const page = parseOptionalPositiveInteger(
+    payload?.page,
+    "page",
+    DEFAULT_ASSOCIATION_RULES_PAGE,
+  );
+  const requestedPageSize = parseOptionalPositiveInteger(
+    payload?.pageSize,
+    "pageSize",
+    DEFAULT_ASSOCIATION_RULES_PAGE_SIZE,
+  );
+
+  return {
+    page,
+    pageSize: Math.min(requestedPageSize, MAX_ASSOCIATION_RULES_PAGE_SIZE),
   };
 }
 
@@ -154,13 +189,24 @@ function countUniqueItems(transactions) {
 }
 
 function toPublicAssociationRulesResult(result) {
+  const returnedRuleCount =
+    result.pagination?.returnedRuleCount ?? result.rules.length;
+
   return {
     context: {
       selectedEntryCount: result.selectedEntryCount,
       selectedStatCount: result.selectedStatCount,
       rowCount: result.rowCount,
       itemCount: result.itemCount,
-      ruleCount: result.rules.length,
+      ruleCount: returnedRuleCount,
+      totalRuleCount: result.pagination?.totalRuleCount ?? returnedRuleCount,
+      returnedRuleCount,
+      page: result.pagination?.page ?? DEFAULT_ASSOCIATION_RULES_PAGE,
+      pageSize:
+        result.pagination?.pageSize ?? DEFAULT_ASSOCIATION_RULES_PAGE_SIZE,
+      totalPages: result.pagination?.totalPages ?? (returnedRuleCount > 0 ? 1 : 0),
+      hasNextPage: result.pagination?.hasNextPage ?? false,
+      hasPreviousPage: result.pagination?.hasPreviousPage ?? false,
     },
     settings: result.settings,
     statKeys: result.statKeys,
@@ -216,6 +262,7 @@ export async function prepareTeamAssociationRulesInput(payload) {
 
 export async function runTeamAssociationRules(payload) {
   const thresholds = parseAssociationRuleThresholds(payload);
+  const pagination = parseAssociationRulesPagination(payload);
   const preparedInput = await prepareTeamAssociationRulesInput(payload);
   const result = await runPythonApriori({
     transactions: preparedInput.transactions.map(
@@ -224,6 +271,8 @@ export async function runTeamAssociationRules(payload) {
     minSupport: thresholds.minSupport,
     minConfidence: thresholds.minConfidence,
     minLift: thresholds.minLift,
+    page: pagination.page,
+    pageSize: pagination.pageSize,
   });
 
   return toPublicAssociationRulesResult({
@@ -235,6 +284,7 @@ export async function runTeamAssociationRules(payload) {
       minLift: thresholds.minLift,
     },
     rules: result.rules.filter((rule) => rule.lift > 1),
+    pagination: result.pagination,
     warnings: [...preparedInput.warnings, ...result.warnings],
   });
 }

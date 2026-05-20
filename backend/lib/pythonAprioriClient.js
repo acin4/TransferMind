@@ -28,8 +28,18 @@ function validateAprioriResult(result) {
     throw new Error("Apriori runner output warnings must be an array.");
   }
 
+  if (
+    result.pagination !== undefined &&
+    result.pagination !== null &&
+    (typeof result.pagination !== "object" ||
+      Array.isArray(result.pagination))
+  ) {
+    throw new Error("Apriori runner output pagination must be an object.");
+  }
+
   return {
     rules: result.rules,
+    pagination: result.pagination ?? null,
     warnings: result.warnings ?? [],
   };
 }

@@ -26,7 +26,7 @@ Files:
 5. `POST /api/teams/clustering/elbow` with `teamSeasonEntries`, `statKeys`, and optional `maxK` returns Min-Max normalized matrix rows plus global Elbow Method inertia values.
 6. `POST /api/teams/clustering/run` with `teamSeasonEntries`, `statKeys`, and `k` returns final K-Means cluster assignments, centroids, distances, and warnings. Each team-season entry is identified by internal `teamId`, `tournamentId`, and `seasonId`.
 7. `POST /api/teams/clustering/agglomerative/run` with `teamSeasonEntries`, `statKeys`, `k`, and `linkage` returns Agglomerative cluster assignments, a dendrogram SVG string, and warnings. Each team-season entry is identified by internal `teamId`, `tournamentId`, and `seasonId`.
-8. `POST /api/team-season-stats/association-rules` with `teamSeasonEntries`, `statKeys`, `minSupport`, `minConfidence`, and optional `minLift` returns Apriori association rules. Each team-season entry is identified by internal `teamId`, `tournamentId`, and `seasonId`.
+8. `POST /api/team-season-stats/association-rules` with `teamSeasonEntries`, `statKeys`, `minSupport`, `minConfidence`, optional `minLift`, and optional `page`/`pageSize` returns paginated Apriori association rules. Each team-season entry is identified by internal `teamId`, `tournamentId`, and `seasonId`.
 9. `GET /api/players`
 10. `GET /api/players/team-squads`
 11. `GET /api/tournaments/current-seasons`
