@@ -86,6 +86,8 @@ Ingestion scripts can use backend environment variables and Supabase credentials
 
 ## 3. Phase 1: Pre-deployment Checklist
 
+# DONE
+
 Before deploying anything, verify the project is ready.
 
 Keep this phase small. The goal is to inspect and document readiness, not to make large changes.
@@ -127,6 +129,8 @@ Inspect the repository and create a deployment readiness report. Check frontend 
 ```
 
 ## 4. Phase 2: Backend Production Readiness
+
+# DONE
 
 Render needs to know how to build and start the backend.
 
@@ -177,6 +181,8 @@ Prepare the backend for Render deployment. Inspect package.json scripts, backend
 ```
 
 ## 5. Phase 3: Frontend Production Readiness
+
+# DONE
 
 Vercel needs to know how to build the frontend and where the built files are.
 
