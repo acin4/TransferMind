@@ -1,5 +1,12 @@
 import { fileURLToPath } from "url";
 import {
+  ENTITY_TYPES,
+  getFreshnessDecision,
+  markFailed,
+  markFresh,
+  staleAfterDays,
+} from "../lib/freshness.js";
+import {
   clearIngestionLogContext,
   finishIngestionRun,
   finishIngestionStep,
@@ -14,14 +21,24 @@ const WEEKLY_REFRESH_STEPS = [
   {
     name: "standings",
     description: "current-season standings",
+    entityType: ENTITY_TYPES.STANDINGS,
+    entityKey: "weekly-standings-refresh",
+    staleAfterMs: staleAfterDays(7),
     run: () => runFetchStandings({ mode: "refresh" }),
   },
   {
     name: "team stats",
     description: "current-season team stats",
+    entityType: ENTITY_TYPES.TEAM_STATS,
+    entityKey: "weekly-team-stats-refresh",
+    staleAfterMs: staleAfterDays(7),
     run: () => runFetchAllTeamStats({ mode: "refresh" }),
   },
 ];
+
+function parseSkipFresh(argv) {
+  return argv.includes("--skip-fresh");
+}
 
 function errorMessage(error) {
   return error?.message || String(error);
@@ -53,12 +70,42 @@ function summaryMetadata(step, index, summary = {}) {
     order: index + 1,
     totalSteps: WEEKLY_REFRESH_STEPS.length,
     description: step.description,
+    entityType: step.entityType,
+    entityKey: step.entityKey,
+    staleAfterMs: step.staleAfterMs,
     ...summaryRest,
     ...metadata,
   };
 }
 
-async function runWeeklyRefreshStep(step, index, runId) {
+function freshnessDecisionMetadata(decision) {
+  if (!decision) return {};
+
+  return {
+    freshnessReason: decision.reason,
+    freshnessStatus: decision.freshness?.status ?? null,
+    lastFetchedAt: decision.lastFetchedAt ?? null,
+    ageMs: decision.ageMs ?? null,
+    staleAfterMs: decision.staleAfterMs,
+  };
+}
+
+async function markStepFailedFreshness(step, error) {
+  try {
+    await markFailed({
+      entityType: step.entityType,
+      entityKey: step.entityKey,
+      err: error,
+    });
+  } catch (freshnessError) {
+    console.warn(
+      `Could not record failed freshness for ${step.entityKey}:`,
+      errorMessage(freshnessError),
+    );
+  }
+}
+
+async function runWeeklyRefreshStep(step, index, runId, { skipFresh = false }) {
   const label = `${index + 1}/${WEEKLY_REFRESH_STEPS.length} ${step.name}`;
   const stepLogId = await startIngestionStep({
     runId,
@@ -67,6 +114,10 @@ async function runWeeklyRefreshStep(step, index, runId) {
       order: index + 1,
       totalSteps: WEEKLY_REFRESH_STEPS.length,
       description: step.description,
+      entityType: step.entityType,
+      entityKey: step.entityKey,
+      staleAfterMs: step.staleAfterMs,
+      skipFresh,
     },
   });
 
@@ -81,7 +132,46 @@ async function runWeeklyRefreshStep(step, index, runId) {
   });
 
   try {
+    if (skipFresh) {
+      const freshnessDecision = await getFreshnessDecision({
+        entityType: step.entityType,
+        entityKey: step.entityKey,
+        staleAfterMs: step.staleAfterMs,
+      });
+
+      if (freshnessDecision.shouldSkip) {
+        const summary = {
+          skipped: 1,
+          metadata: {
+            skippedDueToFreshness: true,
+            ...freshnessDecisionMetadata(freshnessDecision),
+          },
+        };
+
+        await finishIngestionStep(stepLogId, {
+          status: "success",
+          counts: summaryCounts(summary),
+          metadata: summaryMetadata(step, index, summary),
+        });
+
+        console.log(
+          `=== Weekly refresh step ${label}: skipped; ${step.entityKey} is fresh ===`,
+        );
+
+        return summary;
+      }
+
+      console.log(
+        `Freshness check for ${step.entityKey}: ${freshnessDecision.reason}; running step.`,
+      );
+    }
+
     const summary = (await step.run()) ?? {};
+
+    await markFresh({
+      entityType: step.entityType,
+      entityKey: step.entityKey,
+    });
 
     await finishIngestionStep(stepLogId, {
       status: "success",
@@ -94,6 +184,7 @@ async function runWeeklyRefreshStep(step, index, runId) {
     return summary;
   } catch (error) {
     const summary = error?.summary ?? {};
+    await markStepFailedFreshness(step, error);
     await finishIngestionStep(stepLogId, {
       status: "failed",
       counts: summaryCounts(summary),
@@ -106,10 +197,15 @@ async function runWeeklyRefreshStep(step, index, runId) {
   }
 }
 
-export async function runWeeklyRefresh() {
+export async function runWeeklyRefresh({ skipFresh = false } = {}) {
   console.log("Starting weekly refresh ingestion...");
   console.log(
     "Weekly refresh runs current-season standings and team stats only.",
+  );
+  console.log(
+    skipFresh
+      ? "Freshness skipping is enabled for weekly refresh."
+      : "Freshness skipping is disabled for weekly refresh.",
   );
 
   const runId = await startIngestionRun({
@@ -117,6 +213,7 @@ export async function runWeeklyRefresh() {
     metadata: {
       totalSteps: WEEKLY_REFRESH_STEPS.length,
       steps: WEEKLY_REFRESH_STEPS.map((step) => step.name),
+      skipFresh,
     },
   });
 
@@ -124,7 +221,7 @@ export async function runWeeklyRefresh() {
     const step = WEEKLY_REFRESH_STEPS[index];
 
     try {
-      await runWeeklyRefreshStep(step, index, runId);
+      await runWeeklyRefreshStep(step, index, runId, { skipFresh });
     } catch (error) {
       console.error(`Weekly refresh stopped at step "${step.name}".`);
       await finishIngestionRun(runId, {
@@ -134,6 +231,7 @@ export async function runWeeklyRefresh() {
           failedStep: step.name,
           failedStepOrder: index + 1,
           completedSteps: index,
+          skipFresh,
         },
       });
       throw error;
@@ -144,6 +242,7 @@ export async function runWeeklyRefresh() {
     status: "success",
     metadata: {
       completedSteps: WEEKLY_REFRESH_STEPS.length,
+      skipFresh,
     },
   });
 
@@ -154,7 +253,7 @@ const currentFilePath = fileURLToPath(import.meta.url);
 
 if (process.argv[1] === currentFilePath) {
   try {
-    await runWeeklyRefresh();
+    await runWeeklyRefresh({ skipFresh: parseSkipFresh(process.argv.slice(2)) });
   } catch (error) {
     console.error("Weekly refresh failed:", error.message || error);
     process.exitCode = 1;

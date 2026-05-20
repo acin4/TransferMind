@@ -151,3 +151,80 @@ export async function getFreshness({ entityType, entityKey }) {
   if (error) throw error;
   return data ?? null;
 }
+
+export function staleAfterDays(days) {
+  if (!Number.isFinite(days) || days <= 0) {
+    throw new Error(`Invalid stale policy days: ${days}`);
+  }
+
+  return days * 24 * 60 * 60 * 1000;
+}
+
+export async function getFreshnessDecision({
+  entityType,
+  entityKey,
+  staleAfterMs,
+  now = new Date(),
+}) {
+  if (!Number.isFinite(staleAfterMs) || staleAfterMs <= 0) {
+    throw new Error(`Invalid stale policy milliseconds: ${staleAfterMs}`);
+  }
+
+  const freshness = await getFreshness({ entityType, entityKey });
+
+  if (!freshness) {
+    return {
+      shouldSkip: false,
+      reason: "missing_freshness",
+      freshness: null,
+      staleAfterMs,
+    };
+  }
+
+  if (freshness.status !== "success") {
+    return {
+      shouldSkip: false,
+      reason: "freshness_not_success",
+      freshness,
+      staleAfterMs,
+    };
+  }
+
+  const lastFetchedAt = Date.parse(freshness.last_fetched_at);
+  if (!Number.isFinite(lastFetchedAt)) {
+    return {
+      shouldSkip: false,
+      reason: "invalid_last_fetched_at",
+      freshness,
+      staleAfterMs,
+    };
+  }
+
+  const nowMs = now instanceof Date ? now.getTime() : Date.parse(now);
+  if (!Number.isFinite(nowMs)) {
+    throw new Error(`Invalid freshness policy now value: ${now}`);
+  }
+
+  const ageMs = nowMs - lastFetchedAt;
+  if (ageMs < 0) {
+    return {
+      shouldSkip: true,
+      reason: "fresh",
+      freshness,
+      lastFetchedAt: freshness.last_fetched_at,
+      ageMs,
+      staleAfterMs,
+    };
+  }
+
+  const shouldSkip = ageMs < staleAfterMs;
+
+  return {
+    shouldSkip,
+    reason: shouldSkip ? "fresh" : "stale",
+    freshness,
+    lastFetchedAt: freshness.last_fetched_at,
+    ageMs,
+    staleAfterMs,
+  };
+}

@@ -1,5 +1,12 @@
 import { fileURLToPath } from "url";
 import {
+  ENTITY_TYPES,
+  getFreshnessDecision,
+  markFailed,
+  markFresh,
+  staleAfterDays,
+} from "../lib/freshness.js";
+import {
   clearIngestionLogContext,
   finishIngestionRun,
   finishIngestionStep,
@@ -23,9 +30,16 @@ const PLAYER_REFRESH_STEPS = [
     name: "players",
     description: "current-season players",
     existingPlayerBehavior: "existing players are skipped, not refreshed",
+    entityType: ENTITY_TYPES.PLAYERS,
+    entityKey: "player-refresh",
+    staleAfterMs: staleAfterDays(30),
     run: () => runFetchPlayers(),
   },
 ];
+
+function parseSkipFresh(argv) {
+  return argv.includes("--skip-fresh");
+}
 
 function errorMessage(error) {
   return error?.message || String(error);
@@ -59,12 +73,42 @@ function summaryMetadata(step, index, summary = {}) {
     description: step.description,
     fixedDates: FIXED_PLAYER_REFRESH_DATES,
     existingPlayerBehavior: step.existingPlayerBehavior,
+    entityType: step.entityType,
+    entityKey: step.entityKey,
+    staleAfterMs: step.staleAfterMs,
     ...summaryRest,
     ...metadata,
   };
 }
 
-async function runPlayerRefreshStep(step, index, runId) {
+function freshnessDecisionMetadata(decision) {
+  if (!decision) return {};
+
+  return {
+    freshnessReason: decision.reason,
+    freshnessStatus: decision.freshness?.status ?? null,
+    lastFetchedAt: decision.lastFetchedAt ?? null,
+    ageMs: decision.ageMs ?? null,
+    staleAfterMs: decision.staleAfterMs,
+  };
+}
+
+async function markStepFailedFreshness(step, error) {
+  try {
+    await markFailed({
+      entityType: step.entityType,
+      entityKey: step.entityKey,
+      err: error,
+    });
+  } catch (freshnessError) {
+    console.warn(
+      `Could not record failed freshness for ${step.entityKey}:`,
+      errorMessage(freshnessError),
+    );
+  }
+}
+
+async function runPlayerRefreshStep(step, index, runId, { skipFresh = false }) {
   const label = `${index + 1}/${PLAYER_REFRESH_STEPS.length} ${step.name}`;
   const stepLogId = await startIngestionStep({
     runId,
@@ -75,6 +119,10 @@ async function runPlayerRefreshStep(step, index, runId) {
       description: step.description,
       fixedDates: FIXED_PLAYER_REFRESH_DATES,
       existingPlayerBehavior: step.existingPlayerBehavior,
+      entityType: step.entityType,
+      entityKey: step.entityKey,
+      staleAfterMs: step.staleAfterMs,
+      skipFresh,
     },
   });
 
@@ -89,7 +137,46 @@ async function runPlayerRefreshStep(step, index, runId) {
   });
 
   try {
+    if (skipFresh) {
+      const freshnessDecision = await getFreshnessDecision({
+        entityType: step.entityType,
+        entityKey: step.entityKey,
+        staleAfterMs: step.staleAfterMs,
+      });
+
+      if (freshnessDecision.shouldSkip) {
+        const summary = {
+          skipped: 1,
+          metadata: {
+            skippedDueToFreshness: true,
+            ...freshnessDecisionMetadata(freshnessDecision),
+          },
+        };
+
+        await finishIngestionStep(stepLogId, {
+          status: "success",
+          counts: summaryCounts(summary),
+          metadata: summaryMetadata(step, index, summary),
+        });
+
+        console.log(
+          `=== Player refresh step ${label}: skipped; ${step.entityKey} is fresh ===`,
+        );
+
+        return summary;
+      }
+
+      console.log(
+        `Freshness check for ${step.entityKey}: ${freshnessDecision.reason}; running step.`,
+      );
+    }
+
     const summary = (await step.run()) ?? {};
+
+    await markFresh({
+      entityType: step.entityType,
+      entityKey: step.entityKey,
+    });
 
     await finishIngestionStep(stepLogId, {
       status: "success",
@@ -102,6 +189,7 @@ async function runPlayerRefreshStep(step, index, runId) {
     return summary;
   } catch (error) {
     const summary = error?.summary ?? {};
+    await markStepFailedFreshness(step, error);
     await finishIngestionStep(stepLogId, {
       status: "failed",
       counts: summaryCounts(summary),
@@ -114,13 +202,18 @@ async function runPlayerRefreshStep(step, index, runId) {
   }
 }
 
-export async function runPlayerRefresh() {
+export async function runPlayerRefresh({ skipFresh = false } = {}) {
   console.log("Starting fixed-date player refresh ingestion...");
   console.log(
     `Fixed-date player refresh is intended for ${FIXED_PLAYER_REFRESH_DATES.join(", ")}.`,
   );
   console.log(
     "Player refresh runs current-season players only; existing players are skipped, not refreshed.",
+  );
+  console.log(
+    skipFresh
+      ? "Freshness skipping is enabled for fixed-date player refresh."
+      : "Freshness skipping is disabled for fixed-date player refresh.",
   );
 
   const runId = await startIngestionRun({
@@ -130,6 +223,7 @@ export async function runPlayerRefresh() {
       steps: PLAYER_REFRESH_STEPS.map((step) => step.name),
       fixedDates: FIXED_PLAYER_REFRESH_DATES,
       existingPlayerBehavior: PLAYER_REFRESH_STEPS[0].existingPlayerBehavior,
+      skipFresh,
     },
   });
 
@@ -137,7 +231,7 @@ export async function runPlayerRefresh() {
     const step = PLAYER_REFRESH_STEPS[index];
 
     try {
-      await runPlayerRefreshStep(step, index, runId);
+      await runPlayerRefreshStep(step, index, runId, { skipFresh });
     } catch (error) {
       console.error(`Player refresh stopped at step "${step.name}".`);
       await finishIngestionRun(runId, {
@@ -149,6 +243,7 @@ export async function runPlayerRefresh() {
           completedSteps: index,
           fixedDates: FIXED_PLAYER_REFRESH_DATES,
           existingPlayerBehavior: step.existingPlayerBehavior,
+          skipFresh,
         },
       });
       throw error;
@@ -161,6 +256,7 @@ export async function runPlayerRefresh() {
       completedSteps: PLAYER_REFRESH_STEPS.length,
       fixedDates: FIXED_PLAYER_REFRESH_DATES,
       existingPlayerBehavior: PLAYER_REFRESH_STEPS[0].existingPlayerBehavior,
+      skipFresh,
     },
   });
 
@@ -171,7 +267,7 @@ const currentFilePath = fileURLToPath(import.meta.url);
 
 if (process.argv[1] === currentFilePath) {
   try {
-    await runPlayerRefresh();
+    await runPlayerRefresh({ skipFresh: parseSkipFresh(process.argv.slice(2)) });
   } catch (error) {
     console.error("Fixed-date player refresh failed:", error.message || error);
     process.exitCode = 1;
