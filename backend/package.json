@@ -8,6 +8,7 @@
     "dev": "node --watch index.js",
     "start": "node index.js",
     "ingestion:init": "node ingestion/initIngestion.js",
+    "ingestion:annual-season-reset": "node jobs/annualSeasonReset.js",
     "ingestion:monthly-player-stats-refresh": "node jobs/monthlyPlayerStatsRefresh.js",
     "ingestion:player-refresh": "node jobs/playerRefresh.js",
     "ingestion:weekly-refresh": "node jobs/weeklyRefresh.js",
