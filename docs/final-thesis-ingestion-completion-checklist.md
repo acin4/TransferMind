@@ -47,7 +47,7 @@ Important safety note: `key_passes` still exists in the old `player_stats` schem
 | Retry/backoff | Implemented centrally | `backend/lib/client.js` | Retries 429, 500, 502, 503, 504, and timeout errors up to 3 times, with `Retry-After` support or exponential backoff. |
 | Structured logging | Partial | `backend/lib/ingestionLogger.js`, `20260503_create_ingestion_logging_tables.sql` | DB logging exists for ingestion runs, steps, and API requests. Console logs remain unstructured. |
 | Freshness helpers | Partial | `backend/lib/freshness.js` | Can mark/get freshness, but scripts do not use freshness to skip stale/fresh entities except init step marks after success. |
-| `job_runs` table | Missing by name | No `job_runs` migration found | Similar observability exists as `ingestion_runs`, `ingestion_step_logs`, and `api_request_logs`. Decide whether `job_runs` is still needed or use existing ingestion tables. |
+| `job_runs` table | Not needed for current scope | No `job_runs` migration found; scheduled jobs use `backend/lib/ingestionLogger.js` | Reuse `ingestion_runs`, `ingestion_step_logs`, and `api_request_logs` as the job observability layer. Add `job_runs` only if a separate scheduler/job abstraction becomes necessary later. |
 | Post-ingestion validation | Missing | No validation scripts found | Duplicate, missing FK, coverage, and abnormal drop/spike checks are still open. |
 | GitHub Actions | Missing | `.github/` directory not found | Cloud scheduling is not ready. |
 
@@ -123,7 +123,7 @@ Important safety note: `key_passes` still exists in the old `player_stats` schem
   - annual July 1 season reset;
   - fixed-date current-season player refresh.
 - Add corresponding `backend/package.json` scripts only after each job exists and passes `node --check`.
-- Decide whether to keep using `ingestion_runs`/`ingestion_step_logs` as the observability layer or add a separate `job_runs` table. Because `ingestion_runs` already exists, prefer reusing it unless a separate job abstraction is needed.
+- Keep using `ingestion_runs`, `ingestion_step_logs`, and `api_request_logs` as the observability layer for ingestion jobs. A separate `job_runs` table is not needed for the current final-thesis scope.
 - Add a minimal post-ingestion validation script or module for thesis safety:
   - duplicate detection for unique logical keys;
   - missing foreign key detection across current-scope views and stats tables;
@@ -365,7 +365,7 @@ Important safety note: `key_passes` still exists in the old `player_stats` schem
   - API request logs.
 - Sanitizes metadata and redacts sensitive keys.
 - Logging failures warn but do not block ingestion.
-- Existing table names differ from requested `job_runs`.
+- Existing table names differ from requested `job_runs`, but they already cover the needed run, step, and API-request observability.
 
 ### `supabase/migrations/`
 
@@ -373,8 +373,19 @@ Important safety note: `key_passes` still exists in the old `player_stats` schem
 - `entity_freshness` exists with unique `(entity_type, entity_key)`.
 - `current_tournament_seasons` and `current_season_teams` exist and were later fixed to expose internal and external ids.
 - `ingestion_runs`, `ingestion_step_logs`, and `api_request_logs` exist in `20260503_create_ingestion_logging_tables.sql`.
-- No `job_runs` table found.
+- No `job_runs` table found, and no new migration is recommended for the current ingestion job scope.
 - No GitHub Actions workflow found.
+
+### Job Observability Decision
+
+Reuse the existing ingestion observability tables instead of adding a new `job_runs` table.
+
+| Observability option | Existing coverage | Decision |
+| --- | --- | --- |
+| `ingestion_runs` | Run-level status, `mode`, start/finish timestamps, duration, error message, and metadata. Current job modes such as `weekly-refresh`, `monthly-player-stats-refresh`, `player-refresh`, and `annual-season-reset` can be distinguished through `mode`. | Use as the job/run history table. |
+| `ingestion_step_logs` | Per-step status, timings, inserted/updated/skipped/failed counts, errors, and metadata linked to an `ingestion_runs.id`. | Use for job step outcomes and thesis refresh summaries. |
+| `api_request_logs` | External API endpoint, params, status code, success flag, duration, error message, and optional links to run and step logs. | Use for request-level debugging and RapidAPI visibility. |
+| Requested `job_runs` | Would duplicate the run-level parts of `ingestion_runs` for current ingestion jobs. | Do not add now. Reconsider only if non-ingestion jobs need tracking, scheduler metadata becomes first-class, or retries/attempts need a distinct job model. |
 
 ### `docs/transfermind_ingestion_phases_codex_guide.md`
 
