@@ -236,6 +236,8 @@ https://your-render-service.onrender.com/health
 
 14. Copy the backend production URL.
 
+https://transfermind-op63.onrender.com/
+
 Save the backend URL because the frontend will need it.
 
 ## 7. Phase 5: Deploy Frontend on Vercel
