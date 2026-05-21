@@ -1,0 +1,27 @@
+{
+  "name": "transfermind-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch index.js",
+    "start": "node index.js",
+    "ingestion:init": "node ingestion/initIngestion.js",
+    "ingestion:annual-season-reset": "node jobs/annualSeasonReset.js",
+    "ingestion:monthly-player-stats-refresh": "node jobs/monthlyPlayerStatsRefresh.js",
+    "ingestion:player-refresh": "node jobs/playerRefresh.js",
+    "ingestion:weekly-refresh": "node jobs/weeklyRefresh.js",
+    "test:api": "node api/fetchTest.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.86.0",
+    "axios": "^1.12.2",
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1"
+  }
+}
