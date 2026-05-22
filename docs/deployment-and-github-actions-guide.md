@@ -1,6 +1,6 @@
 # Deployment and GitHub Actions Guide
 
-This guide explains how to prepare, deploy, and later automate the TransferMind thesis project.
+This guide explains how to prepare, deploy, and automate the TransferMind thesis project.
 
 TransferMind has four main parts:
 
@@ -14,9 +14,9 @@ The recommended deployment path is:
 - Frontend on Vercel.
 - Backend on Render.
 - Database on Supabase/PostgreSQL.
-- GitHub Actions for manual ingestion jobs first, with scheduled jobs later.
+- GitHub Actions for ingestion jobs that can run manually or on schedules.
 
-Important: manual `.github/workflows` files should exist only after deployment is stable. Keep them `workflow_dispatch`-only until manual runs have been reviewed.
+Important: the ingestion `.github/workflows` files support both `workflow_dispatch` and scheduled UTC cron runs. Manual runs are still available from GitHub -> Actions.
 
 ## 1. Overview
 
@@ -34,9 +34,9 @@ For this project:
 
 GitHub Actions is GitHub's automation system. It can run commands when you click a button, push code, or on a schedule.
 
-For this project, GitHub Actions run ingestion and refresh jobs manually first, and scheduled automation should come only after those manual runs are reliable.
+For this project, GitHub Actions run ingestion and refresh jobs manually from GitHub -> Actions and automatically on scheduled cron triggers.
 
-Start with manual `workflow_dispatch` actions. Add scheduled cron automation only after manual runs are reliable.
+GitHub Actions cron runs in UTC. This project intentionally uses UTC midnight schedules directly and does not convert them to Europe/Athens time.
 
 ### Environment Variables
 
@@ -76,7 +76,7 @@ Use this architecture:
 | Frontend | Vercel | Hosts the React/Vite app. |
 | Backend | Render | Hosts the Express API. |
 | Database | Supabase/PostgreSQL | Stores football data and app data. |
-| Future ingestion automation | GitHub Actions | Runs refresh scripts manually first, then on schedules later. |
+| Ingestion automation | GitHub Actions | Runs refresh scripts manually and on UTC schedules. |
 
 The frontend should call the backend API. It should not connect directly to Supabase.
 
@@ -298,20 +298,20 @@ Add a production CORS configuration that supports local development and the depl
 
 GitHub Actions should come after deployment is stable.
 
-Start with manual runs:
+The ingestion workflows support both manual and scheduled runs:
 
-- Use `workflow_dispatch` first.
-- Trigger jobs manually from the GitHub Actions tab.
+- Keep `workflow_dispatch` available.
+- Trigger jobs manually from the GitHub Actions tab when needed.
+- Keep scheduled cron triggers enabled for recurring ingestion.
 - Check logs carefully.
 - Confirm that jobs do not fetch too much data.
 - Confirm that jobs do not expose secrets.
 
-Add schedules later:
+Scheduling rules:
 
-- Use cron only after manual jobs are safe.
 - GitHub Actions cron uses UTC, not Europe/Athens time.
-- Europe/Athens is UTC+2 in winter and UTC+3 during daylight saving time.
-- If the operation is planned for midnight Europe/Athens, calculate the correct UTC cron carefully.
+- This project intentionally uses UTC midnight schedules directly.
+- Do not add Europe/Athens timezone conversions or guards.
 
 Use GitHub Secrets for:
 
@@ -320,7 +320,6 @@ Use GitHub Secrets for:
 - `API_BASE`
 - `RAPIDAPI_KEY`
 - `RAPIDAPI_HOST`
-- Any other production-only secret.
 
 Safe testing rules:
 
@@ -333,21 +332,21 @@ Safe testing rules:
 Codex prompt:
 
 ```text
-Create docs/github-actions-ingestion-readiness-plan.md. Document future GitHub Actions jobs for backend ingestion scripts. Include manual workflow_dispatch testing first, then scheduled cron later. Use Europe/Athens as operational time and include UTC cron equivalents.
+Update docs/github-actions-ingestion-readiness-plan.md for backend ingestion workflows that support both manual workflow_dispatch runs and scheduled UTC midnight cron runs. Do not add Europe/Athens timezone conversions or guards.
 ```
 
-## 10. Phase 8: Manual GitHub Actions Workflows
+## 10. Phase 8: GitHub Actions Ingestion Workflows
 
-This phase should happen after manual deployment works. The first real workflows should be manual-only so each ingestion job can be tested before any schedule exists.
+This phase should happen after manual deployment works. The ingestion workflows support both manual dispatch and scheduled UTC cron triggers.
 
-The manual workflow files are:
+The workflow files are:
 
-| Workflow file | Manual command |
-| --- | --- |
-| `.github/workflows/manual-weekly-refresh.yml` | `npm run ingestion:weekly-refresh -- --skip-fresh` |
-| `.github/workflows/manual-monthly-player-stats-refresh.yml` | `npm run ingestion:monthly-player-stats-refresh -- --skip-fresh` |
-| `.github/workflows/manual-annual-season-reset.yml` | `npm run ingestion:annual-season-reset` |
-| `.github/workflows/manual-player-refresh.yml` | `npm run ingestion:player-refresh -- --skip-fresh` |
+| Workflow file | Schedule | Command |
+| --- | --- | --- |
+| `.github/workflows/manual-weekly-refresh.yml` | Tuesday at 00:00 UTC, `0 0 * * 2` | `npm run ingestion:weekly-refresh -- --skip-fresh` |
+| `.github/workflows/manual-monthly-player-stats-refresh.yml` | 1st day of every month at 00:00 UTC, `0 0 1 * *` | `npm run ingestion:monthly-player-stats-refresh -- --skip-fresh` |
+| `.github/workflows/manual-annual-season-reset.yml` | July 1 at 00:00 UTC, `0 0 1 7 *` | `npm run ingestion:annual-season-reset` |
+| `.github/workflows/manual-player-refresh.yml` | January 1, February 1, March 1, July 1, August 1, and October 1 at 00:00 UTC, `0 0 1 1,2,3,7,8,10 *` | `npm run ingestion:player-refresh -- --skip-fresh` |
 
 Example workflow structure:
 
@@ -356,6 +355,8 @@ name: Manual Weekly Ingestion Refresh
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * 2"
 
 permissions:
   contents: read
@@ -385,9 +386,9 @@ jobs:
           RAPIDAPI_HOST: ${{ secrets.RAPIDAPI_HOST }}
 ```
 
-The per-workflow concurrency group prevents duplicate runs of the same workflow on the same ref, while still allowing different manual ingestion workflows to run at the same time.
+The per-workflow concurrency group prevents duplicate runs of the same workflow on the same ref, while still allowing different ingestion workflows to run at the same time.
 
-The current manual ingestion workflows are Node-only and do not install Python dependencies. If a future workflow calls Python-backed analysis or ingestion code, it should also:
+The current ingestion workflows are Node-only and do not install Python dependencies. If a future workflow calls Python-backed analysis or ingestion code, it should also:
 
 - Set up Python.
 - Install dependencies from `requirements.txt`.
@@ -397,7 +398,7 @@ The current manual ingestion workflows are Node-only and do not install Python d
 Codex prompt:
 
 ```text
-After deployment is stable, create GitHub Actions workflow files for manual ingestion runs only using workflow_dispatch. Each workflow must run from backend/, install Node dependencies, install Python dependencies if needed, use GitHub secrets for env variables, and never hardcode secrets.
+After deployment is stable, create or update GitHub Actions workflow files for ingestion runs using both workflow_dispatch and scheduled UTC midnight cron triggers. Each workflow must run from backend/, install Node dependencies, use GitHub secrets for env variables, and never hardcode secrets.
 ```
 
 ## 11. Troubleshooting
@@ -488,13 +489,13 @@ Check:
 
 Symptoms:
 
-- A future scheduled GitHub Action does not start.
+- A scheduled GitHub Action does not start.
 
 Check:
 
 - The workflow file is on the default branch.
 - The cron expression is valid.
-- The cron time is UTC.
+- The cron time is UTC midnight for this project.
 - GitHub Actions is enabled for the repository.
 - The repository has not been inactive long enough for schedules to pause.
 
@@ -515,4 +516,4 @@ Before considering deployment complete, verify:
 - [ ] No secrets are committed.
 - [ ] `.gitignore` ignores local environment files.
 - [ ] README has deployment notes or links to this guide.
-- [ ] GitHub Actions are documented before any scheduled automation is added.
+- [ ] GitHub Actions manual and scheduled ingestion runs are documented.

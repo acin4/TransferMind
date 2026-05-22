@@ -2,6 +2,8 @@ name: Manual Player Refresh
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "0 0 1 1,2,3,7,8,10 *"
 
 permissions:
   contents: read
