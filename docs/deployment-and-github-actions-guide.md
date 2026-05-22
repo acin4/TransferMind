@@ -14,9 +14,9 @@ The recommended deployment path is:
 - Frontend on Vercel.
 - Backend on Render.
 - Database on Supabase/PostgreSQL.
-- GitHub Actions later for manual and scheduled ingestion jobs.
+- GitHub Actions for manual ingestion jobs first, with scheduled jobs later.
 
-Important: do not create real `.github/workflows` files yet. First document and test the project manually. Add GitHub Actions only after deployment is stable.
+Important: manual `.github/workflows` files should exist only after deployment is stable. Keep them `workflow_dispatch`-only until manual runs have been reviewed.
 
 ## 1. Overview
 
@@ -34,9 +34,9 @@ For this project:
 
 GitHub Actions is GitHub's automation system. It can run commands when you click a button, push code, or on a schedule.
 
-For this project, GitHub Actions should eventually run ingestion and refresh jobs, but only after they have been tested manually.
+For this project, GitHub Actions run ingestion and refresh jobs manually first, and scheduled automation should come only after those manual runs are reliable.
 
-Start with manual `workflow_dispatch` actions later. Add scheduled cron automation only after manual runs are reliable.
+Start with manual `workflow_dispatch` actions. Add scheduled cron automation only after manual runs are reliable.
 
 ### Environment Variables
 
@@ -165,8 +165,9 @@ Render environment variables may include:
 - `NODE_ENV=production`
 - `PORT`
 - `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_SERVICE_KEY`
 - `SUPABASE_ANON_KEY`, if the backend uses it
+- `API_BASE`, if ingestion scripts run in that environment
 - `RAPIDAPI_KEY`
 - `RAPIDAPI_HOST`
 - `CORS_ORIGINS`
@@ -314,10 +315,11 @@ Add schedules later:
 
 Use GitHub Secrets for:
 
-- Supabase URL.
-- Supabase service role key.
-- RapidAPI key.
-- RapidAPI host.
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_KEY`
+- `API_BASE`
+- `RAPIDAPI_KEY`
+- `RAPIDAPI_HOST`
 - Any other production-only secret.
 
 Safe testing rules:
@@ -331,20 +333,21 @@ Safe testing rules:
 Codex prompt:
 
 ```text
-Create docs/github-actions-ingestion-readiness-plan.md. Document future GitHub Actions jobs for backend ingestion scripts. Include manual workflow_dispatch testing first, then scheduled cron later. Use Europe/Athens as operational time and include UTC cron equivalents. Do not create real workflow files yet.
+Create docs/github-actions-ingestion-readiness-plan.md. Document future GitHub Actions jobs for backend ingestion scripts. Include manual workflow_dispatch testing first, then scheduled cron later. Use Europe/Athens as operational time and include UTC cron equivalents.
 ```
 
-## 10. Phase 8: Optional Real GitHub Actions Workflows
+## 10. Phase 8: Manual GitHub Actions Workflows
 
-This phase is optional and should happen later, after manual deployment works.
+This phase should happen after manual deployment works. The first real workflows should be manual-only so each ingestion job can be tested before any schedule exists.
 
-Do not add workflow files during early deployment preparation.
+The manual workflow files are:
 
-When ready, create workflows under:
-
-```text
-.github/workflows/
-```
+| Workflow file | Manual command |
+| --- | --- |
+| `.github/workflows/manual-weekly-refresh.yml` | `npm run ingestion:weekly-refresh -- --skip-fresh` |
+| `.github/workflows/manual-monthly-player-stats-refresh.yml` | `npm run ingestion:monthly-player-stats-refresh -- --skip-fresh` |
+| `.github/workflows/manual-annual-season-reset.yml` | `npm run ingestion:annual-season-reset` |
+| `.github/workflows/manual-player-refresh.yml` | `npm run ingestion:player-refresh -- --skip-fresh` |
 
 Example workflow structure:
 
@@ -353,6 +356,13 @@ name: Manual Weekly Ingestion Refresh
 
 on:
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: transfermind-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   weekly-refresh:
@@ -369,21 +379,15 @@ jobs:
       - run: npm run ingestion:weekly-refresh -- --skip-fresh
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          API_BASE: ${{ secrets.API_BASE }}
           RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
           RAPIDAPI_HOST: ${{ secrets.RAPIDAPI_HOST }}
 ```
 
-Future commands that may need manual workflows:
+The per-workflow concurrency group prevents duplicate runs of the same workflow on the same ref, while still allowing different manual ingestion workflows to run at the same time.
 
-```bash
-npm run ingestion:weekly-refresh -- --skip-fresh
-npm run ingestion:monthly-player-stats-refresh -- --skip-fresh
-npm run ingestion:annual-season-reset
-npm run ingestion:player-refresh -- --skip-fresh
-```
-
-If Python dependencies are required, the workflow should also:
+The current manual ingestion workflows are Node-only and do not install Python dependencies. If a future workflow calls Python-backed analysis or ingestion code, it should also:
 
 - Set up Python.
 - Install dependencies from `requirements.txt`.

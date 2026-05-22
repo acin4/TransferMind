@@ -1,6 +1,6 @@
 # GitHub Actions Ingestion Readiness Plan
 
-This document is a readiness plan for future GitHub Actions ingestion jobs. It does not create or require real workflow files yet.
+This document tracks the manual GitHub Actions ingestion jobs and the later schedule-readiness plan.
 
 The rollout order is intentional:
 
@@ -8,22 +8,22 @@ The rollout order is intentional:
 2. Review logs, data changes, and API quota behavior.
 3. Add scheduled cron triggers only after manual runs are reliable.
 
-## Future Jobs
+## Manual Jobs
 
-All future ingestion workflows should run from `backend/`, install Node dependencies with `npm ci`, and execute the existing backend package scripts.
+The current manual ingestion workflows run from `backend/`, install Node dependencies with `npm ci`, and execute the existing backend package scripts.
 
-| Refresh | Operational time | Future backend command |
-| --- | --- | --- |
-| Weekly standings and team stats | Every Tuesday at 00:00 Europe/Athens | `npm run ingestion:weekly-refresh -- --skip-fresh` |
-| Monthly player stats | 1st day of every month at 00:00 Europe/Athens | `npm run ingestion:monthly-player-stats-refresh -- --skip-fresh` |
-| Annual season reset | July 1 at 00:00 Europe/Athens | `npm run ingestion:annual-season-reset` |
-| Fixed-date player refresh | July 1, August 1, October 1, January 1, February 1, and March 1 at 00:00 Europe/Athens | `npm run ingestion:player-refresh -- --skip-fresh` |
+| Refresh | Workflow file | Operational time | Backend command |
+| --- | --- | --- | --- |
+| Weekly standings and team stats | `.github/workflows/manual-weekly-refresh.yml` | Every Tuesday at 00:00 Europe/Athens | `npm run ingestion:weekly-refresh -- --skip-fresh` |
+| Monthly player stats | `.github/workflows/manual-monthly-player-stats-refresh.yml` | 1st day of every month at 00:00 Europe/Athens | `npm run ingestion:monthly-player-stats-refresh -- --skip-fresh` |
+| Annual season reset | `.github/workflows/manual-annual-season-reset.yml` | July 1 at 00:00 Europe/Athens | `npm run ingestion:annual-season-reset` |
+| Fixed-date player refresh | `.github/workflows/manual-player-refresh.yml` | July 1, August 1, October 1, January 1, February 1, and March 1 at 00:00 Europe/Athens | `npm run ingestion:player-refresh -- --skip-fresh` |
 
 The fixed player refresh dates intentionally exclude September 1, matching the current final-thesis scope and `backend/jobs/playerRefresh.js`.
 
 ## Manual Testing First
 
-When workflow files are eventually created, start with `workflow_dispatch` only. Do not add cron triggers in the first version.
+The first workflow version uses `workflow_dispatch` only. Do not add cron triggers until manual runs are proven safe.
 
 Manual test requirements:
 
@@ -33,9 +33,9 @@ Manual test requirements:
 - Review Supabase ingestion tables after each run, especially `ingestion_runs`, `ingestion_step_logs`, and `api_request_logs`.
 - Confirm the resulting data changes match the intended job scope.
 - Treat RapidAPI `429` responses, repeated retries, unexpectedly broad fetches, or failed ingestion runs as stop signals before rerunning.
-- Keep concurrency groups in the eventual workflows so manual jobs cannot overlap with other ingestion runs.
+- Keep per-workflow concurrency groups so the same workflow cannot overlap with itself. The current group is `transfermind-${{ github.workflow }}-${{ github.ref }}`, which still allows different ingestion workflows to run at the same time.
 
-Future workflows need these GitHub repository or environment secrets:
+The manual workflows need these GitHub repository or environment secrets:
 
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_KEY`
@@ -44,6 +44,8 @@ Future workflows need these GitHub repository or environment secrets:
 - `RAPIDAPI_HOST`
 
 Never commit `.env` files, Supabase service keys, RapidAPI keys, or generated logs that expose secret values. The Supabase service key must remain backend/job-only and must not be exposed to frontend code.
+
+The current manual ingestion package scripts are Node-only, so these workflows do not install Python dependencies. If a future workflow calls Python-backed analysis or ingestion code, add Python setup and install from `backend/requirements.txt`.
 
 ## Scheduled Cron Later
 
@@ -64,7 +66,6 @@ For monthly and fixed-date jobs, prefer a guarded workflow or script step that c
 
 ## Safety Notes
 
-- Do not create `.github/workflows/` files as part of this readiness plan.
 - Do not schedule `npm run ingestion:init`; init mode is broad bootstrap behavior and can fan out across historical data.
 - Do not add scheduled historical player ingestion or historical player-stat ingestion for the final thesis scope.
 - Keep recurring jobs scoped to current-season refresh behavior, except for the narrow annual season reset.
