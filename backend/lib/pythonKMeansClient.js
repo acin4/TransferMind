@@ -6,7 +6,7 @@ import { HttpError } from "./http.js";
 const CURRENT_DIR = dirname(fileURLToPath(import.meta.url));
 const RUNNER_PATH = resolve(CURRENT_DIR, "../python/kmeans_runner.py");
 const PYTHON_BIN = process.env.TRANSFERMIND_PYTHON_BIN ?? "python3";
-const DEFAULT_TIMEOUT_MS = 15000;
+const DEFAULT_TIMEOUT_MS = 60000;
 
 export function runPythonKMeans(payload, options = {}) {
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -50,7 +50,10 @@ export function runPythonKMeans(payload, options = {}) {
 
     child.stdin.on("error", (error) => {
       if (!settled) {
-        console.error("Unable to write to Python K-Means runner:", error.message);
+        console.error(
+          "Unable to write to Python K-Means runner:",
+          error.message,
+        );
       }
     });
 

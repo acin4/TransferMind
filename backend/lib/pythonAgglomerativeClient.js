@@ -6,7 +6,7 @@ import { HttpError } from "./http.js";
 const CURRENT_DIR = dirname(fileURLToPath(import.meta.url));
 const RUNNER_PATH = resolve(CURRENT_DIR, "../python/agglomerative_runner.py");
 const PYTHON_BIN = process.env.TRANSFERMIND_PYTHON_BIN;
-const DEFAULT_TIMEOUT_MS = 15000;
+const DEFAULT_TIMEOUT_MS = 60000;
 const ERROR_MESSAGE = "Unable to complete Agglomerative clustering.";
 
 function resolvePythonExecutablePath(command) {
@@ -69,7 +69,9 @@ function validateAgglomerativeResult(result) {
   }
 
   if (!Array.isArray(result.assignments)) {
-    throw new Error("Agglomerative runner output assignments must be an array.");
+    throw new Error(
+      "Agglomerative runner output assignments must be an array.",
+    );
   }
 
   if (!result.assignments.every((assignment) => Number.isInteger(assignment))) {

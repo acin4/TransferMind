@@ -6,7 +6,7 @@ import { HttpError } from "./http.js";
 const CURRENT_DIR = dirname(fileURLToPath(import.meta.url));
 const RUNNER_PATH = resolve(CURRENT_DIR, "../python/apriori_runner.py");
 const PYTHON_BIN = process.env.TRANSFERMIND_PYTHON_BIN ?? "python3";
-const DEFAULT_TIMEOUT_MS = 15000;
+const DEFAULT_TIMEOUT_MS = 60000;
 const ERROR_MESSAGE = "Unable to complete Apriori association rules mining.";
 const TIMEOUT_ERROR_MESSAGE =
   "Apriori mining took too long. Increase the minimum support value and try again.";
@@ -31,8 +31,7 @@ function validateAprioriResult(result) {
   if (
     result.pagination !== undefined &&
     result.pagination !== null &&
-    (typeof result.pagination !== "object" ||
-      Array.isArray(result.pagination))
+    (typeof result.pagination !== "object" || Array.isArray(result.pagination))
   ) {
     throw new Error("Apriori runner output pagination must be an object.");
   }
@@ -86,7 +85,10 @@ export function runPythonApriori(payload, options = {}) {
 
     child.stdin.on("error", (error) => {
       if (!settled) {
-        console.error("Unable to write to Python Apriori runner:", error.message);
+        console.error(
+          "Unable to write to Python Apriori runner:",
+          error.message,
+        );
       }
     });
 
