@@ -2,6 +2,10 @@ import io
 import json
 import math
 import sys
+import os
+
+os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
+os.makedirs("/tmp/matplotlib", exist_ok=True)
 
 import matplotlib
 
