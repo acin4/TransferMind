@@ -56,3 +56,10 @@ ingestion/data/
 *.sqlite3
 *.bak
 *.zip
+
+# --- Misc ---
+.codex
+docs/*
+AGENTS.md
+CONTRIBUTING.md
+image.png
